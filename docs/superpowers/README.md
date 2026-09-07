@@ -16,3 +16,4 @@ Al agregar uno, sumar la fila acá.
 | Fecha | Tema | Spec | Plan |
 |---|---|---|---|
 | 09-07 | Motor de camino multi-salto + calculadora (v2) | ✅ | ✅ |
+| 09-07 | Cierre de los 12 pendientes en cuatro pasos | ✅ | ✅ |

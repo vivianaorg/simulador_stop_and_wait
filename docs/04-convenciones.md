@@ -26,7 +26,33 @@ proyecto son varias y son deliberadas.
 Fechas absolutas (`2026-09-07`, nunca "hoy") · un archivo = un propósito · no duplicar un hecho
 entre archivos: se enlaza · corto · referencias a código como `ruta/archivo.ext:línea`.
 
-## A.3 Prohibiciones
+## A.3 Reglas endurecidas (2026-09-07)
+
+Añadidas tras leer la sección **ANTIDERIVA** del protocolo global, escrita después de una sesión
+en la que siete afirmaciones de una documentación contradecían al código. El diagnóstico de esa
+sección es el que manda aquí:
+
+> **Si una regla de documentación no la comprueba una máquina, no es una regla: es una intención.**
+
+Vigentes desde hoy, aunque la máquina que comprueba algunas de ellas llegue en el paso 4 del
+[cierre en curso](superpowers/specs/2026-09-07-cierre-pendientes-design.md):
+
+| # | Regla | Quién la hace cumplir |
+|---|---|---|
+| 1 | **Fuente única de conteos.** El número de pruebas se escribe en **un solo documento**; los demás enlazan. Un número tecleado en cuatro sitios ya está mal, solo que todavía no se sabe | Lint de documentación (paso 4) |
+| 2 | **Ninguna ruta ni línea citada sin comprobar que existe.** Y se prefiere **el nombre de la función** a `archivo.js:123`: los números se pudren en la edición siguiente y aparentan más precisión de la que tienen | Lint de documentación (paso 4) |
+| 3 | **Cada afirmación de la documentación se comprueba contra el código antes de commitear.** Es lo único que caza las mentiras semánticas — una frase que describe un comportamiento que el código no tiene. Ningún script las ve | Persona o agente, en la revisión |
+| 4 | **Un documento fechado no se reescribe.** Los specs y las entradas de `07` son registros, no estado. Corregirlos a posteriori falsifica el archivo: lo que cambió se escribe en una entrada nueva | Persona o agente |
+| 5 | **El índice enlaza, no afirma.** `00-INDEX.md` lleva punteros y, como mucho, una frase de estado por área. Si repite lo que vive en otro documento, acabará contradiciéndolo | Persona o agente |
+| 6 | **Un fichero no mezcla tipos de documento.** Si explica, guía, referencia y además declara estado, se parte | Persona o agente |
+| 7 | **Prohibida cualquier afirmación sobre el estado del repositorio** que deje de ser cierta un segundo después del commit que la trae: «ya está subido», «pendiente de su propio commit», «quedan dos» | Persona o agente |
+| 8 | **Durante un cierre en curso no se abren fichas.** Lo que aparezca se anota como *desvío* en el spec del cierre, con qué se vio y qué lo desbloquearía, y se decide en el momento | Persona o agente |
+
+**Lo que estas reglas no prometen:** el lint caza *mentiras mecánicas* —un número, una ruta, un
+enlace, una línea—. Las semánticas solo las caza la regla 3. Escribir el script y creer que el
+problema está resuelto es comprarse una falsa seguridad, que es peor que no tener script.
+
+## A.4 Prohibiciones
 
 - ❌ Estado de sesión o pendientes dentro de `CLAUDE.md` / `AGENTS.md`.
 - ❌ Duplicar el mismo bloque en `CLAUDE.md` y `AGENTS.md`.

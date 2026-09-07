@@ -35,7 +35,10 @@ Estado de calidad verificado el 2026-09-07:
 `python -m py_compile simulador_stop_and_wait_python/*.py` → limpio.
 El v1 y la versión Tkinter **siguen sin tests**; los tests cubren el motor del v2.
 
-Trabajo en curso: **simulador v2** (motor multi-salto, CRC y diagrama tiempo-espacio).
+Trabajo en curso: **cierre de los 12 pendientes en cuatro pasos**
+([spec](superpowers/specs/2026-09-07-cierre-pendientes-design.md) ·
+[plan](superpowers/plans/2026-09-07-cierre-pendientes.md)). Mientras dure, no se abren fichas
+nuevas.
 [Spec](superpowers/specs/2026-09-07-motor-multisalto-design.md) ·
 [Plan](superpowers/plans/2026-09-07-motor-multisalto.md) ·
 [06-pendientes.md](06-pendientes.md).

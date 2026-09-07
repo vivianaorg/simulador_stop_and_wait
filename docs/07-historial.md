@@ -8,6 +8,41 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-07 — Los 12 pendientes pasan a un cierre en cuatro pasos, y las reglas se endurecen
+
+**Qué:**
+
+- [Spec](superpowers/specs/2026-09-07-cierre-pendientes-design.md) y
+  [plan](superpowers/plans/2026-09-07-cierre-pendientes.md) que cubren **todos** los pendientes
+  abiertos, agrupados en cuatro pasos con orden obligatorio: podar → terminar el v2 → probarlo a
+  mano → blindar.
+- `06-pendientes.md` reescrito: las doce fichas se agrupan por paso y **el detalle deja de estar
+  ahí**; vive en el spec y se enlaza.
+- `04-convenciones.md` gana ocho **reglas endurecidas** (A.3), tomadas de la sección ANTIDERIVA
+  del protocolo global: fuente única de conteos, nada de rutas ni líneas sin comprobar,
+  comprobar cada afirmación contra el código, no reescribir documentos fechados, el índice
+  enlaza en vez de afirmar, un fichero no mezcla tipos, prohibidas las frases sobre el estado del
+  repositorio que caducan al commitear, y no abrir fichas durante un cierre.
+
+**Por qué:** doce fichas sueltas y dos días de plazo daban una lista que parecía doce trabajos.
+No lo era: **seis pertenecían a código que ya no se desarrolla**, y su coste dependía de una
+decisión que nadie había tomado. Agrupar por decisión en vez de por ficha convierte seis
+pendientes en una pregunta. Y la regla de «un desvío no es un pendiente» es lo que impide que la
+lista vuelva a crecer mientras se cierra.
+
+**Evidencia:** los doce identificadores originales aparecen exactamente una vez en el reparto por
+pasos (6 + 3 + 2 + 1 = 12). Ningún enlace roto entre documentos.
+
+**Cómo revertir:** `git revert` de este commit. No se tocó código: es solo documentación.
+
+**Lección:** el conteo «43 pruebas» estaba escrito a mano en cuatro documentos. Ninguno mentía
+todavía, y por eso el problema pasaba desapercibido: son cuatro oportunidades de mentir en cuanto
+alguien añada una prueba. Un número tecleado en varios sitios ya está mal, solo que aún no se
+sabe. La corrección —declarar la fuente única y borrar las copias— es trabajo del paso 4, y hasta
+entonces la deuda queda escrita en vez de disimulada.
+
+---
+
 ## 2026-09-07 — La calculadora deja de ser un texto pegado
 
 **Qué:** `calculadora.html` rehecha por bloques, al estilo de un resolutor:
