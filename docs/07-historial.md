@@ -8,6 +8,33 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-07 — La tira de paquetes ya se ve entera: el escenario cabe en la ventana
+
+**Qué:** el `.stage` medía 924 px dentro de un `.work` de 848 y la tira de paquetes se salía
+77 px por debajo del borde inferior — invisible sin scroll, y el scroll de la página ya no
+existe. La causa: los canvas tienen **tamaño intrínseco** (el atributo `height` que les escribe
+`resizeCanvases`), y con `height: 100%` sobre una caja de altura automática ese tamaño
+realimentaba la altura de la fila del grid, que crecía por encima de la ventana.
+
+- Los dos canvas pasan a `position: absolute; inset: 0`, así que ya no aportan altura.
+- `.work` acota su fila con `grid-template-rows: minmax(0, 1fr)` y `.stage` lleva
+  `min-height: 0; overflow: hidden`.
+- La tira de paquetes escala con la ventana: `height: clamp(104px, 15vh, 132px)`. Nunca se
+  sacrifica; el diagrama toma lo que sobre.
+
+**Por qué:** el usuario no veía la parte de los paquetes y pidió que la pantalla se rellene
+entera, con el diagrama como único elemento que hace falta recorrer.
+
+**Cómo revertir:** `git revert` del commit. Solo toca `css/style.css` (`.work`, `.stage`,
+`.diagram-wrap`, `.chain-wrap` y la media query de 980 px).
+
+**Verificación:** medido con Chromium por CDP en 1920×912, 1366×600, 1280×800 y 1024×1366. En
+las cuatro, el borde inferior del escenario coincide exactamente con el alto de la ventana y la
+página no scrollea (`docScroll: 0`); la tira mide entre 104 y 132 px según el caso. Las pruebas
+de rueda, Ctrl+rueda y doble clic siguen en verde.
+
+---
+
 ## 2026-09-07 — La rueda sobre el diagrama recorre de verdad, y Ctrl+rueda acerca
 
 **Qué:** el retroceso del diagrama se limitaba a `clockMs`, no a lo que de verdad queda fuera de

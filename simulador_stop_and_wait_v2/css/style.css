@@ -124,6 +124,9 @@ body.app > .bar { flex: 0 0 auto; }
 .work {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 336px;
+  /* La fila se acota: sin esto crece con el contenido y el escenario se sale
+     por debajo de la ventana. */
+  grid-template-rows: minmax(0, 1fr);
   gap: 0;
   flex: 1 1 auto;
   min-height: 0;
@@ -131,21 +134,31 @@ body.app > .bar { flex: 0 0 auto; }
 
 .stage {
   display: grid;
+  /* El diagrama toma lo que sobre; la tira de paquetes tiene altura propia y
+     no se sacrifica nunca: es lo que hay que ver hasta abajo. */
   grid-template-rows: minmax(0, 1fr) auto;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   border-right: 1px solid var(--rule);
 }
 
-.diagram-wrap { position: relative; min-height: 0; }
-.diagram-wrap canvas { display: block; width: 100%; height: 100%; }
+/* Los canvas van absolutos dentro de su caja: con `height: 100%` sobre una
+   caja de altura automatica, el tamano intrinseco del canvas (el atributo
+   `height` que le escribe resizeCanvases) realimentaba la altura de la fila y
+   el escenario crecia mas que la ventana. */
+.diagram-wrap { position: relative; min-height: 0; overflow: hidden; }
+.diagram-wrap canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 
 .chain-wrap {
+  position: relative;
   border-top: 1px solid var(--rule);
-  height: 132px;
+  height: clamp(104px, 15vh, 132px);
+  overflow: hidden;
   background: var(--paper-sunk);
 }
 
-.chain-wrap canvas { display: block; width: 100%; height: 100%; }
+.chain-wrap canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 
 .rail {
   overflow-y: auto;
@@ -542,7 +555,8 @@ code { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
   /* En una columna manda el scroll de la pagina: el panel deja de estar
      encajado en la altura de la ventana. */
   body.app { height: auto; overflow: visible; display: block; }
-  .work { grid-template-columns: 1fr; height: auto; }
+  .work { grid-template-columns: 1fr; grid-template-rows: none; height: auto; }
+  .stage { overflow: visible; }
   .rail { overflow-y: visible; }
   .stage { border-right: 0; }
   .diagram-wrap { height: 62vh; }
