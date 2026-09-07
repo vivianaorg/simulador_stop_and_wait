@@ -22,6 +22,8 @@
   // un timeout por debajo del RTT provoca retransmisiones inútiles, y con varios
   // saltos el RTT cambia cada vez que se añade un punto.
   let timeoutManual = false;
+  // Byte del CRC cuyo detalle está desplegado, o null.
+  let byteAbierto = null;
   // Cuánto tiempo simulado hacia atrás está mirando el diagrama. 0 = sigue al
   // presente; > 0 = el usuario se ha ido a mirar historia.
   let retrocesoMs = 0;
@@ -75,7 +77,11 @@
       timeoutMs: id("timeout-ms"),
       seed: id("seed"),
       nakToggle: id("nak-toggle"),
+      noiseToggle: id("noise-toggle"),
       duplexMode: id("duplex-mode"),
+      btnNoiseBit: id("btn-noise-bit"),
+      btnCrcSteps: id("btn-crc-steps"),
+      crcSteps: id("crc-steps"),
       timeoutHint: id("timeout-hint"),
 
       hopsBox: id("hops"),
@@ -117,7 +123,26 @@
       rebuild();
     });
     dom.nakToggle.addEventListener("change", rebuild);
+    dom.noiseToggle.addEventListener("change", () => {
+      renderHops();
+      rebuild();
+    });
     dom.duplexMode.addEventListener("change", rebuild);
+
+    dom.btnNoiseBit.addEventListener("click", () =>
+      actOnSelected((p) => {
+        // Con la misma semilla, el mismo bit: el escenario se repite.
+        F.flipRandomBit(p.frame, sim.random);
+      })
+    );
+
+    dom.btnCrcSteps.addEventListener("click", () => {
+      const abierto = dom.crcSteps.hidden;
+      dom.crcSteps.hidden = !abierto;
+      dom.btnCrcSteps.setAttribute("aria-expanded", String(abierto));
+      dom.btnCrcSteps.textContent = abierto ? "Ocultar el CRC" : "Ver el CRC paso a paso";
+      if (abierto) renderCrcSteps();
+    });
 
     // Rueda: mirar hacia atrás. Doble clic: volver al presente.
     dom.diagram.addEventListener("wheel", (e) => {
@@ -218,6 +243,11 @@
           rebuild();
         });
 
+        if (campo.key === "errorProbData" && !dom.noiseToggle.checked) {
+          input.disabled = true;
+          label.title = "Enciende el ruido del canal para usar esta probabilidad";
+        }
+
         label.appendChild(input);
         grid.appendChild(label);
       }
@@ -238,6 +268,21 @@
   function rebuild() {
     let path;
     try {
+      // Los valores del formulario se validan siempre, aunque el ruido esté
+      // apagado: si no, una probabilidad imposible se aceptaba en silencio y
+      // solo reventaba al encender el ruido.
+      hops.forEach((h, i) =>
+        N.createLink({
+          name: `${nombreNodo(i)} → ${nombreNodo(i + 1)}`,
+          rateBps: h.rateBps,
+          distanceKm: h.distanceKm,
+          velocityKmS: h.velocityKmS,
+          errorProbData: h.errorProbData,
+          errorProbAck: h.errorProbAck,
+          turnaroundMs: h.turnaroundMs,
+        })
+      );
+
       path = N.createPath({
         frameBits: Number(dom.frameBits.value),
         ackBits: Number(dom.ackBits.value),
@@ -248,8 +293,8 @@
             rateBps: h.rateBps,
             distanceKm: h.distanceKm,
             velocityKmS: h.velocityKmS,
-            errorProbData: h.errorProbData,
-            errorProbAck: h.errorProbAck,
+            errorProbData: dom.noiseToggle.checked ? h.errorProbData : 0,
+            errorProbAck: dom.noiseToggle.checked ? h.errorProbAck : 0,
             turnaroundMs: h.turnaroundMs,
           })
         ),
@@ -673,7 +718,18 @@
     const hay = Boolean(p);
     dom.inspectorEmpty.hidden = hay;
     dom.inspectorBody.hidden = !hay;
-    if (!hay) return;
+    if (!hay) {
+      // Sin esto, los datos de la última trama se quedaban en pantalla y
+      // parecían los de una trama que ya no existe.
+      dom.inspKind.textContent = "—";
+      dom.inspSeq.textContent = "—";
+      dom.inspHop.textContent = "—";
+      dom.inspCrc.textContent = "—";
+      delete dom.inspCrc.dataset.ok;
+      dom.bits.innerHTML = "";
+      dom.crcSteps.innerHTML = "";
+      return;
+    }
 
     const sano = F.isIntact(p.frame);
     dom.inspKind.textContent = p.frame.kind;
@@ -700,6 +756,92 @@
       });
       dom.bits.appendChild(b);
     }
+
+    if (!dom.crcSteps.hidden) renderCrcSteps();
+  }
+
+  const SALTO = String.fromCharCode(10); // salto de línea, para el detalle del CRC
+
+  // Enseña cómo se llega al CRC: registro inicial, un paso por byte, y el
+  // detalle de los ocho desplazamientos del byte que se despliegue.
+  function renderCrcSteps() {
+    const p = paqueteSeleccionado();
+    dom.crcSteps.innerHTML = "";
+    if (!p || dom.crcSteps.hidden) return;
+
+    const traza = F.crc16Trace(p.frame.payload);
+    const hex = (v) => v.toString(16).toUpperCase().padStart(4, "0");
+    const bin = (v, n) => v.toString(2).padStart(n, "0");
+
+    const cabecera = document.createElement("p");
+    cabecera.className = "hint";
+    cabecera.innerHTML =
+      `Polinomio <strong>${traza.polinomio}</strong>. El registro empieza en ` +
+      `<code>0x${hex(traza.inicial)}</code> y se procesa un byte de la carga cada vez: ` +
+      `se hace XOR del byte contra la parte alta y se desplaza ocho veces, aplicando el ` +
+      `polinomio cada vez que sale un uno por la izquierda.`;
+    dom.crcSteps.appendChild(cabecera);
+
+    const tabla = document.createElement("table");
+    tabla.className = "crc-table";
+    tabla.innerHTML =
+      "<thead><tr><th scope=\"col\">Byte</th><th scope=\"col\">Valor</th>" +
+      "<th scope=\"col\">Registro antes</th><th scope=\"col\">Después</th></tr></thead>";
+
+    const cuerpo = document.createElement("tbody");
+    traza.pasos.forEach((paso) => {
+      const fila = document.createElement("tr");
+      fila.className = "crc-row";
+      fila.tabIndex = 0;
+      fila.innerHTML =
+        `<td class="num">${paso.indice}</td>` +
+        `<td class="num">0x${paso.byte.toString(16).toUpperCase().padStart(2, "0")}</td>` +
+        `<td class="num">0x${hex(paso.antes)}</td>` +
+        `<td class="num">0x${hex(paso.despues)}</td>`;
+
+      const abrir = () => {
+        byteAbierto = byteAbierto === paso.indice ? null : paso.indice;
+        renderCrcSteps();
+      };
+      fila.addEventListener("click", abrir);
+      fila.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          abrir();
+        }
+      });
+      cuerpo.appendChild(fila);
+
+      if (byteAbierto === paso.indice) {
+        const detalle = document.createElement("tr");
+        const celda = document.createElement("td");
+        celda.colSpan = 4;
+        celda.className = "crc-detail";
+
+        const lineas = [
+          `XOR del byte contra la parte alta → 0x${hex(paso.trasXor)}`,
+          ...paso.bits.map(
+            (b) =>
+              `desplazamiento ${b.bit + 1}: ${bin(b.antes, 16)} · ${b.msb ? "sale un 1 → XOR con el polinomio" : "sale un 0 → solo desplaza"} → ${bin(b.despues, 16)}`
+          ),
+        ];
+        celda.textContent = lineas.join(SALTO);
+        detalle.appendChild(celda);
+        cuerpo.appendChild(detalle);
+      }
+    });
+
+    tabla.appendChild(cuerpo);
+    dom.crcSteps.appendChild(tabla);
+
+    const sano = F.isIntact(p.frame);
+    const veredicto = document.createElement("p");
+    veredicto.className = "crc-verdict";
+    veredicto.dataset.ok = String(sano);
+    veredicto.textContent = sano
+      ? `El receptor calcula 0x${hex(traza.final)} y la trama trae 0x${hex(p.frame.crc)}: coinciden, la acepta.`
+      : `El receptor calcula 0x${hex(traza.final)} pero la trama trae 0x${hex(p.frame.crc)}: no coinciden, la descarta.`;
+    dom.crcSteps.appendChild(veredicto);
   }
 
   function actOnSelected(accion) {

@@ -20,6 +20,52 @@
   const INITIAL = 0xffff;
   const CRC_BITS = 16;
 
+  // Nombre legible del polinomio, para la explicación.
+  const POLINOMIO_TEXTO = "x¹⁶ + x¹² + x⁵ + 1  (0x1021)";
+
+  /**
+   * El mismo cálculo que crc16, pero contando lo que hace en cada paso.
+   * Sirve para enseñar el CRC, no para calcularlo: el que manda es crc16.
+   *
+   * Devuelve, por cada byte de la carga, el registro antes y después, y el
+   * detalle de los ocho desplazamientos: si el bit más significativo estaba a
+   * uno (y por tanto tocaba aplicar el polinomio) o no.
+   */
+  function crc16Trace(bytes) {
+    let crc = INITIAL;
+    const pasos = [];
+
+    for (let i = 0; i < bytes.length; i++) {
+      const antesDelByte = crc;
+      crc ^= (bytes[i] & 0xff) << 8;
+      const trasXor = crc & 0xffff;
+      const bits = [];
+
+      for (let bit = 0; bit < 8; bit++) {
+        const antes = crc & 0xffff;
+        const msb = (crc & 0x8000) !== 0;
+        crc = msb ? ((crc << 1) ^ POLYNOMIAL) & 0xffff : (crc << 1) & 0xffff;
+        bits.push({ bit, antes, msb, despues: crc & 0xffff });
+      }
+
+      pasos.push({
+        indice: i,
+        byte: bytes[i] & 0xff,
+        antes: antesDelByte,
+        trasXor,
+        despues: crc & 0xffff,
+        bits,
+      });
+    }
+
+    return {
+      polinomio: POLINOMIO_TEXTO,
+      inicial: INITIAL,
+      pasos,
+      final: crc & 0xffff,
+    };
+  }
+
   function crc16(bytes) {
     let crc = INITIAL;
     for (let i = 0; i < bytes.length; i++) {
@@ -161,7 +207,9 @@
   return {
     KIND,
     CRC_BITS,
+    POLINOMIO_TEXTO,
     crc16,
+    crc16Trace,
     createFrame,
     cloneFrame,
     label,

@@ -72,14 +72,22 @@
           </dl>
 
           <div class="bits" id="bits" role="group" aria-label="Bits de la trama; pulsa uno para voltearlo"></div>
-          <p class="hint">Azul: los 16 bits del CRC. Pulsa cualquier bit para voltearlo, como haría el ruido del canal.</p>
+          <p class="hint">
+            <strong>Pulsa cualquier bit para voltearlo</strong> — eso es meter un error a mano.
+            Los 16 últimos, en azul, son el CRC. El receptor lo recalcula al llegar: no hay ninguna
+            marca de «esta venía dañada».
+          </p>
 
           <div class="actions">
+            <button class="btn btn-danger" id="btn-noise-bit">Dañar un bit al azar</button>
             <button class="btn btn-danger" id="btn-destroy">Destruir</button>
             <button class="btn" id="btn-delay">Retrasar</button>
             <button class="btn" id="btn-seq0">Forzar seq 0</button>
             <button class="btn" id="btn-seq1">Forzar seq 1</button>
           </div>
+
+          <button class="step-more" id="btn-crc-steps" aria-expanded="false">Ver el CRC paso a paso</button>
+          <div id="crc-steps" hidden></div>
         </div>
       </div>
     </section>
@@ -95,6 +103,13 @@
         <div class="row"><label for="duplex-mode">Canal</label><select id="duplex-mode"><option value="full" selected>Full duplex</option><option value="half">Half duplex</option></select></div>
         <div class="row"><label for="seed">Semilla del ruido</label><input type="number" id="seed" min="1" step="1" value="1"></div>
       </div>
+
+      <label class="check" style="margin-top:10px">
+        <input type="checkbox" id="noise-toggle">
+        <span><strong>Ruido del canal.</strong> Apagado, los errores solo los metes tú desde el
+        inspector. Encendido, cada tramo daña tramas con la probabilidad que le pongas — con la
+        semilla de abajo, así que el mismo escenario se repite igual.</span>
+      </label>
 
       <label class="check" style="margin-top:10px">
         <input type="checkbox" id="nak-toggle">

@@ -346,6 +346,49 @@ input[type="range"] { width: 100%; }
 
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
 
+/* ---------- CRC paso a paso ---------- */
+
+.crc-table {
+  width: 100%;
+  margin: 8px 0;
+  border-collapse: collapse;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.crc-table th,
+.crc-table td {
+  text-align: left;
+  padding: 3px 5px;
+  border-bottom: 1px solid var(--grid);
+}
+
+.crc-table th { color: var(--ink-soft); font-weight: 500; }
+
+.crc-row { cursor: pointer; }
+.crc-row:hover { background: var(--paper-sunk); }
+.crc-row:focus-visible { outline: 2px solid var(--ack); outline-offset: -2px; }
+
+.crc-detail {
+  white-space: pre;
+  overflow-x: auto;
+  background: var(--paper-sunk);
+  color: var(--ink-soft);
+  font-size: 11px;
+  line-height: 1.6;
+  padding: 8px 6px;
+}
+
+.crc-verdict {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.crc-verdict[data-ok="true"] { color: var(--data); }
+.crc-verdict[data-ok="false"] { color: var(--fault); }
+
 /* ---------- Bitácora ---------- */
 
 .log {

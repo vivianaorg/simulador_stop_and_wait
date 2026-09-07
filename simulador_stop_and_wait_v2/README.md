@@ -91,4 +91,9 @@ receptor lo recalcula. Si volteas un bit desde el inspector, el CRC deja de cuad
 El interruptor de NAK enseña las dos variantes: descarte silencioso (Protocolo 3, el emisor
 se entera por el temporizador) o NAK inmediato.
 
+El **ruido del canal es opcional y viene apagado**: por defecto, el único error posible es el que
+metes tú desde el inspector, pulsando un bit o con *Dañar un bit al azar*. El inspector también
+despliega el **CRC paso a paso**: polinomio, registro por byte, los ocho desplazamientos de cada
+uno y el veredicto del receptor.
+
 Documentación del proyecto: [`../docs/00-INDEX.md`](../docs/00-INDEX.md).

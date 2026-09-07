@@ -8,6 +8,47 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-07 — Ruido opcional, error a mano y el CRC paso a paso
+
+**Qué:** tres peticiones del usuario, y una de ellas resultó estar ya hecha.
+
+- **Ruido del canal con interruptor.** Ya estaba apagado de hecho —todas las probabilidades
+  venían a cero— pero no se veía. Ahora hay un interruptor explícito: apagado, las probabilidades
+  de los tramos se ignoran y sus campos se deshabilitan; encendido, funcionan con el generador de
+  semilla de siempre.
+- **Error a mano: ya existía**, pulsando cualquier bit del inspector. El texto no lo decía con
+  claridad, así que se reescribió, y se añadió el botón *Dañar un bit al azar* para cuando da
+  igual qué bit sea.
+- **CRC paso a paso** (nuevo): `crc16Trace()` en `frame.js` devuelve el registro antes y después
+  de cada byte y los ocho desplazamientos de cada uno, diciendo cuándo tocó aplicar el polinomio.
+  El inspector lo pinta con su veredicto final: qué calcula el receptor, qué trae la trama, y si
+  la acepta.
+
+**Por qué:** «ruido opcional» y «error a mano» eran, en realidad, un problema de que la interfaz
+no contaba lo que ya sabía hacer. El CRC paso a paso sí era nuevo, y es lo que convierte la
+detección de errores en algo que se puede explicar en una defensa en vez de afirmar.
+
+**Dos fallos encontrados por el camino, ambos reales:**
+
+1. **El inspector se quedaba con los datos de la trama anterior** cuando el canal se vaciaba: el
+   tipo, la secuencia y el CRC seguían en pantalla como si hubiera algo volando. Ahora se limpian.
+2. **Una probabilidad imposible se aceptaba en silencio** si el ruido estaba apagado, y solo
+   reventaba al encender el interruptor. Ahora los valores del formulario se validan siempre, y
+   lo que depende del interruptor es únicamente si se aplican.
+
+**Evidencia:** 86 pruebas verdes —tres nuevas exigen que el desarrollo del CRC llegue exactamente
+al mismo valor que el cálculo directo, que los ocho desplazamientos de cada byte estén encadenados
+y que dañar la carga rompa la coincidencia—; banco de interfaz **54 comprobaciones, 0 problemas**,
+repetible en dos pasadas.
+
+**Cómo revertir:** `git revert` de este commit. Las tres cosas son independientes.
+
+**Lección:** dos de las tres peticiones se resolvían enseñando mejor lo que ya había. Antes de
+construir, mirar si el problema es de función o de comunicación — y aquí era de comunicación en
+dos de tres.
+
+---
+
 ## 2026-09-07 — Pruebas hostiles: tres fallos reales del motor y un banco de interfaz
 
 **Qué:** se intentó romper el simulador a propósito, en dos frentes.

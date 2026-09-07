@@ -92,6 +92,13 @@ async function probarSimulador() {
   });
   comprobar("sim · nunca se queda sin tramos", d.querySelectorAll(".hop").length >= 1, d.querySelectorAll(".hop").length);
 
+  // --- ruido del canal: apagado por defecto y desactivable ---
+  comprobar("sim · el ruido viene apagado", !d.getElementById("noise-toggle").checked, "venía encendido");
+  comprobar("sim · con el ruido apagado, la probabilidad no se puede tocar", d.querySelectorAll(".hop input")[3].disabled, "se podía editar");
+  intentar("sim · encender el ruido", () => d.getElementById("noise-toggle").click());
+  comprobar("sim · encendido, la probabilidad se habilita", !d.querySelectorAll(".hop input")[3].disabled, "seguía bloqueada");
+  intentar("sim · apagar el ruido otra vez", () => d.getElementById("noise-toggle").click());
+
   // --- valores inválidos en el camino ---
   const campos = d.querySelectorAll(".hop input");
   intentar("sim · tasa 0", () => fijar(campos[1], 0));
@@ -136,6 +143,25 @@ async function probarSimulador() {
   } else {
     resultados.push("AVISO sim · no había trama en vuelo para voltear un bit");
   }
+
+  // --- error metido a mano, sin azar ---
+  comprobar("sim · hay una trama seleccionada antes de dañarla", d.querySelector(".bit") !== null, "el inspector estaba vacío");
+  intentar("sim · dañar un bit al azar", () => d.getElementById("btn-noise-bit").click());
+  comprobar("sim · el CRC lo detecta", d.getElementById("insp-crc").textContent === "no cuadra", d.getElementById("insp-crc").textContent);
+
+  // --- CRC paso a paso ---
+  intentar("sim · abrir el CRC paso a paso", () => d.getElementById("btn-crc-steps").click());
+  comprobar("sim · el panel del CRC explica el polinomio", /x¹⁶/.test(d.getElementById("crc-steps").innerText), "sin polinomio");
+  comprobar("sim · hay una fila por byte de la carga", d.querySelectorAll(".crc-row").length === 8, d.querySelectorAll(".crc-row").length);
+  comprobar("sim · y un veredicto final", d.querySelector(".crc-verdict") !== null, "sin veredicto");
+  comprobar("sim · que dice que no cuadra", d.querySelector(".crc-verdict").dataset.ok === "false", d.querySelector(".crc-verdict").dataset.ok);
+
+  intentar("sim · desplegar el detalle de un byte", () => d.querySelectorAll(".crc-row")[1].click());
+  comprobar("sim · aparecen los ocho desplazamientos", (d.querySelector(".crc-detail").textContent.match(/desplazamiento/g) || []).length === 8, "no son ocho");
+  intentar("sim · desplegar otro byte", () => d.querySelectorAll(".crc-row")[3].click());
+  comprobar("sim · solo queda un detalle abierto", d.querySelectorAll(".crc-detail").length === 1, d.querySelectorAll(".crc-detail").length);
+  intentar("sim · cerrar el CRC", () => d.getElementById("btn-crc-steps").click());
+  comprobar("sim · el panel se cierra", d.getElementById("crc-steps").hidden, "seguía abierto");
 
   // --- acciones con y sin paquete ---
   intentar("sim · destruir", () => d.getElementById("btn-destroy").click());

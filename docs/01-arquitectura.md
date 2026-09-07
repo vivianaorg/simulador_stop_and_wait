@@ -181,6 +181,36 @@ Dos comportamientos, con interruptor:
 | Apagado | El receptor descarta en silencio; el emisor se entera al expirar el temporizador | Protocolo 3 de Tanenbaum |
 | Encendido | El receptor manda NAK y el emisor retransmite sin esperar | Variante ARQ con NAK |
 
+## El ruido es opcional, y el error se puede meter a mano
+
+Dos formas de dañar una trama, y conviene no confundirlas:
+
+| | Cómo | Para qué |
+|---|---|---|
+| **A mano** | Pulsar cualquier bit del inspector, o el botón *Dañar un bit al azar* | Enseñar el caso exacto que quieres, cuando quieres |
+| **Ruido del canal** | Interruptor *Ruido del canal* + la probabilidad de cada tramo | Ver el comportamiento a lo largo de muchos ciclos |
+
+El ruido **viene apagado** y, mientras lo esté, las probabilidades de los tramos se ignoran y sus
+campos aparecen deshabilitados: el único error posible es el que metes tú. Encendido, usa el
+generador con semilla, así que el mismo escenario se repite igual.
+
+Los valores del formulario se validan **siempre**, aunque el ruido esté apagado: si no, una
+probabilidad imposible se aceptaba en silencio y solo reventaba al encender el interruptor.
+
+## El CRC, paso a paso
+
+El inspector despliega cómo se llega al CRC de la trama que está en el canal: el polinomio, el
+registro inicial, una fila por byte de la carga con el registro antes y después, y —al desplegar
+una fila— los ocho desplazamientos de ese byte, diciendo en cada uno si salió un uno por la
+izquierda y por tanto tocó aplicar el polinomio.
+
+Termina con el veredicto: qué calcula el receptor, qué trae la trama, y si por tanto la acepta o
+la descarta. Al dañar un bit, el veredicto cambia solo.
+
+El desarrollo lo produce `crc16Trace()`, que **no** es quien calcula el CRC de verdad: hay una
+prueba que exige que ambos lleguen al mismo valor, para que la explicación no pueda desviarse del
+cálculo.
+
 ## Alterar la trama en vuelo
 
 Con la simulación en pausa (o en marcha, si se prefiere) el inspector permite: voltear cualquier

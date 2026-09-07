@@ -54,8 +54,8 @@ node --check simulador_stop_and_wait_web/js/app.js
 python -m py_compile simulador_stop_and_wait_python/*.py
 ```
 
-Baseline 2026-09-07, Node v24.11.1 y Python 3.13.14: **83 pruebas verdes, 0 fallas**; el banco de
-interfaz con 42 comprobaciones sin problemas; el lint de documentación limpio; el resto, sin
+Baseline 2026-09-07, Node v24.11.1 y Python 3.13.14: **86 pruebas verdes, 0 fallas**; el banco de
+interfaz con 54 comprobaciones sin problemas; el lint de documentación limpio; el resto, sin
 avisos.
 
 > **Este archivo es la fuente única del conteo de pruebas.** Ningún otro documento lo repite: lo
@@ -95,7 +95,7 @@ python -m http.server 8000 --directory simulador_stop_and_wait_v2
 # abrir http://localhost:8000/banco-interfaz.html
 ```
 
-El resumen sale arriba del todo. Al 2026-09-07: **42 comprobaciones, 0 problemas**, y repetible:
+El resumen sale arriba del todo. Al 2026-09-07: **54 comprobaciones, 0 problemas**, y repetible:
 espera a que cada iframe termine de montarse en vez de dormir un rato fijo.
 
 **No sustituye a probarlo a mano.** Ve si el comportamiento es el esperado, no si algo se ve mal:
@@ -146,6 +146,11 @@ gotcha más habitual de este proyecto y no da error visible.
    antes de cada ACK y de cada trama siguiente, y el ciclo se alarga sin que cambie el RTT.
 10. La rueda del ratón sobre el diagrama muestra el aviso «histórico» y deja ver lo anterior;
     el doble clic vuelve al presente.
+11. Con el **ruido apagado** (por defecto), la probabilidad de cada tramo aparece deshabilitada y
+    no ocurre ningún error solo; al encenderlo, se habilita y empiezan a aparecer.
+12. *Dañar un bit al azar* deja el CRC en «no cuadra», igual que pulsar un bit a mano.
+13. *Ver el CRC paso a paso* muestra el polinomio, una fila por byte y el veredicto; al desplegar
+    una fila salen sus ocho desplazamientos, y abrir otra cierra la anterior.
 
 ## Checklist de humo del v2 (calculadora)
 

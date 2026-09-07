@@ -454,3 +454,49 @@ test("La curva sigue siendo válida cuando el punto se sale del rango dibujado",
   assert.ok(curva.actual.u > 0, "pero su utilización es un número real");
   assert.ok(curva.puntos.every((p) => p.u > 0 && p.u <= 1));
 });
+
+// ---------- El CRC contado paso a paso ----------
+
+test("El desarrollo del CRC llega exactamente al mismo valor que el cálculo directo", () => {
+  for (const bytes of [
+    new Uint8Array([0]),
+    new Uint8Array([255, 0, 128]),
+    new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]),
+    new Uint8Array(Array.from({ length: 32 }, (_, i) => (i * 37) % 256)),
+  ]) {
+    const traza = F.crc16Trace(bytes);
+    assert.equal(traza.final, F.crc16(bytes), "el paso a paso no puede desviarse del cálculo");
+    assert.equal(traza.pasos.length, bytes.length, "un paso por byte");
+    assert.equal(traza.inicial, 0xffff, "valor inicial de CCITT-FALSE");
+  }
+});
+
+test("Cada byte del desarrollo tiene sus ocho desplazamientos encadenados", () => {
+  const traza = F.crc16Trace(new Uint8Array([0xab, 0xcd]));
+
+  for (const paso of traza.pasos) {
+    assert.equal(paso.bits.length, 8, "ocho bits por byte");
+    assert.equal(paso.bits[0].antes, paso.trasXor, "el primer bit parte del registro tras el XOR");
+    assert.equal(paso.bits[7].despues, paso.despues, "el último deja el registro del byte");
+
+    for (let i = 1; i < paso.bits.length; i++) {
+      assert.equal(paso.bits[i].antes, paso.bits[i - 1].despues, "cada paso arranca donde acabó el anterior");
+    }
+    for (const bit of paso.bits) {
+      assert.equal(bit.msb, (bit.antes & 0x8000) !== 0, "el aviso del bit más significativo debe ser cierto");
+      assert.ok(bit.despues <= 0xffff, "el registro nunca se sale de 16 bits");
+    }
+  }
+
+  // El encadenado también vale entre bytes.
+  assert.equal(traza.pasos[1].antes, traza.pasos[0].despues);
+});
+
+test("El desarrollo del CRC de una trama coincide con el que viaja dentro de ella", () => {
+  const frame = F.createFrame({ kind: F.KIND.FRAME, seq: 1, frameIdx: 2, payloadBytes: 8 });
+  assert.equal(F.crc16Trace(frame.payload).final, frame.crc);
+
+  F.flipBit(frame, 9);
+  assert.notEqual(F.crc16Trace(frame.payload).final, frame.crc, "tras dañar la carga ya no coincide");
+  assert.equal(F.isIntact(frame), false);
+});
