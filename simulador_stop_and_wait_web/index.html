@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador Avanzado del Protocolo Stop &amp; Wait</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Sprite de iconos (line-icons, estilo Feather) reutilizados en toda la interfaz -->
+  <svg style="display:none" aria-hidden="true">
+    <symbol id="icon-radio" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="2"/>
+      <path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/>
+    </symbol>
+    <symbol id="icon-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
+      <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
+      <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
+      <line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>
+    </symbol>
+    <symbol id="icon-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </symbol>
+    <symbol id="icon-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+    </symbol>
+    <symbol id="icon-bar-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>
+    </symbol>
+    <symbol id="icon-alert-triangle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+    </symbol>
+    <symbol id="icon-package" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12.89 1.45l8 4A2 2 0 0 1 22 7.24v9.53a2 2 0 0 1-1.11 1.79l-8 4a2 2 0 0 1-1.79 0l-8-4a2 2 0 0 1-1.1-1.8V7.24a2 2 0 0 1 1.11-1.79l8-4a2 2 0 0 1 1.78 0z"/>
+      <polyline points="2.32 6.16 12 11 21.68 6.16"/><line x1="12" y1="22.76" x2="12" y2="11"/>
+    </symbol>
+    <symbol id="icon-play" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <polygon points="6 3 20 12 6 21 6 3"/>
+    </symbol>
+    <symbol id="icon-pause" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>
+    </symbol>
+    <symbol id="icon-refresh-cw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+    </symbol>
+    <symbol id="icon-zap" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+    </symbol>
+    <symbol id="icon-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </symbol>
+    <symbol id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="4"/>
+      <line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/>
+      <line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/>
+      <line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/>
+      <line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/>
+    </symbol>
+    <symbol id="icon-moon" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </symbol>
+    <symbol id="icon-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+    </symbol>
+    <symbol id="icon-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+    </symbol>
+    <symbol id="icon-alert-octagon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/>
+      <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </symbol>
+  </svg>
+
+  <header class="header">
+    <div class="header-title-box">
+      <div class="brand">
+        <span class="brand-icon"><svg class="icon"><use href="#icon-radio"></use></svg></span>
+        <div>
+          <h1>Simulador Stop &amp; Wait</h1>
+          <p>Control de flujo, manejo de pérdidas y temporizador de retransmisión</p>
+        </div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <label class="theme-switch" title="Cambiar tema" aria-label="Cambiar entre modo claro y oscuro">
+        <input type="checkbox" id="theme-switch">
+        <span class="theme-switch-track">
+          <svg class="icon theme-switch-icon theme-switch-icon-sun"><use href="#icon-sun"></use></svg>
+          <svg class="icon theme-switch-icon theme-switch-icon-moon"><use href="#icon-moon"></use></svg>
+          <span class="theme-switch-thumb"></span>
+        </span>
+      </label>
+      <div id="status-badge" class="status-badge"><span class="status-dot"></span><span id="status-badge-text">Inactivo</span></div>
+    </div>
+  </header>
+
+  <main class="main-container">
+
+    <section class="card">
+      <h2 class="card-title"><svg class="icon"><use href="#icon-sliders"></use></svg>Configuración y controles</h2>
+      <div class="ctrl-grid">
+        <label for="frames-input">Total de tramas</label>
+        <input type="number" id="frames-input" min="1" max="50" value="5">
+
+        <label for="timeout-input">Timeout (s)</label>
+        <input type="number" id="timeout-input" min="2" max="30" value="5">
+
+        <label for="speed-range">Velocidad</label>
+        <div class="range-with-label">
+          <input type="range" id="speed-range" min="0.5" max="3.0" step="0.1" value="1.0">
+          <span id="speed-label" class="speed-label">1.0x</span>
+        </div>
+
+        <div class="ctrl-buttons">
+          <button id="btn-start" class="btn btn-primary"><svg class="icon"><use href="#icon-play"></use></svg>Iniciar</button>
+          <button id="btn-pause" class="btn btn-secondary" disabled><svg class="icon"><use href="#icon-pause"></use></svg>Pausar</button>
+          <button id="btn-reset" class="btn btn-ghost"><svg class="icon"><use href="#icon-refresh-cw"></use></svg>Reiniciar</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title"><svg class="icon"><use href="#icon-activity"></use></svg>Parámetros del enlace <span class="card-title-formula">U = Tt / (Tt + 2·Tp) = 1 / (1 + 2a), a = Tp / Tt</span></h2>
+      <div class="link-panel">
+        <div class="link-panel-col link-panel-params">
+          <div class="link-grid">
+            <label for="link-length">Longitud de la trama L (bits)</label>
+            <input type="number" id="link-length" min="1" value="8000">
+
+            <label for="link-rate">Tasa de transmisión R (bits/s)</label>
+            <input type="number" id="link-rate" min="1" value="1000000">
+
+            <label for="link-distance">Distancia del enlace D (km)</label>
+            <input type="number" id="link-distance" min="0" value="1000">
+
+            <label for="link-velocity">Velocidad de propagación V (km/s)</label>
+            <input type="number" id="link-velocity" min="1" value="200000">
+          </div>
+        </div>
+
+        <div class="link-panel-divider"></div>
+
+        <div class="link-panel-col link-panel-results">
+          <div class="link-results">
+            <div class="link-result"><span>Tt (transmisión)</span><strong id="link-tt" class="stat-blue">—</strong></div>
+            <div class="link-result"><span>Tp (propagación)</span><strong id="link-tp" class="stat-orange">—</strong></div>
+            <div class="link-result"><span>a = Tp / Tt</span><strong id="link-a" class="stat-muted">—</strong></div>
+            <div class="link-result"><span>U (utilización)</span><strong id="link-u" class="stat-green">—</strong></div>
+            <div class="link-result"><span>Ocio del canal</span><strong id="link-idle" class="stat-red">—</strong></div>
+          </div>
+
+          <div class="util-chart" id="util-chart" role="img" aria-label="Comparación entre el porcentaje de tiempo que el canal está ocupado transmitiendo y el porcentaje que permanece ocioso esperando la propagación">
+            <div class="util-chart-col">
+              <span class="util-chart-value" id="util-value-busy">—</span>
+              <div class="util-chart-track" title="Canal ocupado (Tt): fracción del ciclo que el emisor pasa transmitiendo bits">
+                <div class="util-chart-fill util-chart-fill-busy" id="util-bar-busy"></div>
+              </div>
+              <span class="util-chart-label"><i class="dot dot-busy"></i>Ocupado (Tt)</span>
+            </div>
+            <div class="util-chart-col">
+              <span class="util-chart-value" id="util-value-idle">—</span>
+              <div class="util-chart-track" title="Canal ocioso (2·Tp): fracción del ciclo que se espera la propagación de ida y vuelta">
+                <div class="util-chart-fill util-chart-fill-idle" id="util-bar-idle"></div>
+              </div>
+              <span class="util-chart-label"><i class="dot dot-idle"></i>Ocioso (2·Tp)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="link-hint">Estos valores se aplican a la siguiente trama que se envíe: el canal en pantalla se "llena" (Tt) y luego "vuela" (Tp) en esa misma proporción.</p>
+    </section>
+
+    <section class="mid-frame">
+      <div class="card canvas-card">
+        <h2 class="card-title"><svg class="icon"><use href="#icon-link"></use></svg>Canal de transmisión</h2>
+        <div id="warning-banner" class="warning-banner" hidden>
+          <svg class="icon"><use href="#icon-alert-triangle"></use></svg>
+          <span id="warning-banner-text" class="warning-text"></span>
+        </div>
+        <div class="canvas-wrap" id="canvas-wrap">
+          <canvas id="sim-canvas"></canvas>
+          <div id="toast-container" class="toast-container"></div>
+        </div>
+      </div>
+
+      <div class="card stats-card">
+        <h2 class="card-title"><svg class="icon"><use href="#icon-bar-chart"></use></svg>Telemetría</h2>
+        <div class="stat-row">
+          <span>Tramas enviadas</span>
+          <span id="stat-sent" class="stat-value stat-blue">0</span>
+        </div>
+        <div class="stat-row">
+          <span>ACKs recibidos</span>
+          <span id="stat-acks" class="stat-value stat-green">0</span>
+        </div>
+        <div class="stat-row">
+          <span>Paquetes perdidos</span>
+          <span id="stat-lost" class="stat-value stat-red">0</span>
+        </div>
+        <div class="stat-row">
+          <span>Retransmisiones</span>
+          <span id="stat-retrans" class="stat-value stat-orange">0</span>
+        </div>
+        <div class="stat-row">
+          <span>ACKs tardíos</span>
+          <span id="stat-late-acks" class="stat-value stat-purple">0</span>
+        </div>
+        <div class="stat-row">
+          <span>Eficiencia del enlace</span>
+          <span id="stat-eff" class="stat-value stat-blue">100.0%</span>
+        </div>
+        <div class="stat-row">
+          <span>Tiempo transcurrido</span>
+          <span id="stat-time" class="stat-value stat-muted">0.0s</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title"><svg class="icon"><use href="#icon-alert-triangle"></use></svg>Acciones de red <span class="card-title-sub">Inyección de fallos para activar el timeout</span></h2>
+      <div class="interrupt-row">
+        <button id="btn-kill-frame" class="btn btn-danger" disabled><svg class="icon"><use href="#icon-zap"></use></svg>Destruir trama en tránsito</button>
+        <button id="btn-kill-ack" class="btn btn-danger" disabled><svg class="icon"><use href="#icon-zap"></use></svg>Destruir ACK en tránsito</button>
+        <button id="btn-delay-ack" class="btn btn-delay" disabled><svg class="icon"><use href="#icon-clock"></use></svg>Retrasar ACK (desincronización)</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title"><svg class="icon"><use href="#icon-package"></use></svg>Cola de tramas</h2>
+      <div id="pipe-container" class="pipe-container"></div>
+    </section>
+
+  </main>
+
+  <!-- Alerta modal: eventos de red importantes que requieren confirmación explícita -->
+  <div id="alert-overlay" class="alert-overlay" hidden>
+    <div class="alert-dialog" role="alertdialog" aria-modal="true" aria-labelledby="alert-title" aria-describedby="alert-message">
+      <div id="alert-icon-wrap" class="alert-icon-wrap">
+        <svg class="icon icon-lg"><use id="alert-icon-use" href="#icon-alert-triangle"></use></svg>
+      </div>
+      <h3 id="alert-title" class="alert-title"></h3>
+      <p id="alert-message" class="alert-message"></p>
+      <div class="alert-actions">
+        <span id="alert-queue-badge" class="alert-queue-badge" hidden></span>
+        <button id="alert-dismiss" class="btn btn-primary">Entendido</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/protocol.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
