@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Banco de pruebas de interfaz</title>
+<!--
+  Página de pruebas, no parte del simulador. Carga el simulador y la
+  calculadora en sendos iframes, los maneja como lo haría una persona (clics,
+  valores inválidos, teclas) y comprueba lo que queda en pantalla.
+
+  Cómo se usa: servir la carpeta y abrir /banco-interfaz.html. El resumen sale
+  arriba del todo. Sin dependencias.
+
+  No sustituye a probarlo a mano: no ve si algo se ve mal, solo si el
+  comportamiento es el que se espera.
+-->
+<style>html,body{margin:0;font-family:monospace}iframe{border:0;width:1280px;height:820px}</style>
+<pre id="out">arrancando…</pre>
+<iframe id="sim" src="index.html"></iframe>
+<iframe id="calc" src="calculadora.html"></iframe>
+
+<script>
+const resultados = [];
+const erroresDeConsola = [];
+
+function comprobar(nombre, condicion, detalle) {
+  resultados.push(`${condicion ? "OK  " : "FALLA"} ${nombre}${condicion ? "" : "  ← " + detalle}`);
+}
+
+function intentar(nombre, fn) {
+  try { fn(); } catch (e) { resultados.push(`ROMPE ${nombre}  ← ${e.message}`); }
+}
+
+// Espera a que el iframe esté cargado Y a que su interfaz se haya montado.
+// Con un retardo fijo, el banco daba resultados distintos en cada pasada.
+function listo(marco, selectorEsperado) {
+  const el = document.getElementById(marco);
+  return new Promise((resolver, rechazar) => {
+    let intentos = 0;
+    const mirar = () => {
+      intentos += 1;
+      const d = el.contentDocument;
+      if (d && d.readyState === "complete" && d.querySelector(selectorEsperado)) return resolver(el);
+      if (intentos > 400) return rechazar(new Error(`${marco}: nunca apareció ${selectorEsperado}`));
+      setTimeout(mirar, 25);
+    };
+    mirar();
+  });
+}
+
+function fijar(input, valor) {
+  input.value = String(valor);
+  input.dispatchEvent(new input.ownerDocument.defaultView.Event("input", { bubbles: true }));
+  input.dispatchEvent(new input.ownerDocument.defaultView.Event("change", { bubbles: true }));
+}
+
+function pasos(d, n) {
+  const b = d.getElementById("btn-step");
+  for (let i = 0; i < n; i++) b.click();
+}
+
+function hayNaN(d) {
+  const texto = d.body.innerText;
+  return /NaN|undefined|Infinity/.test(texto);
+}
+
+async function probarSimulador() {
+  const marco = await listo("sim", ".hop input");
+  const w = marco.contentWindow;
+  const d = marco.contentDocument;
+  w.addEventListener("error", (e) => erroresDeConsola.push("sim: " + e.message));
+
+  // --- estado inicial ---
+  comprobar("sim · arranca en Inactivo", d.getElementById("state-name").textContent === "Inactivo", d.getElementById("state-name").textContent);
+  comprobar("sim · 'Un paso' está disponible desde el principio", !d.getElementById("btn-step").disabled, "estaba deshabilitado");
+  comprobar("sim · el timeout se calcula solo", Number(d.getElementById("timeout-ms").value) > 0, "vacío");
+
+  // --- añadir y quitar puntos ---
+  intentar("sim · añadir puntos", () => {
+    d.getElementById("btn-add-hop").click();
+    d.getElementById("btn-add-hop").click();
+  });
+  comprobar("sim · tres tramos tras añadir dos", d.querySelectorAll(".hop").length === 3, d.querySelectorAll(".hop").length);
+
+  intentar("sim · quitar un punto", () => d.querySelector(".hop-head button").click());
+  comprobar("sim · quedan dos tramos", d.querySelectorAll(".hop").length === 2, d.querySelectorAll(".hop").length);
+
+  // Quitar hasta el último: el botón debe quedar deshabilitado, no romper.
+  intentar("sim · quitar hasta el último", () => {
+    for (let i = 0; i < 5; i++) {
+      const b = d.querySelector(".hop-head button:not([disabled])");
+      if (b) b.click();
+    }
+  });
+  comprobar("sim · nunca se queda sin tramos", d.querySelectorAll(".hop").length >= 1, d.querySelectorAll(".hop").length);
+
+  // --- valores inválidos en el camino ---
+  const campos = d.querySelectorAll(".hop input");
+  intentar("sim · tasa 0", () => fijar(campos[1], 0));
+  comprobar("sim · avisa de la tasa inválida", /tasa|inválid/i.test(d.getElementById("timeout-hint").textContent), d.getElementById("timeout-hint").textContent.slice(0, 60));
+  intentar("sim · tasa de vuelta a un valor válido", () => fijar(campos[1], 100000));
+
+  intentar("sim · velocidad 0", () => fijar(campos[2], 0));
+  comprobar("sim · avisa de la velocidad inválida", /velocidad|inválid/i.test(d.getElementById("timeout-hint").textContent), d.getElementById("timeout-hint").textContent.slice(0, 60));
+  intentar("sim · velocidad válida otra vez", () => fijar(campos[2], 200000));
+
+  intentar("sim · probabilidad fuera de rango", () => fijar(campos[3], 5));
+  comprobar("sim · avisa de la probabilidad inválida", /probabilidad|inválid/i.test(d.getElementById("timeout-hint").textContent), d.getElementById("timeout-hint").textContent.slice(0, 60));
+  intentar("sim · probabilidad válida otra vez", () => fijar(campos[3], 0));
+
+  // --- valores raros del protocolo ---
+  intentar("sim · tramas vacío", () => fijar(d.getElementById("total-frames"), ""));
+  intentar("sim · tramas negativas", () => fijar(d.getElementById("total-frames"), -3));
+  intentar("sim · trama de 0 bits", () => fijar(d.getElementById("frame-bits"), 0));
+  comprobar("sim · sigue en pie tras valores absurdos", d.getElementById("state-name").textContent.length > 0, "se quedó en blanco");
+  intentar("sim · valores razonables", () => {
+    fijar(d.getElementById("total-frames"), 3);
+    fijar(d.getElementById("frame-bits"), 1000);
+  });
+
+  // --- ciclo de vida ---
+  intentar("sim · iniciar y pausar", () => {
+    d.getElementById("btn-run").click();
+    d.getElementById("btn-run").click();
+  });
+  comprobar("sim · 'Un paso' se habilita en pausa", !d.getElementById("btn-step").disabled, "seguía deshabilitado");
+
+  pasos(d, 40);
+  const enVuelo = d.querySelectorAll(".target").length;
+  comprobar("sim · hay algo en el canal tras avanzar", enVuelo >= 1, enVuelo);
+
+  // --- inspector: voltear un bit ---
+  const bit = d.querySelector(".bit");
+  if (bit) {
+    intentar("sim · voltear un bit", () => bit.click());
+    comprobar("sim · el CRC deja de cuadrar", d.getElementById("insp-crc").textContent === "no cuadra", d.getElementById("insp-crc").textContent);
+    comprobar("sim · el bit se marca", d.querySelector('.bit[data-flipped="true"]') !== null, "sin marcar");
+  } else {
+    resultados.push("AVISO sim · no había trama en vuelo para voltear un bit");
+  }
+
+  // --- acciones con y sin paquete ---
+  intentar("sim · destruir", () => d.getElementById("btn-destroy").click());
+  intentar("sim · destruir otra vez, ya sin nada", () => d.getElementById("btn-destroy").click());
+  intentar("sim · retrasar sin nada en vuelo", () => d.getElementById("btn-delay").click());
+  intentar("sim · forzar secuencia sin nada en vuelo", () => d.getElementById("btn-seq0").click());
+  comprobar("sim · el inspector vuelve a su mensaje vacío", !d.getElementById("inspector-empty").hidden, "seguía mostrando datos");
+
+  // --- pulsaciones rápidas ---
+  intentar("sim · iniciar y pausar muchas veces seguidas", () => {
+    for (let i = 0; i < 20; i++) d.getElementById("btn-run").click();
+  });
+  intentar("sim · reiniciar en mitad", () => d.getElementById("btn-reset").click());
+  comprobar("sim · reiniciar vuelve a Inactivo", d.getElementById("state-name").textContent === "Inactivo", d.getElementById("state-name").textContent);
+  comprobar("sim · reiniciar pone el reloj a cero", d.getElementById("clock").textContent.startsWith("0"), d.getElementById("clock").textContent);
+
+  // --- half duplex ---
+  intentar("sim · pasar a half duplex", () => {
+    fijar(d.getElementById("duplex-mode"), "half");
+    d.getElementById("btn-run").click();
+    d.getElementById("btn-run").click();
+  });
+  pasos(d, 200);
+  comprobar("sim · half duplex avanza y entrega", /\d/.test(d.getElementById("tel-delivered").textContent), d.getElementById("tel-delivered").textContent);
+
+  // --- desplazar el diagrama ---
+  intentar("sim · rueda sobre el diagrama", () => {
+    const c = d.getElementById("diagram");
+    for (let i = 0; i < 3; i++) c.dispatchEvent(new w.WheelEvent("wheel", { deltaY: -100, bubbles: true, cancelable: true }));
+    c.dispatchEvent(new w.MouseEvent("dblclick", { bubbles: true }));
+  });
+
+  // --- tema ---
+  intentar("sim · cambiar el tema", () => {
+    const t = d.getElementById("theme-switch");
+    t.click();
+    t.click();
+  });
+
+  comprobar("sim · sin NaN ni undefined en pantalla", !hayNaN(d), "aparece algo raro en el texto");
+
+  // --- el lienzo se ha dibujado ---
+  const pintado = d.getElementById("diagram").toDataURL().length;
+  comprobar("sim · el diagrama tiene contenido", pintado > 5000, pintado);
+}
+
+async function probarCalculadora() {
+  const marco = await listo("calc", ".link-row input");
+  const w = marco.contentWindow;
+  const d = marco.contentDocument;
+  w.addEventListener("error", (e) => erroresDeConsola.push("calc: " + e.message));
+
+  // --- presets ---
+  for (const nombre of ["satelite", "lan", "casa-satelite-casa"]) {
+    intentar(`calc · preset ${nombre}`, () => d.querySelector(`[data-preset="${nombre}"]`).click());
+    const titular = d.querySelector(".headline-main .headline-value");
+    comprobar(`calc · preset ${nombre} da un resultado`, titular && titular.textContent.includes("%"), titular ? titular.textContent : "sin titular");
+  }
+
+  intentar("calc · volver al satélite", () => d.querySelector('[data-preset="satelite"]').click());
+  const u = d.querySelector(".headline-main .headline-value").textContent.trim();
+  comprobar("calc · el satélite da 3,846 %", u === "3,846 %", u);
+  intentar("calc · abrir todos los pasos", () => d.getElementById("btn-all-steps").click());
+  comprobar("calc · el paso del BDP dice 26.000 bits", d.body.innerText.includes("26.000 bits"), "no aparece");
+  comprobar("calc · el paso de la utilización comprueba 1/(1+2a)", d.body.innerText.includes("U = Tt(emisor) / ciclo"), "no aparece la fórmula");
+  intentar("calc · ocultar otra vez", () => d.getElementById("btn-hide-steps").click());
+
+  // --- pasos ---
+  intentar("calc · mostrar de uno en uno", () => {
+    d.getElementById("btn-next-step").click();
+    d.getElementById("btn-next-step").click();
+  });
+  comprobar("calc · se ven dos pasos", d.querySelectorAll(".step").length === 2, d.querySelectorAll(".step").length);
+  comprobar("calc · el contador lo dice", /Paso 2 de \d+/.test(d.getElementById("steps-progress").textContent), d.getElementById("steps-progress").textContent);
+
+  intentar("calc · mostrar todos", () => d.getElementById("btn-all-steps").click());
+  const totalPasos = d.querySelectorAll(".step").length;
+  comprobar("calc · están todos", totalPasos >= 9, totalPasos);
+
+  // --- un solo detalle abierto ---
+  const masBotones = d.querySelectorAll(".step-more");
+  intentar("calc · abrir dos detalles seguidos", () => {
+    masBotones[0].click();
+    d.querySelectorAll(".step-more")[2].click();
+  });
+  comprobar("calc · solo queda un detalle abierto", d.querySelectorAll(".step-detail").length === 1, d.querySelectorAll(".step-detail").length);
+
+  intentar("calc · ocultar los pasos", () => d.getElementById("btn-hide-steps").click());
+  comprobar("calc · se ocultan todos", d.querySelectorAll(".step").length === 0, d.querySelectorAll(".step").length);
+
+  // --- valores inválidos ---
+  const campos = d.querySelectorAll(".link-row input");
+  intentar("calc · tasa 0", () => fijar(campos[1], 0));
+  comprobar("calc · aparece el aviso de error", !d.getElementById("error-box").hidden, "el aviso no se mostró");
+  intentar("calc · tasa válida otra vez", () => fijar(campos[1], 50000));
+  comprobar("calc · el aviso desaparece", d.getElementById("error-box").hidden, "el aviso se quedó");
+
+  intentar("calc · trama de 0 bits", () => fijar(d.getElementById("frame-bits"), 0));
+  comprobar("calc · avisa de la trama inválida", !d.getElementById("error-box").hidden, "sin aviso");
+  intentar("calc · trama válida", () => fijar(d.getElementById("frame-bits"), 1000));
+
+  // --- quitar el único salto ---
+  intentar("calc · quitar el único salto", () => d.querySelector(".link-row-head button").click());
+  comprobar("calc · no deja quedarse sin enlaces", d.querySelectorAll(".link-row").length >= 1, d.querySelectorAll(".link-row").length);
+
+  // --- errores y half duplex ---
+  intentar("calc · probabilidad de error 0,3", () => fijar(d.querySelectorAll(".link-row input")[4], 0.3));
+  comprobar("calc · aparece la utilización efectiva", d.body.innerText.includes("efectiva"), "no aparece");
+  comprobar("calc · y el paso de la probabilidad del ciclo", d.body.innerText.includes("Probabilidad de que el ciclo falle") || d.querySelectorAll(".step").length === 0, "falta el paso");
+  intentar("calc · half duplex con vuelta de 20 ms", () => {
+    fijar(d.getElementById("duplex-mode"), "half");
+    fijar(d.querySelectorAll(".link-row input")[6], 20);
+  });
+  intentar("calc · mirar el paso del ciclo", () => d.getElementById("btn-all-steps").click());
+  comprobar("calc · el ciclo incluye la vuelta del medio", /tiempo de vuelta/.test(d.body.innerText), "el paso del ciclo no menciona la inversión");
+
+  // --- muchos saltos ---
+  intentar("calc · añadir seis saltos", () => {
+    for (let i = 0; i < 6; i++) d.getElementById("btn-add-link").click();
+  });
+  comprobar("calc · siete filas de salto", d.querySelectorAll(".link-row").length === 7, d.querySelectorAll(".link-row").length);
+  const uFinal = d.querySelector(".headline-main .headline-value");
+  comprobar("calc · sigue calculando con siete saltos", uFinal && uFinal.textContent.includes("%"), uFinal ? uFinal.textContent : "sin titular");
+
+  comprobar("calc · sin NaN ni undefined en pantalla", !hayNaN(d), "aparece algo raro en el texto");
+
+  const pintado = d.getElementById("curve-chart").toDataURL().length;
+  comprobar("calc · la curva tiene contenido", pintado > 5000, pintado);
+}
+
+(async () => {
+  window.addEventListener("error", (e) => erroresDeConsola.push("banco: " + e.message));
+  try {
+    await probarSimulador();
+    await probarCalculadora();
+  } catch (e) {
+    resultados.push("ROMPE el banco de pruebas ← " + e.message + "\n" + e.stack);
+  }
+
+  const fallos = resultados.filter((r) => !r.startsWith("OK")).length;
+  document.getElementById("out").textContent =
+    resultados.join("\n") +
+    "\n\nerrores de consola: " + (erroresDeConsola.length ? erroresDeConsola.join(" | ") : "ninguno") +
+    "\nRESUMEN: " + (resultados.length - fallos) + " correctas, " + fallos + " con problema";
+})();
+</script>

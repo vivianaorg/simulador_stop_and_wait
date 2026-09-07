@@ -309,7 +309,16 @@
   }
 
   function stepOnce() {
-    if (!sim) return;
+    if (!sim || sim.state === S.STATE.FINISHED) return;
+
+    // Desde parado, el primer paso arranca la simulación: así se puede seguir
+    // el protocolo desde el principio sin verlo correr.
+    if (sim.state === S.STATE.IDLE) {
+      S.start(sim);
+      S.pause(sim);
+      dom.btnRun.textContent = "Continuar";
+    }
+
     // Un paso corto de tiempo simulado, con la simulación en pausa.
     const estaba = sim.running;
     sim.running = true;
@@ -633,6 +642,7 @@
     const restante = sim.timerActive ? sim.timerRemainingMs / sim.timeoutMs : 0;
     dom.timerFill.style.width = `${Math.max(0, Math.min(1, restante)) * 100}%`;
 
+    // Solo estorba cuando la simulación va sola o ya terminó.
     dom.btnStep.disabled = sim.running || sim.state === S.STATE.FINISHED;
     dom.btnRun.disabled = sim.state === S.STATE.FINISHED;
   }

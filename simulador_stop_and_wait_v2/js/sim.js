@@ -145,7 +145,7 @@
     sim.wire.push(packet);
 
     if (packet.turnRemainingMs > 0) {
-      sim.events.push({
+      pushEvent(sim, {
         tStart: sim.clockMs,
         tEnd: sim.clockMs + packet.turnRemainingMs,
         fromIdx: packet.fromIdx,
@@ -160,8 +160,18 @@
     return packet;
   }
 
+  const MAX_EVENTOS = 600;
+
+  // Único sitio por el que se añaden eventos: así el recorte no se puede
+  // olvidar. Antes lo hacía solo emitEvent, y los timeouts y las inversiones
+  // del medio se colaban sin pasar por aquí.
+  function pushEvent(sim, evento) {
+    sim.events.push(evento);
+    if (sim.events.length > MAX_EVENTOS) sim.events.shift();
+  }
+
   function emitEvent(sim, packet, status, fraction) {
-    sim.events.push({
+    pushEvent(sim, {
       tStart: packet.hopStartMs,
       tEnd: sim.clockMs,
       fromIdx: packet.fromIdx,
@@ -172,7 +182,6 @@
       fraction: fraction === undefined ? 1 : fraction,
       corrupted: packet.frame.corrupted,
     });
-    if (sim.events.length > 600) sim.events.shift();
   }
 
   function removePacket(sim, packet) {
@@ -227,7 +236,7 @@
   function onTimeout(sim) {
     stopTimer(sim);
     sim.state = STATE.TIMEOUT;
-    sim.events.push({
+    pushEvent(sim, {
       tStart: sim.clockMs,
       tEnd: sim.clockMs,
       fromIdx: 0,
@@ -371,14 +380,49 @@
     }
   }
 
-  function advance(sim, dtMs) {
-    if (dtMs <= 0) return sim;
-    // En pausa no se mueve nada. Pero si el emisor ya terminó y todavía queda
-    // algo en el canal (un ACK retrasado, por ejemplo), ese paquete tiene que
-    // llegar: el canal no se detiene porque el emisor haya acabado.
-    const terminandoEnVuelo = sim.state === STATE.FINISHED && sim.wire.length > 0;
-    if (!sim.running && !terminandoEnVuelo) return sim;
+  // Cuánto falta para el próximo suceso: que expire el temporizador, o que un
+  // paquete termine la fase en la que está.
+  function proximoSucesoMs(sim) {
+    let minimo = Infinity;
+    if (sim.timerActive) minimo = Math.min(minimo, sim.timerRemainingMs);
 
+    for (const p of sim.wire) {
+      if (p.turnRemainingMs > 0) minimo = Math.min(minimo, p.turnRemainingMs);
+      else if (p.phase === PHASE.FROZEN) minimo = Math.min(minimo, p.frozenRemainingMs);
+      else {
+        const duracion = p.phase === PHASE.TX ? p.txMs : p.propMs;
+        minimo = Math.min(minimo, duracion - p.elapsedMs);
+      }
+    }
+    return minimo;
+  }
+
+  /**
+   * Avanza el tiempo simulado. El delta se parte en tramos que terminan justo
+   * en el siguiente suceso, así que un paso grande produce exactamente el mismo
+   * resultado que muchos pasos pequeños: la animación puede ir a tirones sin
+   * que la simulación mienta.
+   */
+  function advance(sim, dtMs) {
+    if (!(dtMs > 0)) return sim;
+
+    let restante = dtMs;
+    let vueltas = 0;
+    while (restante > 1e-9 && vueltas < 10000) {
+      vueltas += 1;
+      const puedeAvanzar =
+        sim.running || (sim.state === STATE.FINISHED && sim.wire.length > 0);
+      if (!puedeAvanzar) break;
+
+      const hasta = proximoSucesoMs(sim);
+      const tramo = Number.isFinite(hasta) ? Math.max(1e-6, Math.min(restante, hasta)) : restante;
+      avanzarTramo(sim, tramo);
+      restante -= tramo;
+    }
+    return sim;
+  }
+
+  function avanzarTramo(sim, dtMs) {
     sim.clockMs += dtMs;
 
     // Temporizador de retransmisión.

@@ -8,6 +8,50 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-07 — Pruebas hostiles: tres fallos reales del motor y un banco de interfaz
+
+**Qué:** se intentó romper el simulador a propósito, en dos frentes.
+
+- **`tests/bordes.test.js`** (nuevo, 35 pruebas): valores extremos y usos absurdos — distancia
+  cero, enlace a 1 Tbit/s, trama de mil millones de bits, diez saltos, ACK mayor que la trama,
+  probabilidad de error 1, texto donde va un número, pasos de tiempo de 10 segundos, timeouts
+  imposibles, destruir dos veces, reiniciar en mitad del vuelo, pausar y continuar en bucle.
+- **`banco-interfaz.html`** (nuevo): maneja el simulador y la calculadora en dos iframes como lo
+  haría una persona y comprueba lo que queda en pantalla. **42 comprobaciones, 0 problemas.**
+
+**Tres fallos reales encontrados y corregidos, todos en `sim.js`:**
+
+1. **Un paso de tiempo grande se comía sucesos.** Al llegar un paquete a un nodo se descartaba el
+   tiempo sobrante del paso, así que un delta grande procesaba como mucho una llegada. Con
+   `advance(10000)` la simulación entregaba una trama de dos y dejaba otra colgada. Ahora el
+   delta se parte en tramos que terminan justo en el siguiente suceso: un paso grande da
+   exactamente el mismo resultado que muchos pequeños, y hay una prueba que compara pasos de
+   0,1 · 0,5 · 1 y 5 ms. **No era teórico:** la animación usa deltas de hasta 80 ms.
+2. **El diagrama crecía sin límite.** El recorte a 600 eventos vivía dentro de `emitEvent`, pero
+   los timeouts y las inversiones del medio se añadían por su cuenta. Con un timeout de 1 ms se
+   acumulaban **3000 eventos**. Ahora todos pasan por `pushEvent`, que es el único sitio que
+   añade y el único que recorta.
+3. **«Un paso» no servía antes de arrancar.** Desde parado no hacía nada útil. Ahora el primer
+   paso arranca la simulación y la deja en pausa, que es lo que se espera de un botón así.
+
+**Dos expectativas mías que estaban mal, y se corrigieron en la prueba, no en el código:** con un
+timeout menor que el tiempo de transmisión no puede haber duplicados —la trama no llega nunca— y
+el estado tras un timeout no se queda en `TIMEOUT`, porque el reintento sale inmediatamente.
+
+**Evidencia:** 83 pruebas verdes; banco de interfaz 42/42 en dos pasadas seguidas; lint de
+documentación limpio.
+
+**Cómo revertir:** `git revert` de este commit. Los arreglos de `sim.js` son independientes entre
+sí.
+
+**Lección:** la primera versión del banco daba resultados distintos en cada pasada porque esperaba
+un tiempo fijo a que cargaran los iframes. Una prueba que a veces pasa es peor que no tenerla: se
+cambió por esperar a que la interfaz esté montada de verdad. Y el fallo del paso de tiempo llevaba
+ahí desde el principio, con toda la suite en verde: ninguna prueba usaba pasos grandes porque
+todas imitaban la animación.
+
+---
+
 ## 2026-09-07 — Paso 4 cerrado: la documentación pasa a comprobarse con una máquina
 
 **Qué:**

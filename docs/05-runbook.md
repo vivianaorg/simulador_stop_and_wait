@@ -14,7 +14,7 @@ python -m http.server 8000 --directory simulador_stop_and_wait_v2
 Pruebas, con el runner nativo de Node (**no instala nada**):
 
 ```bash
-node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js simulador_stop_and_wait_v2/tests/steps.test.js
+node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js simulador_stop_and_wait_v2/tests/steps.test.js simulador_stop_and_wait_v2/tests/bordes.test.js
 ```
 
 **Nombrar los archivos, no la carpeta:** `node --test tests/` falla en este equipo con
@@ -46,7 +46,7 @@ ver [04-convenciones.md](04-convenciones.md) § B.1.
 ## Verificación (pipeline)
 
 ```bash
-node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js simulador_stop_and_wait_v2/tests/steps.test.js
+node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js simulador_stop_and_wait_v2/tests/steps.test.js simulador_stop_and_wait_v2/tests/bordes.test.js
 node tools/lint-docs.js
 for f in simulador_stop_and_wait_v2/js/*.js; do node --check "$f"; done
 node --check simulador_stop_and_wait_web/js/protocol.js
@@ -54,8 +54,9 @@ node --check simulador_stop_and_wait_web/js/app.js
 python -m py_compile simulador_stop_and_wait_python/*.py
 ```
 
-Baseline 2026-09-07, Node v24.11.1 y Python 3.13.14: **48 pruebas verdes, 0 fallas**; el lint de
-documentación limpio sobre 15 documentos; el resto, sin avisos.
+Baseline 2026-09-07, Node v24.11.1 y Python 3.13.14: **83 pruebas verdes, 0 fallas**; el banco de
+interfaz con 42 comprobaciones sin problemas; el lint de documentación limpio; el resto, sin
+avisos.
 
 > **Este archivo es la fuente única del conteo de pruebas.** Ningún otro documento lo repite: lo
 > enlazan. El lint falla si aparece en otro sitio, y también si el número escrito aquí no coincide
@@ -82,6 +83,23 @@ enlaces sí se comprueban.
 Para citar a propósito un archivo que **no** existe (por ejemplo, para decir que el proyecto no
 tiene `package.json`), se marca la línea con `<!-- lint:ruta-ausente -->`. La interfaz no tiene pruebas automáticas: se verifica con el render sin cabeza y con el
 checklist de humo.
+
+## Banco de pruebas de la interfaz
+
+`simulador_stop_and_wait_v2/banco-interfaz.html` carga el simulador y la calculadora en dos
+iframes, los maneja como lo haría una persona —clics, valores inválidos, rueda del ratón— y
+comprueba lo que queda en pantalla. Sin dependencias.
+
+```bash
+python -m http.server 8000 --directory simulador_stop_and_wait_v2
+# abrir http://localhost:8000/banco-interfaz.html
+```
+
+El resumen sale arriba del todo. Al 2026-09-07: **42 comprobaciones, 0 problemas**, y repetible:
+espera a que cada iframe termine de montarse en vez de dormir un rato fijo.
+
+**No sustituye a probarlo a mano.** Ve si el comportamiento es el esperado, no si algo se ve mal:
+el selector de canal cortado o una etiqueta encima de otra solo se ven mirando.
 
 ## Verificar la interfaz sin Chrome instalado
 

@@ -61,11 +61,13 @@ Cada fórmula que aparece en la interfaz tiene su caso con un número publicado:
 | Protocolo | la secuencia alterna 0,1,0 · el ciclo dura Tt + 2·Tp · el tiempo medido coincide con el RTT calculado |
 | Errores | trama dañada descartada y no entregada · sin NAK se espera al timeout · con NAK se retransmite antes · ACK dañado deja al emisor esperando · la copia se descarta como duplicada |
 | Repetibilidad | la misma semilla produce exactamente la misma simulación |
+| Casos raros | distancia cero, enlace absurdamente rápido, diez saltos, ACK mayor que la trama, P = 1, paso de tiempo gigante, timeout imposible, reinicios en mitad del vuelo |
 
 ## Estructura
 
 ```
 index.html          simulador
+banco-interfaz.html banco de pruebas de la interfaz (no forma parte del simulador)
 calculadora.html    calculadora
 css/style.css       estilos propios
 js/frame.js         tramas y CRC-16/CCITT
