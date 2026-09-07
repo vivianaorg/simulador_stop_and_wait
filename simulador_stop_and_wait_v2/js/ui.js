@@ -27,6 +27,7 @@
   // Cuánto tiempo simulado hacia atrás está mirando el diagrama. 0 = sigue al
   // presente; > 0 = el usuario se ha ido a mirar historia.
   let retrocesoMs = 0;
+  let zoom = 1;
 
   // ---------- Arranque ----------
 
@@ -145,13 +146,24 @@
     });
 
     // Rueda: mirar hacia atrás. Doble clic: volver al presente.
-    // Solo secuestramos la rueda si de verdad hay historia que mirar. Sin
-    // simulacion, o con el diagrama al principio y la rueda subiendo, el gesto
-    // se deja pasar para que la pagina o el panel derecho scrollen normal.
+    // Ctrl+rueda acerca o aleja la escala de tiempo; la rueda sola recorre el
+    // historico. Solo secuestramos el gesto si de verdad mueve algo: si no,
+    // se deja pasar para que scrolle lo que haya debajo.
     dom.diagram.addEventListener("wheel", (e) => {
-      if (!sim || sim.clockMs <= 0) return;
+      if (!sim) return;
       const paso = Math.sign(e.deltaY);
-      const destino = Math.max(0, Math.min(sim.clockMs, retrocesoMs - paso * ventanaVisibleMs() * 0.15));
+
+      if (e.ctrlKey || e.metaKey) {
+        const nuevo = Math.min(32, Math.max(1, zoom * (paso < 0 ? 1.25 : 1 / 1.25)));
+        if (nuevo === zoom) return;
+        e.preventDefault();
+        zoom = nuevo;
+        retrocesoMs = Math.min(retrocesoMs, retrocesoMaximo());
+        drawDiagram();
+        return;
+      }
+
+      const destino = Math.max(0, Math.min(retrocesoMaximo(), retrocesoMs - paso * ventanaVisibleMs() * 0.2));
       if (destino === retrocesoMs) return;
       e.preventDefault();
       retrocesoMs = destino;
@@ -160,6 +172,7 @@
 
     dom.diagram.addEventListener("dblclick", () => {
       retrocesoMs = 0;
+      zoom = 1;
       drawDiagram();
     });
     dom.btnAddHop.addEventListener("click", addHop);
@@ -327,6 +340,7 @@
     selectedIndex = 0;
     ultimoInstante = 0;
     retrocesoMs = 0;
+    zoom = 1;
     dom.btnRun.textContent = "Iniciar";
     resizeCanvases();
     avisoDeTimeout();
@@ -547,8 +561,11 @@
       ctx.textAlign = "left";
     }
 
-    if (retrocesoMs > 0) {
-      const aviso = `histórico · ${fmt(sim.clockMs - retrocesoMs)} ms — doble clic para volver`;
+    if (retrocesoMs > 0 || zoom !== 1) {
+      const escala = zoom === 1 ? "" : ` · ×${zoom.toFixed(1).replace(".", ",")}`;
+      const aviso = retrocesoMs > 0
+        ? `histórico · ${fmt(sim.clockMs - retrocesoMs)} ms${escala} — doble clic para volver`
+        : `acercado${escala} — doble clic para volver`;
       ctx.font = "11px ui-monospace, Consolas, monospace";
       const ancho = ctx.measureText(aviso).width + 14;
       ctx.fillStyle = css("--wait");
@@ -562,10 +579,18 @@
     ctx.lineWidth = 1;
   }
 
-  // Tres ciclos, o lo que haga falta para que quepa un timeout entero.
+  // Tres ciclos, o lo que haga falta para que quepa un timeout entero, dividido
+  // por el acercamiento que haya pedido el usuario con Ctrl+rueda.
   function ventanaVisibleMs() {
     if (!sim) return 1;
-    return Math.max(sim.analysis.cycleMs * 3, sim.timeoutMs * 2.4, 1);
+    return Math.max(sim.analysis.cycleMs * 3, sim.timeoutMs * 2.4, 1) / zoom;
+  }
+
+  // Hasta donde tiene sentido retroceder: mas alla solo habria pantalla vacia,
+  // y la rueda parecia muerta porque movia el numero sin mover el dibujo.
+  function retrocesoMaximo() {
+    if (!sim) return 0;
+    return Math.max(0, sim.clockMs - ventanaVisibleMs());
   }
 
   function puntaDeFlecha(ctx, x1, y1, x2, y2, color) {

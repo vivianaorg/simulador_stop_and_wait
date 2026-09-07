@@ -41,8 +41,10 @@ Cerró `V2-02`, `V2-04` y `V2-05`. El detalle, en [07-historial.md](07-historial
 > **Hallazgos del 2026-09-07, ya corregidos:** el panel no llenaba la ventana (altura de la barra
 > restada a mano), la bitácora y la columna derecha tenían scrolls anidados que se pisaban, y la
 > rueda sobre el diagrama no scrolleaba nada. Arreglados y anotados en
-> [07-historial.md](07-historial.md); **falta que el usuario confirme el encuadre en pantalla**,
-> porque Playwright no tiene navegador en este PC.
+> [07-historial.md](07-historial.md). Después se vio que la rueda sobre el diagrama casi no
+> recorría nada: arreglado con tope real de retroceso y **Ctrl+rueda para acercar**. Todo
+> comprobado con Chromium por CDP (el MCP de Playwright no arranca aquí: busca Chrome de
+> escritorio); **falta que el usuario lo confirme en su pantalla**.
 
 ## Paso 4 · Blindar — **cerrado el 2026-09-07**
 

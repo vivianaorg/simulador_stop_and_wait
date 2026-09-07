@@ -8,6 +8,36 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-07 — La rueda sobre el diagrama recorre de verdad, y Ctrl+rueda acerca
+
+**Qué:** el retroceso del diagrama se limitaba a `clockMs`, no a lo que de verdad queda fuera de
+la ventana visible. Con el escenario por defecto —120 ms de simulación y una ventana de 108 ms—
+casi todo cabía en pantalla: la rueda movía el número del aviso pero no el dibujo, así que
+parecía muerta. Ahora:
+
+- El tope del retroceso es `clockMs - ventanaVisible` (`retrocesoMaximo()`): cada paso de rueda
+  que se acepta mueve el diagrama, y cuando no queda nada hacia atrás el gesto se deja pasar.
+- **Ctrl + rueda acerca o aleja la escala de tiempo** (`zoom`, de 1× a 32×, dividiendo la ventana
+  visible). Acercado, el recorrido hacia atrás existe siempre, que era lo que faltaba.
+- El aviso de la esquina dice también el acercamiento; el doble clic vuelve al presente **y** a
+  1×. Reconstruir la simulación resetea ambos.
+
+**Por qué:** el usuario reportó que ya no podía subir ni bajar el diagrama. Medido con Chromium
+por CDP: el recorrido pandeable eran 12 ms sobre 120. No era un fallo del navegador ni del
+`preventDefault` —eso ya estaba bien— sino que no había casi nada que recorrer y ninguna forma de
+acercar.
+
+**Cómo revertir:** `git revert` del commit. Toca el manejador `wheel`, `ventanaVisibleMs()`,
+`retrocesoMaximo()` y el aviso en `js/ui.js`, más el texto de la leyenda en `index.html`.
+
+**Verificación:** Chromium headless por CDP (`Input.dispatchMouseEvent` con `mouseWheel`),
+comparando la mitad inferior del canvas para no confundir el dibujo con el aviso: la rueda sola
+mueve el diagrama, Ctrl+rueda acerca, acercado la rueda recorre el histórico, y el doble clic
+deja el canvas idéntico al de partida. El MCP de Playwright no arranca en este PC porque busca
+Chrome de escritorio; el binario de Chromium de Playwright sí está y es el que se usó.
+
+---
+
 ## 2026-09-07 — El panel del simulador ya ocupa la ventana y la rueda scrollea
 
 **Qué:** tres arreglos de maquetación en el v2, todos salidos de mirar la pantalla (paso 3).
