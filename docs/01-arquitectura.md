@@ -108,8 +108,9 @@ y sin login**. Diseño completo en
 | `js/network.js` | **Dueño de las fórmulas**: tiempos, utilización, probabilidades del camino |
 | `js/sim.js` | **Máquina de estados del protocolo** con tiempo simulado explícito (`advance(dtMs)`) |
 | `js/ui.js` | Interfaz del simulador: diagrama, cadena, inspector. **No decide nada del protocolo** |
-| `js/calc.js` | Interfaz de la calculadora |
-| `tests/` | 33 pruebas con el runner nativo de Node |
+| `js/steps.js` | **Desarrollo paso a paso como datos**: cada paso es `{titulo, formula, sustitucion, resultado, detalle[]}`, no un párrafo de texto |
+| `js/calc.js` | Interfaz de la calculadora: bloques, despliegue progresivo y las dos gráficas |
+| `tests/` | 43 pruebas con el runner nativo de Node |
 
 Los tres modelos usan el mismo envoltorio UMD: el navegador los ve como `window.FrameModel`,
 `window.NetworkModel` y `window.SimModel`, y Node los carga con `require`. Por eso las mismas
@@ -190,3 +191,40 @@ error. Los números van en monoespaciada de ancho tabular para que no bailen al 
 
 Modos de canal half/full duplex dentro de la animación (el cálculo sí los tiene), y la
 integración del simulador v1, que sigue existiendo aparte.
+
+
+## La calculadora, por bloques
+
+Rehecha el 2026-09-07 siguiendo cómo presentan los resolutores el proceso, no solo el resultado.
+Antes era un `<pre>` con el desarrollo pegado; ahora son datos que la interfaz decide cómo
+enseñar.
+
+| Bloque | Qué contiene |
+|---|---|
+| Datos | Los controles: trama, canal y los tramos del camino |
+| Cómo se han leído los datos | Confirma la interpretación antes de dar ningún número |
+| Resultado | El titular, con la utilización en grande, y la barra de reparto del ciclo |
+| Desarrollo | Un paso por bloque: fórmula → sustitución → resultado, con detalle plegado |
+| Dónde cae este enlace | La curva `U = 1/(1+2a)` con este enlace marcado, y la misma información en tabla |
+
+Dos reglas tomadas de Wolfram|Alpha, con su motivo declarado —*"keeping the step-by-step
+solutions readable, while still providing all relevant information"*—: se puede avanzar **de un
+paso a la vez**, y **solo hay un detalle abierto**; abrir otro cierra el anterior.
+
+`steps.js` no sabe nada de la pantalla: devuelve la estructura y `calc.js` la pinta. Por eso las
+pruebas comprueban cada número por separado (`porId(s, "u").resultado === "3,846 %"`) en vez de
+buscar dentro de un bloque de texto.
+
+## Las dos gráficas
+
+Hechas a mano sobre canvas, sin librerías. Los acentos (`--chart-1`, `--chart-2`) se eligieron
+con el validador del skill de dataviz, no a ojo: la pareja verde + ámbar que parecía natural
+**falla** la separación para daltonismo protán (ΔE 5,7), y en modo oscuro los tonos aclarados se
+salen de la banda de luminosidad. Por eso el modo oscuro tiene sus propios valores en vez de un
+aclarado automático.
+
+- **Reparto del ciclo**: una sola magnitud sobre una pista neutra, con etiquetas directas. No son
+  dos categorías compitiendo, así que no necesita un segundo color.
+- **Curva de utilización**: serie única, eje de `a` logarítmico de 0,01 a 1000, el punto de este
+  enlace con anillo del color del fondo, cruz de puntero al pasar el ratón y **tabla equivalente
+  debajo**: la gráfica no puede ser el único camino al dato.

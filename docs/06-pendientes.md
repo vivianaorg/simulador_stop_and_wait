@@ -21,6 +21,7 @@ Revisión completa: 2026-09-07. Entrega comprometida: **2026-09-09**.
 | `V2-02` | P1 | Modos half / full duplex dentro de la animación | El cálculo ya los distingue (`network.js`), el simulador todavía no |
 | `V2-03` | P2 | Decidir qué pasa con el simulador v1 | Sigue en el repo y ya no aporta nada que el v2 no haga mejor. O se retira, o se declara como anexo |
 | `V2-04` | P2 | Que el diagrama se pueda desplazar hacia atrás | Ahora solo muestra la ventana reciente; la historia anterior se pierde de vista |
+| `V2-05` | P2 | Comprobar las gráficas de la calculadora con teclado y lector de pantalla | La tabla equivalente ya está; falta que el foco llegue a ella y que el `figcaption` la anuncie |
 | `E-02` | P2 | Decidir si la versión Tkinter se entrega, se deja como anexo o se saca del repo | Hoy está congelada (2026-09-07) pero sigue en el repo y en el `README.md`. Es una decisión, no un olvido |
 
 ## Calidad y pipeline

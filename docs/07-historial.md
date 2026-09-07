@@ -8,6 +8,46 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-07 — La calculadora deja de ser un texto pegado
+
+**Qué:** `calculadora.html` rehecha por bloques, al estilo de un resolutor:
+
+- **`js/steps.js`** (nuevo): el desarrollo es ahora **estructura**, no prosa. Cada paso es
+  `{titulo, formula, sustitucion, resultado, detalle[], nota}`. La interfaz decide cómo
+  enseñarlo; las pruebas comprueban cada número por separado.
+- Bloques: *Datos* → *Cómo se han leído los datos* → *Resultado* (titular grande + reparto del
+  ciclo) → *Desarrollo* → *Dónde cae este enlace*.
+- **Despliegue progresivo**: *Mostrar el siguiente paso* / *Mostrar todos* / *Ocultar*, con
+  contador "Paso N de M", y **un solo detalle abierto a la vez**.
+- **Dos gráficas** dibujadas a mano sobre canvas, sin librerías: reparto del ciclo y la curva
+  `U = 1/(1+2a)` con este enlace marcado, cruz de puntero y **tabla equivalente** debajo.
+
+**Por qué:** el desarrollo era un `<pre>` con todo volcado de golpe: ilegible y, peor, imposible
+de comprobar por partes. Los resolutores tipo Wolfram|Alpha lo resuelven con bloques y detalle
+bajo demanda, y su motivo está escrito: mantener el desarrollo legible **sin** esconder
+información.
+
+**Evidencia (2026-09-07):**
+
+- `tests/steps.test.js`: 10 pruebas nuevas (43 en total, 0 fallas). Comprueban cada resultado
+  por su identificador —`u` → `3,846 %`, `bdp` → `26.000 bits`—, que la sustitución contiene los
+  datos de entrada, que los pasos de error solo aparecen si hay probabilidad de error, y que la
+  curva cumple `1/(1+2a)` en **todos** sus puntos.
+- Página renderizada con el Chromium sin cabeza: los 10 pasos, el detalle desplegado del paso 3
+  con la forma cerrada `a = (R·d)/(V·L)`, la curva con el punto en a = 12,5 → 3,846 % y la tabla
+  con la fila de este enlace resaltada.
+- Paleta de las gráficas validada con el script del skill de dataviz.
+
+**Cómo revertir:** `git revert` de este commit. `network.js` y sus pruebas no cambiaron.
+
+**Lección:** la pareja de colores que parecía obvia para "transmitiendo / esperando" (verde y
+ámbar) **falla** la separación para daltonismo protán: ΔE 5,7 cuando el mínimo es 8. Se resolvió
+sin sacrificar nada, dibujando una sola magnitud sobre una pista neutra con etiquetas directas.
+Y en modo oscuro no vale aclarar los mismos tonos: se salen de la banda de luminosidad y hay que
+re-elegirlos contra el fondo oscuro.
+
+---
+
 ## 2026-09-07 — El simulador pasa a ser lo principal: diagrama tiempo-espacio, CRC real y puntos editables
 
 **Qué:**

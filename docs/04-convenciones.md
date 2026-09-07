@@ -56,6 +56,11 @@ entre archivos: se enlaza · corto · referencias a código como `ruta/archivo.e
   `Math.random`.
 - **Sin degradados, sin sombras y sin brillos.** El color solo significa (verde entregada, azul
   confirmación, ámbar espera, rojo error); nunca decora.
+- **Los colores de gráfica se validan con el script, no a ojo**, y el modo oscuro tiene sus
+  propios valores en vez de un aclarado automático.
+- **Toda gráfica lleva su tabla equivalente**: nadie debe depender de distinguir colores.
+- **El desarrollo paso a paso es estructura, no texto pegado.** Si un número aparece en pantalla,
+  tiene que poder comprobarse solo en una prueba.
 - **Ninguna fórmula llega a la interfaz sin una prueba con un número publicado.** Si no se puede
   verificar contra el libro o contra su forma cerrada, no se muestra.
 - **`js/protocol.js` es el dueño de la lógica del protocolo.** Secuencias, contadores, tiempos
@@ -90,7 +95,7 @@ declarada** frente al N1 global (falta lint, formateador y cobertura), no un des
 
 | Paso | Comando | Estado |
 |---|---|---|
-| **Pruebas del v2** | `node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js` | **obligatorio** — 33 pruebas, 0 fallas al 2026-09-07 |
+| **Pruebas del v2** | `node --test simulador_stop_and_wait_v2/tests/*.test.js` (nombrando los tres archivos) | **obligatorio** — 43 pruebas, 0 fallas al 2026-09-07 |
 | Sintaxis JS | `node --check` sobre los `.js` de `simulador_stop_and_wait_web/` y `simulador_stop_and_wait_v2/` | **obligatorio** |
 | Sintaxis Python (versión congelada) | `python -m py_compile simulador_stop_and_wait_python/*.py` | obligatorio mientras el archivo siga en el repo |
 | Prueba manual en navegador | [05-runbook.md](05-runbook.md) § *Checklist de humo* | **obligatorio antes de entregar** |

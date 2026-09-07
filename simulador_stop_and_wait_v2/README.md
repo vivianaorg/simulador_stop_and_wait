@@ -8,7 +8,9 @@ Dos páginas:
 - `index.html` — **el simulador**. Diagrama tiempo-espacio (el mismo dibujo con el que el libro
   explica el protocolo), cadena de puntos editable, inspector de la trama en vuelo con sus bits,
   detección de errores por CRC y bitácora.
-- `calculadora.html` — los mismos cálculos sin animación, con el desarrollo paso a paso.
+- `calculadora.html` — los mismos cálculos sin animación, por bloques: interpretación de los
+  datos, resultado, desarrollo paso a paso (de uno en uno, con detalle plegable) y la curva de
+  utilización con este enlace marcado.
 
 ## Ejecutar en local
 
@@ -36,10 +38,10 @@ El motor de cálculo (`js/network.js`) se prueba con el runner nativo de Node �
 ninguna dependencia**:
 
 ```bash
-node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js
+node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js simulador_stop_and_wait_v2/tests/steps.test.js
 ```
 
-Al 2026-09-07: **33 pruebas, 0 fallas**. (Pasar una carpeta a `node --test` falla en este
+Al 2026-09-07: **43 pruebas, 0 fallas**. (Pasar una carpeta a `node --test` falla en este
 equipo; hay que nombrar los archivos.)
 
 Cada fórmula que aparece en la interfaz tiene su caso con un número publicado:
@@ -67,6 +69,7 @@ calculadora.html    calculadora
 css/style.css       estilos propios
 js/frame.js         tramas y CRC-16/CCITT
 js/network.js       tiempos, utilización y probabilidades del camino
+js/steps.js         el desarrollo paso a paso, como datos
 js/sim.js           máquina de estados del protocolo, con tiempo simulado
 js/ui.js            interfaz del simulador
 js/calc.js          interfaz de la calculadora

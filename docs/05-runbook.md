@@ -14,7 +14,7 @@ python -m http.server 8000 --directory simulador_stop_and_wait_v2
 Pruebas, con el runner nativo de Node (**no instala nada**):
 
 ```bash
-node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js
+node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js simulador_stop_and_wait_v2/tests/steps.test.js
 ```
 
 **Nombrar los archivos, no la carpeta:** `node --test tests/` falla en este equipo con
@@ -46,14 +46,14 @@ ver [04-convenciones.md](04-convenciones.md) § B.1.
 ## Verificación (pipeline)
 
 ```bash
-node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js
+node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js simulador_stop_and_wait_v2/tests/steps.test.js
 for f in simulador_stop_and_wait_v2/js/*.js; do node --check "$f"; done
 node --check simulador_stop_and_wait_web/js/protocol.js
 node --check simulador_stop_and_wait_web/js/app.js
 python -m py_compile simulador_stop_and_wait_python/*.py
 ```
 
-Baseline 2026-09-07, Node v24.11.1 y Python 3.13.14: **33 pruebas verdes, 0 fallas**; el resto,
+Baseline 2026-09-07, Node v24.11.1 y Python 3.13.14: **43 pruebas verdes, 0 fallas**; el resto,
 limpio. La interfaz no tiene pruebas automáticas: se verifica con el render sin cabeza y con el
 checklist de humo.
 
@@ -101,12 +101,18 @@ gotcha más habitual de este proyecto y no da error visible.
 
 ## Checklist de humo del v2 (calculadora)
 
-1. Los tres presets cargan y dan: **satélite** U = 3,85 % y BDP 26 tramas · **LAN** a = 0,1 y
+1. Los tres presets cargan y dan: **satélite** U = 3,846 % y BDP 26 tramas · **LAN** a = 0,1 y
    U = 83,33 % · **casa → satélite → casa** RTT = 482,15 ms, a = 79,52 y U = 0,207 % con 2 saltos.
 2. "Añadir salto" y "Quitar" funcionan; con un solo salto, "Quitar" avisa y no borra.
 3. Un valor inválido (R = 0, V = 0, P = 1,5) muestra el mensaje de error, no un `NaN`.
 4. Cambiar a half duplex con tiempo de vuelta > 0 sube el ciclo y baja U, **sin mover el RTT**.
-5. El desarrollo paso a paso coincide con las casillas de arriba.
+5. *Mostrar el siguiente paso* avanza de uno en uno y el contador dice "Paso N de M";
+   *Mostrar todos* los abre y *Ocultar* los cierra.
+6. Al abrir el detalle de un paso, **el que estuviera abierto se cierra**.
+7. Con P de error > 0 aparecen los dos pasos extra (P del ciclo y utilización efectiva) y el
+   titular añade la utilización efectiva.
+8. La curva marca este enlace en el punto correcto y la tabla de debajo lo repite con la fila
+   resaltada; al pasar el ratón sale la lectura `a → U`.
 
 ## Checklist de humo del v1 (simulador animado)
 
