@@ -422,6 +422,13 @@
     ctx.textAlign = "left";
 
     dom.cycleChart.dataset.activo = String(activo);
+
+    // La descripción lleva los números, no solo el título: quien no ve la
+    // gráfica necesita el dato, no la etiqueta.
+    dom.cycleChart.setAttribute(
+      "aria-label",
+      `Reparto del ciclo de ${Steps.formato.ms(ciclo.totalMs)}: transmitiendo ${Steps.formato.pct(activo)}, esperando ${Steps.formato.pct(1 - activo)}.`
+    );
   }
 
   function cicloHover(evento) {
@@ -542,6 +549,13 @@
 
     ctx.textAlign = "left";
     ctx.lineWidth = 1;
+
+    dom.curveChart.setAttribute(
+      "aria-label",
+      curva.actual
+        ? `Curva de utilización de Stop & Wait frente al parámetro a, de 0,01 a 1000. Este enlace: a igual a ${Steps.formato.redondear(curva.actual.a)}, utilización ${Steps.formato.pct(curva.actual.u)}. Los mismos valores están en la tabla siguiente.`
+        : "Curva de utilización de Stop & Wait frente al parámetro a."
+    );
   }
 
   function curvaHover(evento) {

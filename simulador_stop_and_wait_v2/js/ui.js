@@ -22,6 +22,9 @@
   // un timeout por debajo del RTT provoca retransmisiones inútiles, y con varios
   // saltos el RTT cambia cada vez que se añade un punto.
   let timeoutManual = false;
+  // Cuánto tiempo simulado hacia atrás está mirando el diagrama. 0 = sigue al
+  // presente; > 0 = el usuario se ha ido a mirar historia.
+  let retrocesoMs = 0;
 
   // ---------- Arranque ----------
 
@@ -29,7 +32,7 @@
     cacheDom();
     initTheme();
     hops = [
-      { name: "Casa A → Nodo", rateBps: 100000, distanceKm: 2000, velocityKmS: 200000, errorProbData: 0, errorProbAck: 0 },
+      { name: "Casa A → Nodo", rateBps: 100000, distanceKm: 2000, velocityKmS: 200000, errorProbData: 0, errorProbAck: 0, turnaroundMs: 5 },
     ];
     renderHops();
     bindEvents();
@@ -72,6 +75,7 @@
       timeoutMs: id("timeout-ms"),
       seed: id("seed"),
       nakToggle: id("nak-toggle"),
+      duplexMode: id("duplex-mode"),
       timeoutHint: id("timeout-hint"),
 
       hopsBox: id("hops"),
@@ -113,6 +117,21 @@
       rebuild();
     });
     dom.nakToggle.addEventListener("change", rebuild);
+    dom.duplexMode.addEventListener("change", rebuild);
+
+    // Rueda: mirar hacia atrás. Doble clic: volver al presente.
+    dom.diagram.addEventListener("wheel", (e) => {
+      if (!sim) return;
+      e.preventDefault();
+      const ventana = ventanaVisibleMs();
+      retrocesoMs = Math.max(0, Math.min(sim.clockMs, retrocesoMs - Math.sign(e.deltaY) * ventana * 0.15));
+      drawDiagram();
+    }, { passive: false });
+
+    dom.diagram.addEventListener("dblclick", () => {
+      retrocesoMs = 0;
+      drawDiagram();
+    });
     dom.btnAddHop.addEventListener("click", addHop);
 
     dom.btnDestroy.addEventListener("click", () => actOnSelected((p) => S.destroy(sim, p)));
@@ -140,6 +159,7 @@
       velocityKmS: ultimo.velocityKmS,
       errorProbData: 0,
       errorProbAck: 0,
+      turnaroundMs: ultimo.turnaroundMs,
     });
     renderHops();
     rebuild();
@@ -157,6 +177,7 @@
     { key: "rateBps", label: "Tasa (bits/s)", step: "1000", min: "1" },
     { key: "velocityKmS", label: "Velocidad (km/s)", step: "1000", min: "1" },
     { key: "errorProbData", label: "P error trama", step: "0.05", min: "0", max: "1" },
+    { key: "turnaroundMs", label: "Vuelta del medio (ms)", step: "1", min: "0" },
   ];
 
   function renderHops() {
@@ -220,6 +241,7 @@
       path = N.createPath({
         frameBits: Number(dom.frameBits.value),
         ackBits: Number(dom.ackBits.value),
+        duplexMode: dom.duplexMode.value,
         links: hops.map((h, i) =>
           N.createLink({
             name: `${nombreNodo(i)} → ${nombreNodo(i + 1)}`,
@@ -228,6 +250,7 @@
             velocityKmS: h.velocityKmS,
             errorProbData: h.errorProbData,
             errorProbAck: h.errorProbAck,
+            turnaroundMs: h.turnaroundMs,
           })
         ),
       });
@@ -253,6 +276,7 @@
 
     selectedIndex = 0;
     ultimoInstante = 0;
+    retrocesoMs = 0;
     dom.btnRun.textContent = "Iniciar";
     resizeCanvases();
     avisoDeTimeout();
@@ -340,7 +364,7 @@
   }
 
   function colorPorEvento(e) {
-    if (e.kind === "TIMEOUT") return css("--wait");
+    if (e.kind === "TIMEOUT" || e.kind === "TURN") return css("--wait");
     if (e.status === S.STATUS.DESTROYED || e.status === S.STATUS.CRC_FAIL || e.status === S.STATUS.DUPLICATE) {
       return css("--fault");
     }
@@ -363,10 +387,13 @@
     const anchoUtil = w - margenX * 2;
     const xDe = (i) => (nodos === 1 ? w / 2 : margenX + (anchoUtil * i) / (nodos - 1));
 
-    // Ventana de tiempo visible: unos tres ciclos.
-    const ventanaMs = Math.max(sim.analysis.cycleMs * 3, sim.timeoutMs * 2.4, 1);
-    const t0 = Math.max(0, sim.clockMs - ventanaMs);
+    // Ventana de tiempo visible, desplazada hacia atrás si el usuario ha
+    // rodado el ratón sobre el diagrama.
+    const ventanaMs = ventanaVisibleMs();
+    const finVisible = Math.max(ventanaMs, sim.clockMs - retrocesoMs);
+    const t0 = Math.max(0, finVisible - ventanaMs);
     const yDe = (t) => cabecera + ((t - t0) / ventanaMs) * (h - cabecera - 10);
+    const tFin = t0 + ventanaMs;
 
     // Rejilla de tiempo, cada décima parte de la ventana.
     ctx.strokeStyle = css("--grid");
@@ -401,8 +428,22 @@
 
     // Flechas de los eventos.
     for (const e of sim.events) {
-      if (e.tEnd < t0) continue;
+      if (e.tEnd < t0 || e.tStart > tFin) continue;
       const color = colorPorEvento(e);
+
+      if (e.kind === "TURN") {
+        // La inversión del medio ocupa tiempo pero no recorre distancia: se
+        // dibuja como un tramo vertical grueso sobre la línea del punto.
+        const x = Math.round(xDe(e.fromIdx)) + 0.5;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(x, yDe(e.tStart));
+        ctx.lineTo(x, yDe(e.tEnd));
+        ctx.stroke();
+        ctx.lineWidth = 1;
+        continue;
+      }
 
       if (e.kind === "TIMEOUT") {
         const y = Math.round(yDe(e.tEnd)) + 0.5;
@@ -447,7 +488,25 @@
       ctx.textAlign = "left";
     }
 
+    if (retrocesoMs > 0) {
+      const aviso = `histórico · ${fmt(sim.clockMs - retrocesoMs)} ms — doble clic para volver`;
+      ctx.font = "11px ui-monospace, Consolas, monospace";
+      const ancho = ctx.measureText(aviso).width + 14;
+      ctx.fillStyle = css("--wait");
+      ctx.fillRect(w - ancho - 10, 6, ancho, 20);
+      ctx.fillStyle = css("--paper");
+      ctx.textAlign = "center";
+      ctx.fillText(aviso, w - ancho / 2 - 10, 20);
+      ctx.textAlign = "left";
+    }
+
     ctx.lineWidth = 1;
+  }
+
+  // Tres ciclos, o lo que haga falta para que quepa un timeout entero.
+  function ventanaVisibleMs() {
+    if (!sim) return 1;
+    return Math.max(sim.analysis.cycleMs * 3, sim.timeoutMs * 2.4, 1);
   }
 
   function puntaDeFlecha(ctx, x1, y1, x2, y2, color) {

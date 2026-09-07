@@ -315,3 +315,94 @@ test("Pausar detiene el reloj y el temporizador", () => {
   assert.equal(sim.clockMs, reloj, "el reloj no avanza en pausa");
   assert.equal(sim.timerRemainingMs, restante, "el temporizador tampoco");
 });
+
+// ---------- Half duplex ----------
+
+function caminoHalfDuplex(turnaroundMs) {
+  return N.createPath({
+    frameBits: 1000,
+    ackBits: 0,
+    duplexMode: N.DUPLEX.HALF,
+    links: [
+      N.createLink({
+        name: "Enlace",
+        rateBps: 100000, // Tt = 10 ms
+        distanceKm: 2000,
+        velocityKmS: 200000, // Tp = 10 ms
+        turnaroundMs,
+      }),
+    ],
+  });
+}
+
+test("Half duplex: el ciclo crece 2 × el tiempo de vuelta y el RTT no cambia", () => {
+  const full = S.createSimulation({ path: caminoSimple(), totalFrames: 1 });
+  const half = S.createSimulation({ path: caminoHalfDuplex(8), totalFrames: 1 });
+
+  S.start(full);
+  S.start(half);
+  correr(full, 200, 0.25);
+  correr(half, 200, 0.25);
+
+  assert.equal(full.state, S.STATE.FINISHED);
+  assert.equal(half.state, S.STATE.FINISHED);
+
+  // Una sola trama: solo se invierte el medio una vez, antes del ACK.
+  assert.ok(
+    Math.abs(half.clockMs - full.clockMs - 8) <= 0.5,
+    `esperado +8 ms, obtenido +${(half.clockMs - full.clockMs).toFixed(2)}`
+  );
+
+  // El RTT que calcula el modelo no depende del modo del canal.
+  assert.equal(half.analysis.rttMs, full.analysis.rttMs);
+  // Pero el ciclo sí: dos inversiones por ciclo completo.
+  assert.equal(half.analysis.cycleMs - full.analysis.cycleMs, 16);
+});
+
+test("Half duplex: el ACK no empieza a viajar hasta que se invierte el medio", () => {
+  const sim = S.createSimulation({ path: caminoHalfDuplex(12), totalFrames: 1 });
+  S.start(sim);
+
+  // Tt + Tp = 20 ms: la trama acaba de llegar al receptor.
+  correr(sim, 21, 0.5);
+  const ack = sim.wire.find((p) => p.frame.kind === F.KIND.ACK);
+  assert.ok(ack, "el ACK ya existe");
+  assert.ok(ack.turnRemainingMs > 0, "pero todavía está esperando la inversión del medio");
+  assert.equal(ack.elapsedMs, 0, "no ha avanzado nada por el canal");
+
+  correr(sim, 12, 0.5);
+  const sigue = sim.wire.find((p) => p.frame.kind === F.KIND.ACK);
+  if (sigue) assert.equal(sigue.turnRemainingMs, 0, "terminada la inversión, ya viaja");
+});
+
+test("Half duplex: la inversión queda registrada en el diagrama", () => {
+  const sim = S.createSimulation({ path: caminoHalfDuplex(6), totalFrames: 2 });
+  S.start(sim);
+  correr(sim, 300, 0.5);
+
+  const inversiones = sim.events.filter((e) => e.kind === "TURN");
+  // Dos tramas: ACK de la primera, segunda trama, ACK de la segunda.
+  assert.equal(inversiones.length, 3);
+  for (const e of inversiones) {
+    assert.equal(e.tEnd - e.tStart, 6, "cada inversión dura el tiempo de vuelta");
+    assert.equal(e.fromIdx, e.toIdx, "ocurre en un punto, no entre dos");
+  }
+});
+
+test("Full duplex no paga ninguna inversión", () => {
+  const sim = S.createSimulation({ path: caminoSimple(), totalFrames: 2 });
+  S.start(sim);
+  correr(sim, 200, 0.5);
+
+  assert.equal(sim.events.filter((e) => e.kind === "TURN").length, 0);
+});
+
+test("La primera trama no espera inversión: el medio ya está en su sentido", () => {
+  const sim = S.createSimulation({ path: caminoHalfDuplex(20), totalFrames: 1 });
+  S.start(sim);
+  correr(sim, 1, 0.5);
+
+  const trama = sim.wire.find((p) => p.frame.kind === F.KIND.FRAME);
+  assert.ok(trama, "la trama ya está en el canal");
+  assert.equal(trama.turnRemainingMs, 0);
+});

@@ -71,7 +71,7 @@
 
     <figure class="figure">
       <figcaption id="cycle-caption">Reparto del ciclo</figcaption>
-      <canvas id="cycle-chart" height="86"></canvas>
+      <canvas id="cycle-chart" height="86" role="img" aria-labelledby="cycle-caption"></canvas>
       <div class="chart-tip" id="cycle-tip" hidden></div>
     </figure>
   </section>
@@ -94,15 +94,18 @@
   <section class="pod">
     <div class="pod-head"><h2>Dónde cae este enlace</h2></div>
     <figure class="figure">
-      <figcaption>Utilización de Stop &amp; Wait según el parámetro <em>a</em>, con este enlace marcado</figcaption>
-      <canvas id="curve-chart" height="240"></canvas>
+      <figcaption id="curve-caption">Utilización de Stop &amp; Wait según el parámetro <em>a</em>, con este enlace marcado</figcaption>
+      <canvas id="curve-chart" height="240" role="img" aria-labelledby="curve-caption"></canvas>
       <div class="chart-tip" id="curve-tip" hidden></div>
     </figure>
-    <table class="result-table" id="curve-table">
-      <caption class="sr-only">Valores de la curva de utilización</caption>
-      <thead><tr><th>a</th><th>U</th><th>Lectura</th></tr></thead>
-      <tbody></tbody>
-    </table>
+
+    <div class="table-wrap" tabindex="0" role="group" aria-label="Los mismos valores de la curva, en tabla">
+      <table class="result-table" id="curve-table">
+        <caption>Los mismos valores, en tabla</caption>
+        <thead><tr><th scope="col">a</th><th scope="col">U</th><th scope="col">Lectura</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </section>
 
 </main>

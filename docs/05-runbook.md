@@ -53,7 +53,7 @@ node --check simulador_stop_and_wait_web/js/app.js
 python -m py_compile simulador_stop_and_wait_python/*.py
 ```
 
-Baseline 2026-09-07, Node v24.11.1 y Python 3.13.14: **43 pruebas verdes, 0 fallas**; el resto,
+Baseline 2026-09-07, Node v24.11.1 y Python 3.13.14: **48 pruebas verdes, 0 fallas**; el resto,
 limpio. La interfaz no tiene pruebas automáticas: se verifica con el render sin cabeza y con el
 checklist de humo.
 
@@ -98,6 +98,10 @@ gotcha más habitual de este proyecto y no da error visible.
 7. El timeout se ajusta solo al cambiar el camino; si se escribe uno a mano, se respeta y el
    aviso dice cuánto margen queda sobre el RTT.
 8. La misma semilla con la misma configuración da la misma simulación.
+9. Con el canal en **half duplex** y tiempo de vuelta > 0, aparecen barras verticales ámbar
+   antes de cada ACK y de cada trama siguiente, y el ciclo se alarga sin que cambie el RTT.
+10. La rueda del ratón sobre el diagrama muestra el aviso «histórico» y deja ver lo anterior;
+    el doble clic vuelve al presente.
 
 ## Checklist de humo del v2 (calculadora)
 
@@ -113,6 +117,8 @@ gotcha más habitual de este proyecto y no da error visible.
    titular añade la utilización efectiva.
 8. La curva marca este enlace en el punto correcto y la tabla de debajo lo repite con la fila
    resaltada; al pasar el ratón sale la lectura `a → U`.
+9. Con el tabulador se llega a la tabla de la curva y se ve el foco; el lector de pantalla
+   anuncia los números de cada gráfica, no solo su título.
 
 ## Checklist de humo del v1 (simulador animado)
 

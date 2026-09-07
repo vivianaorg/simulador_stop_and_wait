@@ -92,6 +92,7 @@
         <div class="row"><label for="frame-bits">Tamaño de trama (bits)</label><input type="number" id="frame-bits" min="8" step="8" value="1000"></div>
         <div class="row"><label for="ack-bits">Tamaño del ACK (bits)</label><input type="number" id="ack-bits" min="0" step="8" value="0"></div>
         <div class="row"><label for="timeout-ms">Timeout (ms simulados)</label><input type="number" id="timeout-ms" min="1" step="1" value="60"></div>
+        <div class="row"><label for="duplex-mode">Canal</label><select id="duplex-mode"><option value="full" selected>Full duplex</option><option value="half">Half duplex</option></select></div>
         <div class="row"><label for="seed">Semilla del ruido</label><input type="number" id="seed" min="1" step="1" value="1"></div>
       </div>
 
@@ -110,7 +111,7 @@
         <button class="btn-secondary btn-small" id="btn-add-hop">Añadir punto</button>
       </div>
       <div id="hops"></div>
-      <p class="hint">Cada punto intermedio recibe la trama entera antes de reenviarla, así que suma su tiempo de transmisión.</p>
+      <p class="hint">Cada punto intermedio recibe la trama entera antes de reenviarla, así que suma su tiempo de transmisión. En half duplex, el medio va en un sentido a la vez: antes de cada respuesta hay que invertirlo, y eso cuesta el tiempo de vuelta del tramo.</p>
     </section>
 
     <!-- ---------------- Telemetría ---------------- -->
@@ -145,8 +146,9 @@
         <span><i style="border-color: var(--fault); border-top-style: dashed"></i> Descartada: CRC incorrecto o duplicada</span>
         <span><i style="border-color: var(--fault)"></i> Destruida en el canal</span>
         <span><i style="border-color: var(--wait); border-top-style: dotted"></i> Expiró el temporizador</span>
+        <span><i style="border-color: var(--wait)"></i> Inversión del medio (half duplex)</span>
       </div>
-      <p class="hint">El tiempo baja. Cada línea vertical es un punto del camino.</p>
+      <p class="hint">El tiempo baja. Cada línea vertical es un punto del camino. Rueda del ratón sobre el diagrama para mirar hacia atrás; doble clic para volver al presente.</p>
     </section>
 
   </aside>

@@ -8,6 +8,41 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-07 — Paso 2 cerrado: half duplex en la animación, diagrama con historia y gráficas descritas
+
+**Qué:**
+
+- **Half duplex en el simulador** (`V2-02`). Selector de canal y **tiempo de vuelta por tramo**.
+  El motor cobra la inversión del medio **antes** de transmitir, no durante el viaje: el ACK
+  existe pero espera, y lo mismo la trama siguiente. La primera no la paga. Cada inversión queda
+  registrada como evento y se dibuja como un tramo vertical grueso sobre la línea del punto.
+- **Diagrama desplazable** (`V2-04`): la rueda del ratón mira hacia atrás con un aviso del
+  instante que se está viendo; doble clic vuelve al presente.
+- **Gráficas descritas** (`V2-05`): la tabla de la curva es alcanzable con el tabulador y tiene
+  foco visible; cada gráfica lleva un `aria-label` con **sus números**, no solo su título.
+
+**Por qué:** el cálculo ya distinguía half de full duplex desde el 2026-09-07, pero la animación
+no, así que la diferencia más didáctica —mismo protocolo, mismo enlace, distinta utilización solo
+por el modo del canal— no se podía enseñar. El diagrama, por su parte, perdía de vista justo lo
+que servía para explicar lo ocurrido.
+
+**Evidencia:**
+
+- **48 pruebas, 0 fallas** (5 nuevas): el ciclo crece exactamente 2 × el tiempo de vuelta
+  mientras el RTT no cambia; el ACK espera con `turnRemainingMs > 0` y `elapsedMs = 0`; cada
+  inversión dura lo que debe y ocurre en un punto, no entre dos; full duplex no paga ninguna; la
+  primera trama tampoco.
+- Navegador sin cabeza: con half duplex se ven las barras de inversión antes de cada ACK y de
+  cada trama; con la rueda aparece el aviso «histórico · 86.0 ms — doble clic para volver».
+
+**Cómo revertir:** `git revert` de este commit. Las tres mejoras son independientes entre sí.
+
+**Lección:** el selector de canal se cortaba en pantalla («Half duple») porque la columna de los
+controles estaba fijada a 96 px. Se vio en la captura, no en el código: por eso el paso 3 —mirar
+la pantalla— no es opcional por mucho que las pruebas estén verdes.
+
+---
+
 ## 2026-09-07 — Paso 1 cerrado: el v1 y la versión Tkinter se conservan, sin mantenerse
 
 **Qué:** decisión del usuario sobre las dos carpetas de partida

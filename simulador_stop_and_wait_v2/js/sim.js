@@ -31,6 +31,14 @@
 
   const PHASE = { TX: "tx", PROP: "prop", FROZEN: "frozen" };
 
+  // Suma de los tiempos de vuelta del camino. En half duplex el medio va en un
+  // solo sentido a la vez: antes de que salga el ACK, y antes de la siguiente
+  // trama, hay que invertirlo. En full duplex no cuesta nada.
+  function turnaroundMs(sim) {
+    if (sim.path.duplexMode !== N.DUPLEX.HALF) return 0;
+    return sim.path.links.reduce((acc, l) => acc + l.turnaroundMs, 0);
+  }
+
   // Motivos por los que una trama deja de avanzar, para el diagrama.
   const STATUS = {
     OK: "ok",
@@ -116,7 +124,7 @@
     packet.toIdx = packet.dir > 0 ? packet.hop + 1 : packet.hop;
   }
 
-  function launch(sim, frame, dir) {
+  function launch(sim, frame, dir, esperaPreviaMs) {
     const packet = {
       frame,
       dir, // +1 emisor → receptor, −1 de vuelta
@@ -127,11 +135,28 @@
       propMs: 0,
       hopStartMs: sim.clockMs,
       frozenRemainingMs: 0,
+      // Tiempo de inversión del medio que hay que esperar antes de empezar a
+      // transmitir. Cero en full duplex.
+      turnRemainingMs: esperaPreviaMs || 0,
       fromIdx: 0,
       toIdx: 0,
     };
     beginHop(sim, packet);
     sim.wire.push(packet);
+
+    if (packet.turnRemainingMs > 0) {
+      sim.events.push({
+        tStart: sim.clockMs,
+        tEnd: sim.clockMs + packet.turnRemainingMs,
+        fromIdx: packet.fromIdx,
+        toIdx: packet.fromIdx,
+        kind: "TURN",
+        label: "inversión del medio",
+        status: STATUS.OK,
+        fraction: 1,
+      });
+      note(sim, "INFO", `Half duplex: invirtiendo el medio (${Math.round(packet.turnRemainingMs)} ms)`);
+    }
     return packet;
   }
 
@@ -191,7 +216,10 @@
       `${isRetransmission ? "Retransmite" : "Envía"} trama #${sim.frameIdx + 1} (seq=${sim.seqNum})`
     );
 
-    const packet = launch(sim, frame, +1);
+    // La primera trama no espera: el medio ya está en su sentido. Las
+    // siguientes llegan después de un ACK, así que hay que invertirlo otra vez.
+    const espera = sim.stats.framesSent === 1 ? 0 : turnaroundMs(sim);
+    const packet = launch(sim, frame, +1, espera);
     armTimer(sim);
     return packet;
   }
@@ -234,7 +262,7 @@
           payloadBytes: sim.payloadBytes,
         });
         note(sim, "WARNING", `El receptor envía NAK${frame.seq}`);
-        launch(sim, nak, -1);
+        launch(sim, nak, -1, turnaroundMs(sim));
       }
       return;
     }
@@ -260,7 +288,7 @@
       frameIdx: frame.frameIdx,
       payloadBytes: sim.payloadBytes,
     });
-    launch(sim, ack, -1);
+    launch(sim, ack, -1, turnaroundMs(sim));
   }
 
   function onAckArrivedAtSender(sim, packet) {
@@ -378,6 +406,18 @@
 
     while (restante > 0 && sim.wire.includes(packet) && vueltas < 64) {
       vueltas += 1;
+
+      // La inversión del medio se paga antes de nada: el paquete existe pero
+      // todavía no ocupa el canal.
+      if (packet.turnRemainingMs > 0) {
+        packet.turnRemainingMs -= restante;
+        if (packet.turnRemainingMs > 0) return;
+        restante = -packet.turnRemainingMs;
+        packet.turnRemainingMs = 0;
+        // El tramo empieza a contar ahora, no cuando se creó el paquete.
+        packet.hopStartMs = sim.clockMs - restante;
+        continue;
+      }
 
       if (packet.phase === PHASE.FROZEN) {
         packet.frozenRemainingMs -= restante;

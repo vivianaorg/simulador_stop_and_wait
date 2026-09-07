@@ -193,10 +193,27 @@ Plana a propósito: sin degradados, sin sombras y sin brillos. Un borde de 1 px 
 y el color **solo significa** — verde trama aceptada, azul confirmación, ámbar espera, rojo
 error. Los números van en monoespaciada de ancho tabular para que no bailen al actualizarse.
 
+## Half duplex en la animación
+
+El selector *Canal* del simulador cambia el modo, y cada tramo tiene su **tiempo de vuelta del
+medio**. En half duplex el medio va en un sentido a la vez: antes de que salga el ACK, y antes de
+la siguiente trama, hay que invertirlo. Esa espera se paga **antes** de empezar a transmitir, no
+durante el viaje, y aparece en el diagrama como un tramo vertical grueso sobre la línea del
+punto. La primera trama no la paga: el medio ya está en su sentido.
+
+Consecuencia que conviene enseñar: **el RTT no cambia** por ser half duplex; lo que crece es el
+ciclo. Hay una prueba que lo fija.
+
+## Mirar hacia atrás en el diagrama
+
+La rueda del ratón sobre el diagrama desplaza la ventana visible hacia el pasado y aparece un
+aviso con el instante que se está mirando; doble clic vuelve al presente. Sin esto, la historia
+salía de pantalla justo cuando servía para explicar lo ocurrido.
+
 ## Lo que el v2 todavía no tiene
 
-Modos de canal half/full duplex dentro de la animación (el cálculo sí los tiene), y la
-integración del simulador v1, que sigue existiendo aparte.
+Piggybacking, ventana deslizante, exportar el diagrama y guardar escenarios: **ninguno está
+pendiente**, están fuera de alcance por decisión.
 
 
 ## La calculadora, por bloques

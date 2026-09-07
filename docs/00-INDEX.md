@@ -29,7 +29,7 @@ Tamaño real (2026-09-07, `wc -l`): web **2 349 líneas** (`app.js` 1 204 · `st
 
 Estado de calidad verificado el 2026-09-07:
 `node --test` sobre los dos archivos de `simulador_stop_and_wait_v2/tests/` →
-**43 pruebas, 0 fallas** ·
+**48 pruebas, 0 fallas** ·
 `node --check` sobre los ocho `.js` → limpio ·
 `python -m py_compile simulador_stop_and_wait_python/*.py` → limpio.
 El v1 y la versión Tkinter **siguen sin tests**; los tests cubren el motor del v2.

@@ -20,10 +20,10 @@ Una tarea = un commit. Ningún paso se da por cerrado sin la evidencia de su fil
 
 | # | Tarea | Toca | Evidencia para cerrar | Estado |
 |---|---|---|---|---|
-| 2.1 | Selector half/full duplex en el simulador | `js/sim.js`, `js/ui.js`, `index.html` | Prueba nueva: el ciclo crece 2 × el tiempo de vuelta y el RTT no cambia | ⬜ |
-| 2.2 | Que el ACK espere la inversión del medio en half duplex | `js/sim.js` | Prueba nueva sobre el instante de salida del ACK | ⬜ |
-| 2.3 | Diagrama desplazable hacia atrás | `js/ui.js` | Verificado en navegador: se ven eventos antiguos y se vuelve al presente | ⬜ |
-| 2.4 | Foco y anuncio de las tablas de las gráficas | `calculadora.html`, `css/style.css` | Recorrido con tabulador, anotado | ⬜ |
+| 2.1 | Selector half/full duplex en el simulador | `js/sim.js`, `js/ui.js`, `index.html` | Prueba: el ciclo crece 2 × el tiempo de vuelta y el RTT no cambia | ✅ |
+| 2.2 | Que el ACK espere la inversión del medio en half duplex | `js/sim.js` | Prueba: el ACK existe con `turnRemainingMs > 0` y `elapsedMs = 0` | ✅ |
+| 2.3 | Diagrama desplazable hacia atrás | `js/ui.js` | Navegador: rueda → aviso «histórico · 86 ms»; doble clic vuelve | ✅ |
+| 2.4 | Foco y anuncio de las tablas de las gráficas | `calculadora.html`, `js/calc.js`, `css/style.css` | Tabla con `tabindex`, foco visible, y `aria-label` con los números | ✅ pendiente de repaso con teclado en el paso 3 |
 
 ## Paso 3 · Probarlo tú
 

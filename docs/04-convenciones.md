@@ -121,7 +121,7 @@ declarada** frente al N1 global (falta lint, formateador y cobertura), no un des
 
 | Paso | Comando | Estado |
 |---|---|---|
-| **Pruebas del v2** | `node --test simulador_stop_and_wait_v2/tests/*.test.js` (nombrando los tres archivos) | **obligatorio** — 43 pruebas, 0 fallas al 2026-09-07 |
+| **Pruebas del v2** | `node --test simulador_stop_and_wait_v2/tests/*.test.js` (nombrando los tres archivos) | **obligatorio** — 48 pruebas, 0 fallas al 2026-09-07 |
 | Sintaxis JS | `node --check` sobre los `.js` de `simulador_stop_and_wait_web/` y `simulador_stop_and_wait_v2/` | **obligatorio** |
 | Sintaxis Python (versión congelada) | `python -m py_compile simulador_stop_and_wait_python/*.py` | obligatorio mientras el archivo siga en el repo |
 | Prueba manual en navegador | [05-runbook.md](05-runbook.md) § *Checklist de humo* | **obligatorio antes de entregar** |
