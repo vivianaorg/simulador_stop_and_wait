@@ -38,6 +38,12 @@ Cerró `V2-02`, `V2-04` y `V2-05`. El detalle, en [07-historial.md](07-historial
 | `V2-01` | P0 | Checklist de humo del v2 completo, con ratón y teclado | Cada punto anotado con lo que se vio. **El banco de interfaz ya cubre el comportamiento** (42 comprobaciones, ver [05-runbook.md](05-runbook.md)); falta lo que solo se ve mirando: encuadres, solapes, legibilidad |
 | `V-03` | P3 | Probarlo en un segundo navegador | Diferencias anotadas |
 
+> **Hallazgos del 2026-09-07, ya corregidos:** el panel no llenaba la ventana (altura de la barra
+> restada a mano), la bitácora y la columna derecha tenían scrolls anidados que se pisaban, y la
+> rueda sobre el diagrama no scrolleaba nada. Arreglados y anotados en
+> [07-historial.md](07-historial.md); **falta que el usuario confirme el encuadre en pantalla**,
+> porque Playwright no tiene navegador en este PC.
+
 ## Paso 4 · Blindar — **cerrado el 2026-09-07**
 
 `Q-02` rechazado por escrito: un linter de código exige tooling y contradice la regla de cero

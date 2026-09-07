@@ -58,6 +58,18 @@ body {
   line-height: 1.5;
 }
 
+/* El simulador ocupa lo que quede bajo la barra, sea cual sea su altura: la
+   barra envuelve en dos lineas cuando la ventana estrecha, asi que restarle
+   una altura fija dejaba el panel colgando fuera de la pantalla. */
+body.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+body.app > .bar { flex: 0 0 auto; }
+
 .num, input[type="number"], .mono {
   font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
   font-variant-numeric: tabular-nums;
@@ -113,7 +125,8 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 336px;
   gap: 0;
-  height: calc(100vh - 47px);
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .stage {
@@ -136,6 +149,7 @@ body {
 
 .rail {
   overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--paper);
 }
 
@@ -391,12 +405,12 @@ input[type="range"] { width: 100%; }
 
 /* ---------- Bitácora ---------- */
 
+/* Sin scroll propio: anidado dentro del .rail se pisaban los dos y la rueda
+   movia el que no tocaba. El unico scroll de la columna es el del .rail. */
 .log {
   margin: 0;
   padding: 0;
   list-style: none;
-  max-height: 190px;
-  overflow-y: auto;
   font-family: ui-monospace, Consolas, monospace;
   font-size: 12px;
 }
@@ -525,7 +539,11 @@ code { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
 /* ---------- Adaptación ---------- */
 
 @media (max-width: 980px) {
+  /* En una columna manda el scroll de la pagina: el panel deja de estar
+     encajado en la altura de la ventana. */
+  body.app { height: auto; overflow: visible; display: block; }
   .work { grid-template-columns: 1fr; height: auto; }
+  .rail { overflow-y: visible; }
   .stage { border-right: 0; }
   .diagram-wrap { height: 62vh; }
   .rail { border-top: 1px solid var(--rule); }

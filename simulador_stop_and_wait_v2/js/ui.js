@@ -145,11 +145,16 @@
     });
 
     // Rueda: mirar hacia atrás. Doble clic: volver al presente.
+    // Solo secuestramos la rueda si de verdad hay historia que mirar. Sin
+    // simulacion, o con el diagrama al principio y la rueda subiendo, el gesto
+    // se deja pasar para que la pagina o el panel derecho scrollen normal.
     dom.diagram.addEventListener("wheel", (e) => {
-      if (!sim) return;
+      if (!sim || sim.clockMs <= 0) return;
+      const paso = Math.sign(e.deltaY);
+      const destino = Math.max(0, Math.min(sim.clockMs, retrocesoMs - paso * ventanaVisibleMs() * 0.15));
+      if (destino === retrocesoMs) return;
       e.preventDefault();
-      const ventana = ventanaVisibleMs();
-      retrocesoMs = Math.max(0, Math.min(sim.clockMs, retrocesoMs - Math.sign(e.deltaY) * ventana * 0.15));
+      retrocesoMs = destino;
       drawDiagram();
     }, { passive: false });
 

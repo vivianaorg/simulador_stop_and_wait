@@ -8,6 +8,39 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-07 — El panel del simulador ya ocupa la ventana y la rueda scrollea
+
+**Qué:** tres arreglos de maquetación en el v2, todos salidos de mirar la pantalla (paso 3).
+
+- **`.work` ya no resta una altura fija.** Tenía `height: calc(100vh - 47px)`, con los 47 px de
+  la barra superior escritos a mano; como la barra lleva `flex-wrap`, en cuanto la ventana
+  estrechaba (o había zoom) pasaba a dos líneas y el panel se salía por abajo: el diagrama no
+  llenaba y el final quedaba cortado. Ahora `body.app` es una columna flex de `100dvh` y el
+  `.work` toma lo que quede, sea cual sea la altura real de la barra.
+- **La bitácora deja de tener scroll propio.** Tenía `max-height: 190px; overflow-y: auto`
+  anidado dentro del `.rail`, que también scrollea: dos barras superpuestas y la rueda movía la
+  que no tocaba. El único scroll de la columna derecha es el del `.rail`.
+- **La rueda sobre el diagrama solo se secuestra si hay historia que mirar.** El `wheel` hacía
+  `preventDefault()` siempre, incluso sin simulación arrancada; como el diagrama ocupa la mayor
+  parte de la pantalla, la rueda no movía nada y había que arrastrar la barra a clic. Ahora, si
+  el gesto no cambia el retroceso (sin simulación, o ya en un extremo), se deja pasar.
+
+Debajo de 980 px `body.app` vuelve a flujo normal y manda el scroll de la página.
+
+**Por qué:** eran los tres síntomas que reportó el usuario —«los scrolls se solapan», «no ocupa
+todo», «toca hacer scroll con clic y no con la rueda»— y los tres tenían la misma raíz: medidas
+fijas y scrolls anidados en vez de dejar que el alto lo decida el contenedor.
+
+**Cómo revertir:** `git revert` del commit. Toca `css/style.css` (bloques `body`, `.work`,
+`.rail`, `.log` y la media query de 980 px), la clase `app` del `<body>` en `index.html` y el
+manejador `wheel` de `js/ui.js`.
+
+**Verificación:** `node --check` de `ui.js` y `sim.js`, y los cuatro ficheros de `tests/` en
+verde. **La comprobación visual no se hizo aquí**: Playwright no tiene navegador instalado en
+este PC, así que el encuadre lo confirma el usuario en pantalla.
+
+---
+
 ## 2026-09-07 — Ruido opcional, error a mano y el CRC paso a paso
 
 **Qué:** tres peticiones del usuario, y una de ellas resultó estar ya hecha.
