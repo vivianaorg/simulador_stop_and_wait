@@ -49,9 +49,10 @@ El resto: [docs/05-runbook.md](docs/05-runbook.md).
   con la stdlib de Python. No agregar npm, bundlers ni paquetes pip.
 - **El modelo del protocolo vive en `protocol.js` / `protocol.py`.** Contadores, secuencia,
   eficiencia y tiempos se calculan ahí. La UI (`app.js`, `gui.py`) **consume, no recalcula**.
-- **Se trabaja solo sobre `simulador_stop_and_wait_web/`.** La versión Tkinter está
-  **congelada** (2026-09-07): se lee y se le copian ideas o fragmentos hacia la web, pero **no
-  se modifica** ni se mantiene sincronizada. Ver [docs/01-arquitectura.md](docs/01-arquitectura.md).
+- **Se trabaja solo sobre `simulador_stop_and_wait_v2/`.** `simulador_stop_and_wait_web/` y
+  `simulador_stop_and_wait_python/` son el trabajo de partida del grupo y **se conservan como
+  registro, sin mantenerse** (2026-09-07): se leen, no se tocan. Conservar no es mantener. Ver
+  [docs/01-arquitectura.md](docs/01-arquitectura.md).
 - **Verificación mínima verde antes de cada commit** (los tres comandos de arriba).
 - Commit chico, Conventional Commits con scope: `feat(web): …`, `fix(python): …`, `docs: …`.
 - `__pycache__/` no se commitea (ya está en `.gitignore`).

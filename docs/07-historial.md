@@ -8,6 +8,42 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-07 — Paso 1 cerrado: el v1 y la versión Tkinter se conservan, sin mantenerse
+
+**Qué:** decisión del usuario sobre las dos carpetas de partida
+(`simulador_stop_and_wait_web/` y `simulador_stop_and_wait_python/`): **se quedan en el
+repositorio como registro del trabajo del grupo, y no se mantienen**. Ejecutado el mismo día:
+
+- `README.md` describe ahora las tres carpetas, cuál se entrega y de dónde vienen las otras dos,
+  con el comando de `git log` que muestra su autoría.
+- `01-arquitectura.md` recoge la decisión y anota los **fallos conocidos del v1 que no se van a
+  corregir**, para que el registro sea honesto en vez de silencioso.
+- `CLAUDE.md`, `AGENTS.md` y `00-INDEX.md` dicen lo mismo: se lee, no se toca.
+- Cerrados `V2-03`, `E-02` (por la decisión) y `E-01`, `Q-01`, `V-01`, `V-02` (**no aplica**:
+  solo tenían sentido sobre código que se mantiene). Seis de doce pendientes, sin escribir código.
+
+**Por qué:** el spec del cierre planteaba tres opciones —retirar, anexar o mantener— y daba
+«mantener» por imposible antes de la entrega. Le faltaba una distinción que aportó el usuario:
+**conservar no es mantener**. El trabajo de partida es de sus compañeros de grupo, y el
+repositorio debe mostrar de dónde viene la versión mejorada; eso no obliga a probar, testear ni
+arreglar ese código. Queda anotado como desvío en el propio spec, que no se reescribe.
+
+**Evidencia:**
+
+- `grep -rn "simulador_stop_and_wait_web\|simulador_stop_and_wait_python" simulador_stop_and_wait_v2/`
+  → sin resultados: el v2 no depende de lo conservado ni lo enlaza.
+- `git log` sobre esas dos carpetas muestra los commits del grupo, anteriores a esta sesión.
+
+**Cómo revertir:** `git revert` de este commit devuelve las seis fichas a `06`. El código no se
+tocó: conservar era, precisamente, no tocarlo.
+
+**Lección:** una opción que falta en la tabla de opciones vale por un error de diseño. El spec
+cerraba el paso con tres salidas y ninguna era la buena, porque mezclaba dos cosas distintas —
+tener el código en el repositorio y hacerse cargo de él. La tabla parecía completa, y por eso
+nadie la habría cuestionado.
+
+---
+
 ## 2026-09-07 — Los 12 pendientes pasan a un cierre en cuatro pasos, y las reglas se endurecen
 
 **Qué:**

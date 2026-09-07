@@ -8,7 +8,8 @@ Prioridades: **P0** bloquea la entrega · **P1** se nota al demostrarlo · **P2*
 
 Revisión completa: 2026-09-07. Entrega comprometida: **2026-09-09**.
 
-> **Cierre en curso.** Los 12 pendientes se cierran en cuatro pasos, en el orden 1 → 2 → 3 → 4:
+> **Cierre en curso**, en cuatro pasos y en el orden 1 → 2 → 3 → 4. **Paso 1 cerrado el
+> 2026-09-07.** Lo que queda abierto son las filas de abajo:
 > [spec](superpowers/specs/2026-09-07-cierre-pendientes-design.md) ·
 > [plan](superpowers/plans/2026-09-07-cierre-pendientes.md).
 > **Mientras dure, no se abren fichas nuevas**: lo que aparezca se anota como *desvío* en el
@@ -17,16 +18,11 @@ Revisión completa: 2026-09-07. Entrega comprometida: **2026-09-09**.
 
 ---
 
-## Paso 1 · Podar — decidir qué pasa con el v1 y con la versión Tkinter
+## Paso 1 · Podar — **cerrado el 2026-09-07**
 
-| ID | P | Tarea | Cómo se cierra |
-|---|---|---|---|
-| `V2-03` | P2 | Decidir qué pasa con el simulador v1 | Con la decisión, no con trabajo |
-| `E-02` | P2 | Decidir si la versión Tkinter se entrega, se anexa o se retira | Ídem |
-| `E-01` | P0 | Checklist de humo del v1 | Cae si el v1 se retira o se anexa |
-| `Q-01` | P2 | Tests del modelo del v1 | Cae con el v1 |
-| `V-01` | P1 | Entradas inválidas del formulario del v1 | Cae con el v1 |
-| `V-02` | P2 | Parámetros extremos en el v1: `NaN` e `Infinity` | Cae con el v1 |
+Se conservan el simulador v1 y la versión Tkinter, **sin mantenerlos**: son el trabajo de partida
+del grupo y quedan como registro. Con eso se cerraron `V2-03`, `E-02`, `E-01`, `Q-01`, `V-01` y
+`V-02`. El motivo, en [07-historial.md](07-historial.md).
 
 ## Paso 2 · Terminar el v2
 

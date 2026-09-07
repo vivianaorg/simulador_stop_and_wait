@@ -2,10 +2,12 @@
 
 Estado técnico al **2026-09-07**. Describe lo que hay, no lo que debería haber.
 
-> Desde el 2026-09-07 hay **dos proyectos web**: el simulador animado (`simulador_stop_and_wait_web/`,
-> v1) y el nuevo motor con calculadora (`simulador_stop_and_wait_v2/`). El trabajo nuevo va al v2;
-> el v1 sigue entregable y se integrará contra el motor del v2. Ver
-> [el plan](superpowers/plans/2026-09-07-motor-multisalto.md).
+> **Tres carpetas, un solo proyecto vivo** (decisión del 2026-09-07):
+> `simulador_stop_and_wait_v2/` es lo que se desarrolla y se entrega;
+> `simulador_stop_and_wait_web/` y `simulador_stop_and_wait_python/` son el **trabajo de partida
+> del grupo** y **se conservan como registro, sin mantenerse**. Conservar no es mantener: no se
+> les añaden funciones, no se les escriben pruebas y sus fallos conocidos no se corrigen.
+> El v2 no depende de ellas ni las enlaza (comprobado el 2026-09-07).
 
 ## Stack y decisión de fondo
 
@@ -68,11 +70,15 @@ perder ACK (`kill_ack`, `gui.py:638`), timeout y retransmisión, telemetría bá
 Los parámetros del enlace **no se reinician** con `resetStats()` en la web: son configuración,
 no estado del run (`js/protocol.js:42`).
 
-**Consecuencia práctica (decisión del 2026-09-07):** el trabajo se hace **solo sobre la versión
-web**; es la que se entrega y se demuestra. La versión Tkinter queda **congelada**: sirve de
-referencia y de cantera —se puede leer y copiar de ahí una idea o un fragmento hacia la web—
-pero no se modifica ni se mantiene sincronizada. Un cambio en la web **no** obliga a tocar
-Python. Si algo de Python hiciera falta y no estuviera en la web, se porta a la web.
+**Consecuencia práctica:** ninguna de las dos se mantiene ya. Lo escrito arriba describe cómo
+quedaron el 2026-09-07 y por qué divergían; sirve para leerlas, no para seguir trabajándolas.
+
+**Fallos conocidos que no se van a corregir**, anotados aquí porque el `README` los cita y porque
+son parte del registro: el v1 reanuda la simulación tras cerrar una alerta aunque el usuario
+hubiera pausado (alcanzable con el teclado, no con el ratón); ignora en silencio los parámetros
+de enlace inválidos en vez de avisar; reconstruye la lista de tramas entera en cada actualización
+de telemetría; y su estado `WAITING_ACK` solo se asigna cuando hay una pérdida explícita, no
+cuando el emisor está realmente esperando. La versión Tkinter no tiene pruebas.
 
 ## Estructura de archivos
 

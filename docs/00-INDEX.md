@@ -20,9 +20,8 @@ Dos versiones equivalentes en concepto pero **no idénticas en features**
   tiempo-espacio, camino de N puntos editable, inspector de la trama en vuelo y detección de
   errores por CRC; más una calculadora en su propia página. Sitio estático, sin build, sin base
   de datos y sin login. Ver [01-arquitectura.md](01-arquitectura.md).
-- `simulador_stop_and_wait_python/` — Tkinter sobre la stdlib de Python 3. **Congelada desde el
-  2026-09-07**: no se desarrolla más; queda como referencia de la que se puede portar algo a la
-  web si hace falta.
+- `simulador_stop_and_wait_web/` y `simulador_stop_and_wait_python/` — **trabajo de partida del
+  grupo**. Se conservan como registro y **no se mantienen** (decisión del 2026-09-07).
 
 Tamaño real (2026-09-07, `wc -l`): web **2 349 líneas** (`app.js` 1 204 · `style.css` 764 ·
 `index.html` 258 · `protocol.js` 123) · Python **872 líneas** (`gui.py` 774 · `protocol.py` 76 ·

@@ -11,10 +11,10 @@ Una tarea = un commit. Ningún paso se da por cerrado sin la evidencia de su fil
 
 | # | Tarea | Toca | Evidencia para cerrar | Estado |
 |---|---|---|---|---|
-| 1.1 | Decidir: retirar, anexar o mantener el v1 y la versión Tkinter | — | La decisión escrita en `07`, con su motivo | ⬜ **espera respuesta del usuario** |
-| 1.2 | Ejecutar la decisión | `simulador_stop_and_wait_web/`, `simulador_stop_and_wait_python/`, `README.md` | El `README` describe lo que hay; `git status` limpio | ⬜ |
-| 1.3 | Cerrar `E-01`, `Q-01`, `V-01`, `V-02` por decisión | `06`, `07` | Cada uno con su motivo en `07`; ninguno en `06` | ⬜ |
-| 1.4 | Comprobar que el v2 no enlaza a lo retirado | `simulador_stop_and_wait_v2/` | `grep -r "simulador_stop_and_wait_web" simulador_stop_and_wait_v2/` sin resultados | ⬜ |
+| 1.1 | Decidir: retirar, anexar o mantener el v1 y la versión Tkinter | — | La decisión escrita en `07`, con su motivo | ✅ **conservar sin mantener** (2026-09-07) |
+| 1.2 | Ejecutar la decisión | `README.md`, `docs/01`, `CLAUDE.md`, `AGENTS.md` | El `README` describe las tres carpetas y de dónde vienen las dos de partida | ✅ |
+| 1.3 | Cerrar `E-01`, `Q-01`, `V-01`, `V-02` como *no aplica* | `06`, `07` | Cada uno con su motivo en `07`; ninguno en `06` | ✅ |
+| 1.4 | Comprobar que el v2 no enlaza al código conservado | `simulador_stop_and_wait_v2/` | `grep -rn "simulador_stop_and_wait_web\|simulador_stop_and_wait_python" simulador_stop_and_wait_v2/` → sin resultados (2026-09-07) | ✅ |
 
 ## Paso 2 · Terminar el v2
 

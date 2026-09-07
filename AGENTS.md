@@ -22,8 +22,8 @@ Detalle técnico en [docs/01-arquitectura.md](docs/01-arquitectura.md) · comand
 - **Cero dependencias, cero build.** No agregar npm, bundlers ni paquetes pip.
 - **El modelo del protocolo (`protocol.js` / `protocol.py`) es el dueño de la lógica.**
   La UI consume; no recalcula secuencias, contadores ni eficiencia.
-- **Solo se toca la web.** La versión Tkinter está congelada: es cantera de ideas, no destino
-  de cambios.
+- **Solo se toca `simulador_stop_and_wait_v2/`.** Las otras dos carpetas son el trabajo de
+  partida del grupo: se conservan como registro y no se mantienen.
 - **Verificación mínima verde antes de commitear** (`py_compile` + `node --check`, ver
   [docs/05-runbook.md](docs/05-runbook.md)).
 - **Commit chico**, Conventional Commits con scope (`web`, `python`, `docs`).
