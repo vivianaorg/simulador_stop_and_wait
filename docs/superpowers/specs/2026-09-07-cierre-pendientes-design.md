@@ -178,4 +178,5 @@ decidió. **No es una lista de pendientes**: cada línea nace decidida.
 
 | Fecha | Paso | Qué apareció | Decisión |
 |---|---|---|---|
+| 2026-09-07 | 4 | **El paso 3 depende del usuario** (probar a mano), y el 4 no dependía del 3 | Se adelantó el paso 4. El orden 1 → 2 seguía siendo obligatorio y se respetó; el 3 queda como único paso abierto |
 | 2026-09-07 | 1 | **A la tabla de opciones del paso 1 le faltaba una.** Planteaba retirar, anexar o mantener, y daba «mantener» por imposible antes de la entrega. Faltaba distinguir **conservar** de **mantener**: el v1 y la versión Tkinter son el trabajo de partida del grupo, y el repositorio debe mostrar de dónde viene el trabajo | **Se conservan los dos, sin mantenerlos.** Siguen en el repositorio como registro; no se les añaden funciones, no se les escriben pruebas ni se corrigen sus fallos. `E-01`, `Q-01`, `V-01` y `V-02` se cierran como *no aplica*, porque solo tenían sentido sobre código que se mantiene |

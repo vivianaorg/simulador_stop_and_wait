@@ -38,11 +38,11 @@ Una tarea = un commit. Ningún paso se da por cerrado sin la evidencia de su fil
 
 | # | Tarea | Toca | Evidencia para cerrar | Estado |
 |---|---|---|---|---|
-| 4.1 | Rechazar `Q-02` por escrito (linter de código) | `06`, `07` | El motivo en `07`: choca con cero dependencias | ⬜ |
-| 4.2 | Declarar la **fuente única** del conteo de pruebas y borrar las copias | `00`, `04`, `05`, `README` del v2 | El número aparece en un solo sitio | ⬜ |
-| 4.3 | Escribir el lint de documentación | `tools/lint-docs.js` | Falla a propósito con una ruta inventada; pasa con la doc real | ⬜ |
-| 4.4 | Convertir las citas `archivo:línea` en nombres de función | `01` | El lint no encuentra ninguna cita de línea | ⬜ |
-| 4.5 | Meter el lint en el comando de verificación | `05` | Corre junto a las pruebas, documentado | ⬜ |
+| 4.1 | Rechazar `Q-02` por escrito (linter de código) | `06`, `07` | El motivo escrito: choca con cero dependencias | ✅ |
+| 4.2 | Declarar la **fuente única** del conteo de pruebas y borrar las copias | `00`, `01`, `04`, `README` del v2 | El número solo aparece en `05`, y el lint lo compara con las pruebas reales | ✅ |
+| 4.3 | Escribir el lint de documentación | `tools/lint-docs.js` | Con una ruta inventada y un conteo falso → 2 problemas y salida 1; con la doc real → limpio | ✅ |
+| 4.4 | Convertir las citas `archivo:línea` en nombres de función | `01`, `04`, `05` | El lint no encuentra ninguna cita de línea fuera de los registros fechados | ✅ |
+| 4.5 | Meter el lint en el comando de verificación | `04`, `05` | Documentado junto a las pruebas, con lo que **no** comprueba | ✅ |
 
 ## Regla de corte
 

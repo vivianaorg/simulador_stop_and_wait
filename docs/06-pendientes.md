@@ -8,8 +8,10 @@ Prioridades: **P0** bloquea la entrega · **P1** se nota al demostrarlo · **P2*
 
 Revisión completa: 2026-09-07. Entrega comprometida: **2026-09-09**.
 
-> **Cierre en curso**, en cuatro pasos y en el orden 1 → 2 → 3 → 4. **Pasos 1 y 2 cerrados el
-> 2026-09-07.** Lo que queda abierto son las filas de abajo:
+> **Cierre en curso**, en cuatro pasos. **Pasos 1, 2 y 4 cerrados el 2026-09-07.** Queda el
+> paso 3, que no es programar: es sentarse a probarlo. El 4 se adelantó al 3 porque el 3 depende
+> del usuario y nada del 4 dependía de él; anotado como desvío en el
+> [spec](superpowers/specs/2026-09-07-cierre-pendientes-design.md).
 > [spec](superpowers/specs/2026-09-07-cierre-pendientes-design.md) ·
 > [plan](superpowers/plans/2026-09-07-cierre-pendientes.md).
 > **Mientras dure, no se abren fichas nuevas**: lo que aparezca se anota como *desvío* en el
@@ -36,8 +38,8 @@ Cerró `V2-02`, `V2-04` y `V2-05`. El detalle, en [07-historial.md](07-historial
 | `V2-01` | P0 | Checklist de humo del v2 completo, con ratón y teclado | Cada punto anotado con lo que se vio |
 | `V-03` | P3 | Probarlo en un segundo navegador | Diferencias anotadas |
 
-## Paso 4 · Blindar
+## Paso 4 · Blindar — **cerrado el 2026-09-07**
 
-| ID | P | Tarea | Cómo se cierra |
-|---|---|---|---|
-| `Q-02` | P3 | Linter y formateador de código | **Se rechaza por escrito**: choca con la regla de cero dependencias. En su lugar entra el lint de documentación |
+`Q-02` rechazado por escrito: un linter de código exige tooling y contradice la regla de cero
+dependencias. En su lugar entró `tools/lint-docs.js`, y el conteo de pruebas pasó a tener fuente
+única. El detalle, en [07-historial.md](07-historial.md).

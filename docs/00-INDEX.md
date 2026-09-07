@@ -25,11 +25,11 @@ Dos versiones equivalentes en concepto pero **no idénticas en features**
 
 Tamaño real (2026-09-07, `wc -l`): web **2 349 líneas** (`app.js` 1 204 · `style.css` 764 ·
 `index.html` 258 · `protocol.js` 123) · Python **872 líneas** (`gui.py` 774 · `protocol.py` 76 ·
-`main.py` 21). Sin `package.json`, sin `requirements.txt`.
+`main.py` 21). Sin `package.json`, sin `requirements.txt`. <!-- lint:ruta-ausente -->
 
 Estado de calidad verificado el 2026-09-07:
-`node --test` sobre los dos archivos de `simulador_stop_and_wait_v2/tests/` →
-**48 pruebas, 0 fallas** ·
+suite del v2 verde y `node tools/lint-docs.js` limpio — el conteo y el baseline, en
+[05-runbook.md](05-runbook.md) ·
 `node --check` sobre los ocho `.js` → limpio ·
 `python -m py_compile simulador_stop_and_wait_python/*.py` → limpio.
 El v1 y la versión Tkinter **siguen sin tests**; los tests cubren el motor del v2.

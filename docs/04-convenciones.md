@@ -93,7 +93,7 @@ problema está resuelto es comprarse una falsa seguridad, que es peor que no ten
   del enlace y eficiencia se calculan ahí y `js/app.js` los **consume**. Si la UI necesita un
   número derivado, se agrega un getter al modelo; no se recalcula en la vista.
 - Un control nuevo en `index.html` necesita `id` y su línea en `_cacheDom()`
-  (`js/app.js:141`), o queda `undefined` sin avisar.
+  (`_cacheDom()`), o queda `undefined` sin avisar.
 - No se commitea `__pycache__/` (ya está en `.gitignore`). Sin secretos: el proyecto no tiene.
 
 ## B.2 Estilo
@@ -121,7 +121,8 @@ declarada** frente al N1 global (falta lint, formateador y cobertura), no un des
 
 | Paso | Comando | Estado |
 |---|---|---|
-| **Pruebas del v2** | `node --test simulador_stop_and_wait_v2/tests/*.test.js` (nombrando los tres archivos) | **obligatorio** — 48 pruebas, 0 fallas al 2026-09-07 |
+| **Pruebas del v2** | `node --test` sobre los tres archivos de `simulador_stop_and_wait_v2/tests/` | **obligatorio** — el conteo y el baseline, en [05-runbook.md](05-runbook.md) |
+| **Lint de documentación** | `node tools/lint-docs.js` | **obligatorio** — rutas, líneas, enlaces y conteos |
 | Sintaxis JS | `node --check` sobre los `.js` de `simulador_stop_and_wait_web/` y `simulador_stop_and_wait_v2/` | **obligatorio** |
 | Sintaxis Python (versión congelada) | `python -m py_compile simulador_stop_and_wait_python/*.py` | obligatorio mientras el archivo siga en el repo |
 | Prueba manual en navegador | [05-runbook.md](05-runbook.md) § *Checklist de humo* | **obligatorio antes de entregar** |

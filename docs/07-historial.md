@@ -8,6 +8,43 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-07 — Paso 4 cerrado: la documentación pasa a comprobarse con una máquina
+
+**Qué:**
+
+- **`Q-02` rechazado por escrito.** Un linter y un formateador de código exigen tooling y
+  contradicen la regla de cero dependencias, que es la que permite abrir el trabajo sin instalar
+  nada. No se hace, y queda dicho por qué.
+- **`tools/lint-docs.js`** (nuevo, sin dependencias): comprueba enlaces rotos, rutas citadas que
+  no existen, citas del tipo `archivo.js:NN` y el conteo de pruebas.
+- **Fuente única del conteo:** el número de pruebas vive solo en `05-runbook.md`. Los demás
+  documentos lo enlazan, y el lint compara ese número con las pruebas que hay de verdad en el
+  repositorio, contando las llamadas a `test(`.
+- **Doce citas por número de línea convertidas en nombres de función** en `01`, `04` y `05`.
+
+**Por qué:** el modo de fallo real de este repositorio no es que el código se rompa —hay pruebas—
+sino que la documentación mienta. El conteo «pruebas» estaba escrito a mano en cuatro sitios y
+las citas por línea se pudren en la siguiente edición. Sin una máquina que lo compruebe, esas
+reglas eran intenciones.
+
+**Evidencia:**
+
+- Con la documentación real: **15 documentos revisados, sin problemas**, y 48 pruebas contadas
+  en el repositorio, que es lo que declara el runbook.
+- Con una ruta inventada y un conteo falso metidos a propósito: **2 problemas y salida 1**.
+- El propio lint encontró **26 problemas la primera vez que se ejecutó**, todos reales.
+
+**Cómo revertir:** `git revert` de este commit. El lint es un archivo aparte; quitarlo del
+runbook basta para dejar de ejecutarlo.
+
+**Lección, y es incómoda:** de los cuatro documentos con el conteo repetido, **ninguno mentía
+todavía**. Por eso el problema era invisible: no era un error, era una trampa esperando a la
+siguiente edición. Y al revés, el lint tuvo que aprender a **no** comprobar los documentos
+fechados: un spec que cita un archivo ya borrado no está mintiendo, está describiendo su momento.
+Corregirlo habría falsificado el archivo.
+
+---
+
 ## 2026-09-07 — Paso 2 cerrado: half duplex en la animación, diagrama con historia y gráficas descritas
 
 **Qué:**

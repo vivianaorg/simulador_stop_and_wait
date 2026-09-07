@@ -47,14 +47,40 @@ ver [04-convenciones.md](04-convenciones.md) § B.1.
 
 ```bash
 node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js simulador_stop_and_wait_v2/tests/steps.test.js
+node tools/lint-docs.js
 for f in simulador_stop_and_wait_v2/js/*.js; do node --check "$f"; done
 node --check simulador_stop_and_wait_web/js/protocol.js
 node --check simulador_stop_and_wait_web/js/app.js
 python -m py_compile simulador_stop_and_wait_python/*.py
 ```
 
-Baseline 2026-09-07, Node v24.11.1 y Python 3.13.14: **48 pruebas verdes, 0 fallas**; el resto,
-limpio. La interfaz no tiene pruebas automáticas: se verifica con el render sin cabeza y con el
+Baseline 2026-09-07, Node v24.11.1 y Python 3.13.14: **48 pruebas verdes, 0 fallas**; el lint de
+documentación limpio sobre 15 documentos; el resto, sin avisos.
+
+> **Este archivo es la fuente única del conteo de pruebas.** Ningún otro documento lo repite: lo
+> enlazan. El lint falla si aparece en otro sitio, y también si el número escrito aquí no coincide
+> con las pruebas que hay de verdad en el repositorio.
+
+## Lint de documentación
+
+```bash
+node tools/lint-docs.js
+```
+
+Sin dependencias. Comprueba cuatro cosas mecánicas: enlaces rotos entre documentos, rutas citadas
+que no existen, citas del tipo `archivo.js:NN` (que además desaconseja: mejor el nombre de la
+función) y el conteo de pruebas fuera de su fuente única o desactualizado.
+
+**No comprueba** si una frase describe algo que el código no hace. Eso solo lo ve alguien leyendo
+el texto contra el código, y por eso sigue siendo una regla de `04-convenciones.md` y no una
+tarea del script.
+
+Los documentos fechados —`07-historial.md` y `docs/superpowers/`— se libran de las comprobaciones
+de rutas y conteos: son registros de su momento, y corregirlos falsificaría el archivo. Sus
+enlaces sí se comprueban.
+
+Para citar a propósito un archivo que **no** existe (por ejemplo, para decir que el proyecto no
+tiene `package.json`), se marca la línea con `<!-- lint:ruta-ausente -->`. La interfaz no tiene pruebas automáticas: se verifica con el render sin cabeza y con el
 checklist de humo.
 
 ## Verificar la interfaz sin Chrome instalado
@@ -148,8 +174,8 @@ de paso" en medio del checklist.
 
 | Síntoma | Causa | Qué hacer |
 |---|---|---|
-| Un control nuevo no responde y la consola dice `Cannot read properties of undefined` | El elemento no se registró en `_cacheDom()` (`js/app.js:141`) | Agregarle `id` en `index.html` y su línea en `_cacheDom()` |
+| Un control nuevo no responde y la consola dice `Cannot read properties of undefined` | El elemento no se registró en `_cacheDom()` | Agregarle `id` en `index.html` y su línea en `_cacheDom()` |
 | Se edita un `.js` y el navegador sigue mostrando lo viejo | Caché del navegador | Recarga dura (`Ctrl+F5`) o DevTools con *Disable cache* |
 | La pestaña en segundo plano deja la animación "atrasada" | El navegador limita `requestAnimationFrame` fuera de foco | Es del navegador, no del simulador: no perseguirlo |
 | `python main.py` falla con `ModuleNotFoundError: tkinter` | Python sin soporte Tk | Usar el instalador oficial de Python; no afecta a la versión web |
-| El temporizador corre aunque no se haya provocado ninguna pérdida | **Correcto**: `timerActive` corre siempre; `isWaitingTimeout` es solo para la pérdida explícita (`js/protocol.js:13-21`) | No "corregirlo" |
+| El temporizador corre aunque no se haya provocado ninguna pérdida | **Correcto**: `timerActive` corre siempre; `isWaitingTimeout` es solo para la pérdida explícita | No "corregirlo" |

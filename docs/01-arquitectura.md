@@ -27,15 +27,15 @@ rompe ese requisito. Es una regla dura, no una preferencia.
 
 Ambas versiones usan la misma partición:
 
-- **Modelo** — `js/protocol.js:4` (`StopAndWaitProtocol`) · `protocol.py:16`
-  (`StopAndWaitProtocol`, más `Packet` en `protocol.py:4`).
+- **Modelo** — la clase `StopAndWaitProtocol`, en `js/protocol.js` y en `protocol.py`
+  (esta última con `Packet` al lado).
   Dueño único de: número de secuencia (`seqNum` / `seq_num`, alterna 0↔1 con `nextSeq()`),
   secuencia esperada por el receptor (`rxExpectedSeq`), estado
   (`IDLE`, `TRANSMITTING`, `WAITING_ACK`, `TIMEOUT`, `FINISHED`), contadores de telemetría
   (`framesSent`, `acksReceived`, `framesLost`, `acksLost`, `retransmissions`) y las magnitudes
   derivadas expuestas como getters/propiedades: `totalLost`, `efficiency`, `elapsedTime`.
-- **Vista y orquestación** — `js/app.js` (clase `SimulatorApp`, `js/app.js:98`) ·
-  `gui.py` (`SimulatorGUI`, `gui.py:105`). Dibujan, animan, escuchan botones y **leen** el
+- **Vista y orquestación** — la clase `SimulatorApp` en `js/app.js` y `SimulatorGUI` en
+  `gui.py`. Dibujan, animan, escuchan botones y **leen** el
   modelo. No recalculan reglas del protocolo.
 
 **Regla:** un concepto derivado tiene un solo dueño. La eficiencia se lee de
@@ -50,7 +50,8 @@ Ambas versiones usan la misma partición:
   que llega su ACK o expira (`timerActive`), como en el protocolo real. `isWaitingTimeout` es
   otra cosa: marca que hubo una **pérdida explícita** provocada por el usuario, y solo controla
   el aviso de "tiempo infinito" y la etiqueta de estado. Están comentados en
-  `js/protocol.js:13-21`; confundirlos es el error fácil de este archivo.
+  el constructor de `StopAndWaitProtocol`, junto a la declaración de ambos campos; confundirlos
+  es el error fácil de este archivo.
 - `efficiency` = `currentFrameIdx / framesSent · 100`: tramas entregadas sobre transmisiones
   totales. Devuelve `100.0` cuando aún no se envió nada.
 
@@ -60,15 +61,15 @@ La versión web es la que se siguió desarrollando. **Solo la web** tiene:
 
 | Feature | Dónde |
 |---|---|
-| Parámetros físicos del enlace editables: `linkFrameBits` (L), `linkRateBps` (R), `linkDistanceKm` (D), `linkVelocityKmS` (V) | `js/protocol.js:43-46` |
-| Tiempos y utilización teóricos: `transmissionTimeMs` (Tt), `propagationTimeMs` (Tp), `aRatio` (a = Tp/Tt), `utilization` (U = 1/(1+2a)), `idlePercent` | `js/protocol.js:55-84` |
-| **ACK retrasado** (`delayAck`) y su contador `lateAcks`, con paquete que viaja aparte (`delayedPacket`) | `js/app.js:722` |
-| Tema claro/oscuro persistido, cola de alertas modales, canvas responsivo | `js/app.js:281`, `:369`, `:304` |
+| Parámetros físicos del enlace editables: `linkFrameBits` (L), `linkRateBps` (R), `linkDistanceKm` (D), `linkVelocityKmS` (V) | constructor de `StopAndWaitProtocol` |
+| Tiempos y utilización teóricos: `transmissionTimeMs` (Tt), `propagationTimeMs` (Tp), `aRatio` (a = Tp/Tt), `utilization` (U = 1/(1+2a)), `idlePercent` | getters de `StopAndWaitProtocol` |
+| **ACK retrasado** (`delayAck`) y su contador `lateAcks`, con paquete que viaja aparte (`delayedPacket`) | `delayAck()` |
+| Tema claro/oscuro persistido, cola de alertas modales, canvas responsivo | `_initTheme()`, `_alert()`, `_setupCanvasResize()` |
 
-La versión Tkinter cubre el núcleo: enviar, perder trama (`kill_frame`, `gui.py:616`),
-perder ACK (`kill_ack`, `gui.py:638`), timeout y retransmisión, telemetría básica.
+La versión Tkinter cubre el núcleo: enviar, perder trama (`kill_frame`), perder ACK
+(`kill_ack`), timeout y retransmisión, telemetría básica.
 Los parámetros del enlace **no se reinician** con `resetStats()` en la web: son configuración,
-no estado del run (`js/protocol.js:42`).
+no estado del run.
 
 **Consecuencia práctica:** ninguna de las dos se mantiene ya. Lo escrito arriba describe cómo
 quedaron el 2026-09-07 y por qué divergían; sirve para leerlas, no para seguir trabajándolas.
@@ -94,7 +95,7 @@ simulador_stop_and_wait_python/
   protocol.py     # modelo + Packet
 ```
 
-`app.js` cachea el DOM en `_cacheDom()` (`js/app.js:141`): al agregar un control en
+`app.js` cachea el DOM en `_cacheDom()`: al agregar un control en
 `index.html` hay que darle `id` y registrarlo ahí, o queda `undefined` en silencio.
 
 
@@ -116,7 +117,7 @@ y sin login**. Diseño completo en
 | `js/ui.js` | Interfaz del simulador: diagrama, cadena, inspector. **No decide nada del protocolo** |
 | `js/steps.js` | **Desarrollo paso a paso como datos**: cada paso es `{titulo, formula, sustitucion, resultado, detalle[]}`, no un párrafo de texto |
 | `js/calc.js` | Interfaz de la calculadora: bloques, despliegue progresivo y las dos gráficas |
-| `tests/` | 43 pruebas con el runner nativo de Node |
+| `tests/` | Las pruebas de los tres modelos, con el runner nativo de Node. El conteo vive en [05-runbook.md](05-runbook.md) |
 
 Los tres modelos usan el mismo envoltorio UMD: el navegador los ve como `window.FrameModel`,
 `window.NetworkModel` y `window.SimModel`, y Node los carga con `require`. Por eso las mismas
@@ -144,7 +145,7 @@ que lo comprueba con tolerancia `1e-12`, así que no puede divergir sin que fall
 
 ## Modos de canal
 
-`network.js:29` expone `DUPLEX.HALF` y `DUPLEX.FULL`, y **no** un modo "simplex": simplex es el
+`network.js` expone `DUPLEX.HALF` y `DUPLEX.FULL` en su objeto `DUPLEX`, y **no** un modo "simplex": simplex es el
 sentido del tráfico de datos, no un modo de canal. El motivo, con las citas del libro, está en el
 spec. Half duplex suma el tiempo de vuelta del medio **dos veces por ciclo** y deja el RTT intacto.
 

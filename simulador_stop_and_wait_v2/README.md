@@ -41,8 +41,9 @@ ninguna dependencia**:
 node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js simulador_stop_and_wait_v2/tests/steps.test.js
 ```
 
-Al 2026-09-07: **48 pruebas, 0 fallas**. (Pasar una carpeta a `node --test` falla en este
-equipo; hay que nombrar los archivos.)
+El conteo y el baseline viven en [`../docs/05-runbook.md`](../docs/05-runbook.md), que es su
+fuente única. (Pasar una carpeta a `node --test` falla en este equipo; hay que nombrar los
+archivos.)
 
 Cada fórmula que aparece en la interfaz tiene su caso con un número publicado:
 
