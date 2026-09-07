@@ -1,0 +1,355 @@
+/* style.css — hoja propia, sin frameworks ni dependencias. */
+
+:root {
+  --bg: #f5f7fa;
+  --card-bg: #ffffff;
+  --card-border: #dde3ec;
+  --text: #16202f;
+  --text-dim: #5b6779;
+  --accent: #2563eb;
+  --accent-soft: #dbe6ff;
+  --good: #16a34a;
+  --warn: #d97706;
+  --bad: #dc2626;
+  --code-bg: #f0f3f8;
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(15, 25, 45, 0.06), 0 4px 16px rgba(15, 25, 45, 0.05);
+}
+
+:root[data-theme="dark"] {
+  --bg: #0d1320;
+  --card-bg: #151d2e;
+  --card-border: #26314a;
+  --text: #e8edf7;
+  --text-dim: #93a0b7;
+  --accent: #60a5fa;
+  --accent-soft: #1e2b45;
+  --good: #4ade80;
+  --warn: #fbbf24;
+  --bad: #f87171;
+  --code-bg: #0f1728;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+/* ---------- Cabecera ---------- */
+
+.topbar {
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--card-border);
+}
+
+.topbar-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 18px 20px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: var(--text-dim);
+  font-size: 13.5px;
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ---------- Estructura ---------- */
+
+.layout {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 22px 20px 60px;
+  display: grid;
+  gap: 18px;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+.card h2 {
+  margin: 0 0 14px;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.card-head h2 { margin-bottom: 14px; }
+
+.note {
+  margin: 14px 0 0;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+/* ---------- Campos ---------- */
+
+.field-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(160px, 240px);
+  gap: 10px 18px;
+  align-items: center;
+}
+
+label { font-size: 13.5px; }
+
+input, select {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--card-border);
+  border-radius: 7px;
+  font: inherit;
+  font-size: 14px;
+}
+
+input:focus, select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ---------- Enlaces del camino ---------- */
+
+.links-container { display: grid; gap: 12px; }
+
+.link-row {
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 14px;
+  background: var(--bg);
+}
+
+.link-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.link-index {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.link-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px 14px;
+}
+
+.link-field { display: grid; gap: 4px; }
+.link-field label { font-size: 12px; color: var(--text-dim); }
+
+/* ---------- Botones ---------- */
+
+.btn {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 13.5px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn-secondary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--card-border);
+  color: var(--text);
+}
+
+.btn-ghost:hover { background: var(--accent-soft); }
+
+.btn-small { padding: 4px 10px; font-size: 12.5px; }
+
+.presets {
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.presets-label {
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+/* ---------- Resultados ---------- */
+
+.error-box {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--bad);
+  color: var(--bad);
+  font-size: 13.5px;
+}
+
+.error-box[hidden] { display: none; }
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.result-tile {
+  display: grid;
+  gap: 2px;
+  padding: 14px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.result-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.result-value {
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.result-hint { font-size: 12px; color: var(--text-dim); }
+
+.util-bar {
+  margin: 16px 0 6px;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--card-border);
+  overflow: hidden;
+}
+
+.util-bar-busy {
+  height: 100%;
+  width: 0;
+  background: var(--good);
+  transition: width 0.2s ease;
+}
+
+.result-table {
+  width: 100%;
+  margin-top: 16px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.result-table th,
+.result-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--card-border);
+  vertical-align: top;
+}
+
+.result-table th {
+  font-weight: 500;
+  width: 34%;
+  color: var(--text);
+}
+
+.result-table td { font-variant-numeric: tabular-nums; }
+
+.cell-note {
+  color: var(--text-dim);
+  font-size: 12.5px;
+  font-variant-numeric: normal;
+}
+
+/* ---------- Pasos ---------- */
+
+.steps {
+  margin: 0;
+  padding: 16px;
+  background: var(--code-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  font-family: "Cascadia Mono", Consolas, "SF Mono", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* ---------- Pie ---------- */
+
+.next-card a { margin-top: 12px; }
+
+.footer {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 20px 40px;
+  color: var(--text-dim);
+  font-size: 12.5px;
+}
+
+code {
+  background: var(--code-bg);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 12.5px;
+}
+
+@media (max-width: 620px) {
+  .field-grid { grid-template-columns: 1fr; }
+  .result-value { font-size: 20px; }
+}

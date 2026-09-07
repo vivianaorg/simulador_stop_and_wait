@@ -16,6 +16,9 @@ Dos versiones equivalentes en concepto pero **no idénticas en features**
 
 - `simulador_stop_and_wait_web/` — HTML + CSS + JavaScript puro, canvas 2D, **sin build ni
   dependencias**. Es la versión **más avanzada** y la que se demuestra.
+- `simulador_stop_and_wait_v2/` — **donde se trabaja ahora**. Calculadora de camino de N saltos
+  (casa → satélite → casa) con el motor de fórmulas probado contra el libro. Sitio estático, sin
+  build, sin base de datos y sin login. Ver [01-arquitectura.md](01-arquitectura.md).
 - `simulador_stop_and_wait_python/` — Tkinter sobre la stdlib de Python 3. **Congelada desde el
   2026-09-07**: no se desarrolla más; queda como referencia de la que se puede portar algo a la
   web si hace falta.
@@ -25,11 +28,15 @@ Tamaño real (2026-09-07, `wc -l`): web **2 349 líneas** (`app.js` 1 204 · `st
 `main.py` 21). Sin `package.json`, sin `requirements.txt`.
 
 Estado de calidad verificado el 2026-09-07:
-`python -m py_compile simulador_stop_and_wait_python/*.py` → limpio ·
-`node --check` sobre `js/protocol.js` y `js/app.js` → limpio ·
-**suite de tests: no existe** (decisión declarada, ver [04-convenciones.md](04-convenciones.md)).
+`node --test simulador_stop_and_wait_v2/tests/network.test.js` → **15 pruebas, 0 fallas** ·
+`node --check` sobre los cuatro `.js` → limpio ·
+`python -m py_compile simulador_stop_and_wait_python/*.py` → limpio.
+El v1 y la versión Tkinter **siguen sin tests**; los tests cubren el motor del v2.
 
-Trabajo en curso: cerrar la entrega. Ver [06-pendientes.md](06-pendientes.md).
+Trabajo en curso: **motor multi-salto + calculadora (v2)**.
+[Spec](superpowers/specs/2026-09-07-motor-multisalto-design.md) ·
+[Plan](superpowers/plans/2026-09-07-motor-multisalto.md) ·
+[06-pendientes.md](06-pendientes.md).
 
 ## Mapa de la documentación
 
@@ -43,7 +50,7 @@ Trabajo en curso: cerrar la entrega. Ver [06-pendientes.md](06-pendientes.md).
 | [07-historial.md](07-historial.md) | **Changelog**: qué, por qué, cómo revertir | Después de cada cambio relevante |
 
 `02` y `03` no existen: el proyecto no tiene subsistemas con vida propia que documentar aparte.
-No hay `docs/_archivo/` ni `docs/superpowers/` todavía; se crean el día que hagan falta.
+`docs/superpowers/` sí existe ya: [specs y planes](superpowers/README.md). No hay `_archivo/`.
 
 ### Fuera de `docs/`
 

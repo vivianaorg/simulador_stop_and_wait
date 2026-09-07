@@ -42,9 +42,15 @@ entre archivos: se enlaza · corto · referencias a código como `ruta/archivo.e
 
 - **Cero dependencias externas y cero build.** Nada de npm, bundlers, CDNs, frameworks ni
   paquetes pip. Quien evalúa el trabajo tiene que poder servir la carpeta y verlo funcionar.
-- **Solo se desarrolla `simulador_stop_and_wait_web/`.** `simulador_stop_and_wait_python/` está
-  **congelada** desde el 2026-09-07: se puede leer y portar una idea desde ahí hacia la web,
-  pero no se la modifica ni se busca paridad de features.
+- **El trabajo nuevo va a `simulador_stop_and_wait_v2/`.** `simulador_stop_and_wait_web/` (v1)
+  se mantiene entregable y se integrará contra el motor del v2; `simulador_stop_and_wait_python/`
+  está **congelada** desde el 2026-09-07: se lee y se porta de ahí, no se modifica.
+- **Nada de backend.** Sin base de datos, sin login, sin sesiones, sin API. Es un sitio estático
+  y así se despliega (petición explícita del usuario, 2026-09-07).
+- **`js/network.js` es el dueño único de las fórmulas.** Ni `calc.js` ni la animación
+  recalculan tiempos, utilización ni probabilidades: los consumen.
+- **Ninguna fórmula llega a la interfaz sin una prueba con un número publicado.** Si no se puede
+  verificar contra el libro o contra su forma cerrada, no se muestra.
 - **`js/protocol.js` es el dueño de la lógica del protocolo.** Secuencias, contadores, tiempos
   del enlace y eficiencia se calculan ahí y `js/app.js` los **consume**. Si la UI necesita un
   número derivado, se agrega un getter al modelo; no se recalcula en la vista.
@@ -71,15 +77,17 @@ Prohibidos como nombre: `tmp`, `data`, `obj`, `manager`, `helper`, `util`.
 
 # Parte C — Pipeline de verificación
 
-**Nivel declarado hoy: N0 — verificación mínima.** No es el N1 de las reglas globales, y eso es
-una **excepción declarada**, no un descuido (motivo abajo).
+**Nivel declarado hoy: N1 parcial.** El motor del v2 tiene suite de pruebas y es obligatorio que
+esté verde; el resto del repo sigue en verificación mínima. Sigue siendo una **excepción
+declarada** frente al N1 global (falta lint, formateador y cobertura), no un descuido.
 
 | Paso | Comando | Estado |
 |---|---|---|
-| Sintaxis JS | `node --check simulador_stop_and_wait_web/js/protocol.js && node --check simulador_stop_and_wait_web/js/app.js` | **obligatorio** |
+| **Pruebas del motor v2** | `node --test simulador_stop_and_wait_v2/tests/network.test.js` | **obligatorio** — 15 pruebas, 0 fallas al 2026-09-07 |
+| Sintaxis JS | `node --check` sobre los `.js` de `simulador_stop_and_wait_web/` y `simulador_stop_and_wait_v2/` | **obligatorio** |
 | Sintaxis Python (versión congelada) | `python -m py_compile simulador_stop_and_wait_python/*.py` | obligatorio mientras el archivo siga en el repo |
 | Prueba manual en navegador | [05-runbook.md](05-runbook.md) § *Checklist de humo* | **obligatorio antes de entregar** |
-| Tests unitarios | — | **no existen** (excepción declarada) |
+| Tests unitarios del v1 y de la versión Tkinter | — | **no existen** (excepción declarada) |
 | Cobertura · mutación · métricas | — | fuera de alcance |
 
 **Evidencia antes que afirmación.** No se dice "funciona" sin haber corrido el comando o abierto
@@ -89,8 +97,8 @@ el navegador. Si falla, se dice que falla y se pega la salida.
 
 | Regla global | Excepción en este repo | Motivo |
 |---|---|---|
-| Pipeline N1 obligatorio (type-check, lint, formateador, suite unitaria) | **N0**: solo chequeo de sintaxis + prueba manual guiada | Trabajo académico con entrega el **2026-09-09**. Montar Node/tooling contradice además la regla de "cero dependencias". Queda como pendiente `Q-01`, no como deuda oculta |
-| TDD: test que falla → implementación → verde | **No se aplica**: no hay framework de tests | Mismo motivo. El reemplazo es el **checklist de humo** del runbook, que se corre entero antes de entregar |
+| Pipeline N1 obligatorio (type-check, lint, formateador, suite unitaria) | **Parcial**: suite unitaria sí, pero solo del motor del v2; sin lint ni formateador | Entrega el **2026-09-09** y regla de cero dependencias. El runner nativo `node --test` permitió tener pruebas sin instalar nada; lint y formateador sí exigirían tooling. Queda como `Q-02` |
+| TDD: test que falla → implementación → verde | **Se aplica al motor del v2**; en la interfaz, no | La UI se verifica con el checklist de humo del runbook y con un render sin cabeza del navegador |
 | Spec + plan antes de una feature | Solo para cambios que toquen la lógica del protocolo; el resto va directo | Alcance chico y una sola persona trabajando |
 | Toda feature incluye su frontend | Trivial acá: el proyecto **es** un frontend | — |
 

@@ -2,6 +2,11 @@
 
 Estado técnico al **2026-09-07**. Describe lo que hay, no lo que debería haber.
 
+> Desde el 2026-09-07 hay **dos proyectos web**: el simulador animado (`simulador_stop_and_wait_web/`,
+> v1) y el nuevo motor con calculadora (`simulador_stop_and_wait_v2/`). El trabajo nuevo va al v2;
+> el v1 sigue entregable y se integrará contra el motor del v2. Ver
+> [el plan](superpowers/plans/2026-09-07-motor-multisalto.md).
+
 ## Stack y decisión de fondo
 
 | | Web (`simulador_stop_and_wait_web/`) | Escritorio (`simulador_stop_and_wait_python/`) |
@@ -85,3 +90,52 @@ simulador_stop_and_wait_python/
 
 `app.js` cachea el DOM en `_cacheDom()` (`js/app.js:141`): al agregar un control en
 `index.html` hay que darle `id` y registrarlo ahí, o queda `undefined` en silencio.
+
+
+---
+
+# v2 — motor de camino multi-salto y calculadora
+
+`simulador_stop_and_wait_v2/`. Sitio estático: **sin build, sin dependencias, sin base de datos
+y sin login**. Diseño completo en
+[superpowers/specs/2026-09-07-motor-multisalto-design.md](superpowers/specs/2026-09-07-motor-multisalto-design.md).
+
+## Separación
+
+| Archivo | Rol |
+|---|---|
+| `js/network.js` | **Dueño único de las fórmulas.** Sin DOM, exportable con UMD: el navegador lo ve como `window.NetworkModel` y Node lo carga con `require` |
+| `js/calc.js` | Interfaz: lee los controles, llama a `analyze()` y pinta. **No calcula nada** |
+| `tests/network.test.js` | 15 pruebas con el runner nativo de Node |
+
+## Modelo
+
+Un camino es una **cadena de N enlaces en serie** con store-and-forward: cada nodo intermedio
+recibe la trama entera antes de reenviarla, así que paga `Tt` otra vez. Un enlace suelto es
+simplemente una cadena de 1, así que el caso del libro y el multi-salto comparten código.
+
+```
+ciclo = (Σ Tt + Σ Tp + proceso) + (Σ Tt_ack + Σ Tp + proceso) + (half duplex ? 2·Σ turnaround : 0)
+U     = Tt(emisor) / ciclo          a = Σ Tp / Σ Tt
+```
+
+Con un salto y ACK despreciable esto se reduce **exactamente** a `U = 1/(1+2a)`; hay una prueba
+que lo comprueba con tolerancia `1e-12`, así que no puede divergir sin que falle el pipeline.
+
+## Modos de canal
+
+`network.js:29` expone `DUPLEX.HALF` y `DUPLEX.FULL`, y **no** un modo "simplex": simplex es el
+sentido del tráfico de datos, no un modo de canal. El motivo, con las citas del libro, está en el
+spec. Half duplex suma el tiempo de vuelta del medio **dos veces por ciclo** y deja el RTT intacto.
+
+## Errores
+
+Cada tramo tiene `errorProbData` y `errorProbAck` independientes. Se componen:
+`P(éxito) = Π(1−P_datos_i) · Π(1−P_ack_i)`. De ahí salen la utilización efectiva `U·(1−P)`, las
+transmisiones esperadas `1/(1−P)` y el caudal útil. El emisor **no distingue** si se perdió la
+trama o el ACK: hay una prueba que lo fija.
+
+## Lo que el v2 todavía no tiene
+
+Animación (sigue en el v1), dibujo de la cadena de nodos, y la integración de ambos. Es el
+trabajo de las tareas 4 y 5 del plan.

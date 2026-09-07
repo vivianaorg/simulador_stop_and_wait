@@ -8,6 +8,46 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-07 — v2: motor de camino multi-salto y calculadora, con pruebas contra el libro
+
+**Qué:** proyecto nuevo `simulador_stop_and_wait_v2/` — sitio estático sin build, sin
+dependencias, **sin base de datos y sin login**. Contiene:
+
+- `js/network.js`: modelo de un camino de **N saltos en serie** con store-and-forward. Calcula
+  Tt, Tp, `a`, RTT, ciclo, utilización, utilización efectiva con probabilidad de error,
+  transmisiones esperadas, caudal útil, BDP y timeout mínimo. Modos de canal half y full duplex.
+- `tests/network.test.js`: **15 pruebas** con el runner nativo de Node.
+- `index.html` + `js/calc.js` + `css/style.css`: calculadora con saltos editables, tres presets
+  verificados y el desarrollo paso a paso de cada fórmula.
+
+Decisiones que quedaron fijadas (detalle en el
+[spec](superpowers/specs/2026-09-07-motor-multisalto-design.md)): cadena de N saltos en vez de
+grafo libre · **solo Stop & Wait**, sin ventana deslizante · precisión por encima de features ·
+proyecto aparte para no poner en riesgo el v1.
+
+**Por qué:** el v1 modelaba un solo enlace y no podía responder "casa → satélite → casa", ni
+servir de calculadora, ni justificar sus números. Se pidió precisión respecto al libro, y la
+única forma de sostenerla es que cada fórmula tenga una prueba con un número publicado.
+
+**Evidencia (2026-09-07):**
+
+- `node --test simulador_stop_and_wait_v2/tests/network.test.js` → **15 pruebas, 0 fallas**.
+  Incluye el satélite de Tanenbaum (Tt = 20 ms, ciclo = 520 ms, **U = 3,846 %**, BDP = 26 tramas)
+  y la LAN (**a = 0,1 · U = 0,8333**).
+- Página renderizada de verdad con el Chromium de Playwright sin cabeza: muestra
+  `U = 3.85 %`, `ocioso 96.15 %`, `RTT 520.000 ms`, `BDP 26000 bits · 26.00 tramas`.
+- Cableado del DOM: 25 de 25 `getElementById` tienen su `id` en el HTML.
+
+**Cómo revertir:** `git rm -r simulador_stop_and_wait_v2` y quitar la sección "v2" de
+`docs/01-arquitectura.md`. El v1 y la versión Tkinter no se tocaron.
+
+**Lección:** el runner `node --test` da suite de pruebas **sin instalar nada**, así que la regla
+de "cero dependencias" nunca fue una excusa válida para no tener tests. Y verificar la
+terminología del libro antes de diseñar evitó un error de bulto: *duplex* no es un tercer modo
+junto a half y full, y *simplex* describe el tráfico de datos, no el canal.
+
+---
+
 ## 2026-09-07 — Documentación adoptada y alcance reducido a la versión web
 
 **Qué:** se montó `docs/` (`00`, `01`, `04`, `05`, `06`, `07`) y se escribieron `CLAUDE.md` y

@@ -3,7 +3,19 @@
 Comandos y procedimientos, para copiar y pegar. Si un comando cambia, se cambia acá el mismo día.
 Todo se ejecuta desde la raíz del repo salvo que se diga otra cosa.
 
-## Ejecutar la versión web (la que se entrega)
+## Ejecutar el v2 (calculadora, donde se trabaja)
+
+```bash
+python -m http.server 8000 --directory simulador_stop_and_wait_v2
+```
+
+Pruebas del motor, con el runner nativo de Node (**no instala nada**):
+
+```bash
+node --test simulador_stop_and_wait_v2/tests/network.test.js
+```
+
+## Ejecutar el v1 (simulador animado)
 
 ```bash
 python -m http.server 8000 --directory simulador_stop_and_wait_web
@@ -26,18 +38,53 @@ python simulador_stop_and_wait_python/main.py
 Requiere un Python con Tk (el instalador oficial de Windows lo trae). No se desarrolla más:
 ver [04-convenciones.md](04-convenciones.md) § B.1.
 
-## Verificación (pipeline N0)
+## Verificación (pipeline)
 
 ```bash
+node --test simulador_stop_and_wait_v2/tests/network.test.js
+node --check simulador_stop_and_wait_v2/js/network.js
+node --check simulador_stop_and_wait_v2/js/calc.js
 node --check simulador_stop_and_wait_web/js/protocol.js
 node --check simulador_stop_and_wait_web/js/app.js
 python -m py_compile simulador_stop_and_wait_python/*.py
 ```
 
-Baseline 2026-09-07 con Node v24.11.1 y Python 3.13.14: **los tres limpios**. No hay suite de
-tests; el reemplazo es el checklist de abajo.
+Baseline 2026-09-07, Node v24.11.1 y Python 3.13.14: **15 pruebas verdes, 0 fallas**; el resto,
+limpio. La interfaz no tiene pruebas automáticas: se verifica con el render sin cabeza y con el
+checklist de humo.
 
-## Checklist de humo (obligatorio antes de entregar)
+## Verificar la interfaz sin Chrome instalado
+
+Playwright no encuentra Chrome en este PC, pero su Chromium **ya está descargado**. Se puede
+renderizar la página de verdad (ejecuta el JavaScript) y volcar el DOM resultante:
+
+```bash
+CH="C:/Users/gogam/AppData/Local/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-win64/chrome-headless-shell.exe"
+python -m http.server 8123 --directory simulador_stop_and_wait_v2 &
+"$CH" --disable-gpu --no-sandbox --virtual-time-budget=5000 --dump-dom http://localhost:8123/ > dom.html
+"$CH" --disable-gpu --no-sandbox --virtual-time-budget=5000 --window-size=1280,2200 --screenshot=calc.png http://localhost:8123/
+```
+
+Comprobación rápida de que los números son los del libro:
+
+```bash
+grep -o 'id="out-u">[^<]*' dom.html      # -> 3.85 %
+grep -o 'id="out-bdp">[^<]*' dom.html    # -> 26000 bits · 26.00 tramas
+```
+
+También conviene comprobar que todo `getElementById` del JS tiene su `id` en el HTML: es la
+gotcha más habitual de este proyecto y no da error visible.
+
+## Checklist de humo del v2 (calculadora)
+
+1. Los tres presets cargan y dan: **satélite** U = 3,85 % y BDP 26 tramas · **LAN** a = 0,1 y
+   U = 83,33 % · **casa → satélite → casa** RTT = 482,15 ms, a = 79,52 y U = 0,207 % con 2 saltos.
+2. "Añadir salto" y "Quitar" funcionan; con un solo salto, "Quitar" avisa y no borra.
+3. Un valor inválido (R = 0, V = 0, P = 1,5) muestra el mensaje de error, no un `NaN`.
+4. Cambiar a half duplex con tiempo de vuelta > 0 sube el ciclo y baja U, **sin mover el RTT**.
+5. El desarrollo paso a paso coincide con las casillas de arriba.
+
+## Checklist de humo del v1 (simulador animado)
 
 Se corre entero, en el navegador, sobre la versión servida. Cada línea se marca solo si se vio.
 
