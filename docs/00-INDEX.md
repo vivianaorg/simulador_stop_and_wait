@@ -16,9 +16,10 @@ Dos versiones equivalentes en concepto pero **no idénticas en features**
 
 - `simulador_stop_and_wait_web/` — HTML + CSS + JavaScript puro, canvas 2D, **sin build ni
   dependencias**. Es la versión **más avanzada** y la que se demuestra.
-- `simulador_stop_and_wait_v2/` — **donde se trabaja ahora**. Calculadora de camino de N saltos
-  (casa → satélite → casa) con el motor de fórmulas probado contra el libro. Sitio estático, sin
-  build, sin base de datos y sin login. Ver [01-arquitectura.md](01-arquitectura.md).
+- `simulador_stop_and_wait_v2/` — **donde se trabaja ahora**. Simulador con diagrama
+  tiempo-espacio, camino de N puntos editable, inspector de la trama en vuelo y detección de
+  errores por CRC; más una calculadora en su propia página. Sitio estático, sin build, sin base
+  de datos y sin login. Ver [01-arquitectura.md](01-arquitectura.md).
 - `simulador_stop_and_wait_python/` — Tkinter sobre la stdlib de Python 3. **Congelada desde el
   2026-09-07**: no se desarrolla más; queda como referencia de la que se puede portar algo a la
   web si hace falta.
@@ -28,12 +29,13 @@ Tamaño real (2026-09-07, `wc -l`): web **2 349 líneas** (`app.js` 1 204 · `st
 `main.py` 21). Sin `package.json`, sin `requirements.txt`.
 
 Estado de calidad verificado el 2026-09-07:
-`node --test simulador_stop_and_wait_v2/tests/network.test.js` → **15 pruebas, 0 fallas** ·
-`node --check` sobre los cuatro `.js` → limpio ·
+`node --test` sobre los dos archivos de `simulador_stop_and_wait_v2/tests/` →
+**33 pruebas, 0 fallas** ·
+`node --check` sobre los siete `.js` → limpio ·
 `python -m py_compile simulador_stop_and_wait_python/*.py` → limpio.
 El v1 y la versión Tkinter **siguen sin tests**; los tests cubren el motor del v2.
 
-Trabajo en curso: **motor multi-salto + calculadora (v2)**.
+Trabajo en curso: **simulador v2** (motor multi-salto, CRC y diagrama tiempo-espacio).
 [Spec](superpowers/specs/2026-09-07-motor-multisalto-design.md) ·
 [Plan](superpowers/plans/2026-09-07-motor-multisalto.md) ·
 [06-pendientes.md](06-pendientes.md).

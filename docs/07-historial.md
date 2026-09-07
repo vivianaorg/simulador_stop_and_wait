@@ -8,6 +8,52 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-07 — El simulador pasa a ser lo principal: diagrama tiempo-espacio, CRC real y puntos editables
+
+**Qué:**
+
+- `index.html` es ahora **el simulador**; la calculadora se movió a `calculadora.html`.
+- **Diagrama tiempo-espacio** como pieza central (`js/ui.js`): el tiempo baja, cada vertical es
+  un punto del camino y las flechas cruzan entre ellas. La historia se acumula en pantalla en
+  vez de borrarse, y produce la misma figura con la que el libro explica el protocolo.
+- **`js/frame.js`**: tramas con **CRC-16/CCITT-FALSE**. El receptor recalcula y compara; no hay
+  ninguna bandera de "esta venía dañada".
+- **`js/sim.js`**: máquina de estados de Stop & Wait sobre N saltos con tiempo simulado
+  explícito (`advance(dtMs)`), generador de ruido con semilla y bitácora de eventos.
+- **Inspector de la trama en vuelo**: se puede voltear cualquiera de sus 80 bits —incluidos los
+  16 del CRC—, forzar el número de secuencia, destruirla o retrasarla.
+- **Puntos del camino editables** desde la propia página, con distancia, tasa, velocidad y
+  probabilidad de error por tramo.
+- **Interruptor de NAK**: apagado es el Protocolo 3 (descarte silencioso, el emisor se entera
+  por el temporizador); encendido, la variante ARQ con NAK.
+- Estética rehecha en plano: fuera degradados, sombras y brillos; el color solo significa.
+
+**Por qué:** lo pedido era un simulador, no una calculadora, y el v1 tenía tres límites de
+fondo: un solo enlace, la animación se borraba sin dejar registro, y las "pérdidas" eran
+banderas, no errores detectables. El CRC real es lo que convierte el trabajo en algo
+demostrable: se voltea un bit delante de quien evalúa y el receptor lo rechaza solo.
+
+**Evidencia (2026-09-07):**
+
+- `node --test` sobre los dos archivos de pruebas → **33 pruebas, 0 fallas**. Entre ellas: el
+  CRC detecta el volteo de **cada uno** de los 80 bits; sin NAK se espera al temporizador y con
+  NAK no; un ACK dañado deja al emisor esperando y su copia se descarta como duplicada; el
+  tiempo que mide la simulación coincide con el RTT que calcula `network.js`.
+- Simulador renderizado de verdad con el Chromium sin cabeza, empujado con el botón *Un paso*:
+  dibuja el ciclo completo con dos saltos, la alternancia 0/1 y el timeout provocado al dañar
+  un bit.
+
+**Cómo revertir:** `git revert` de este commit. El motor de cálculo (`network.js`) y sus pruebas
+no cambiaron.
+
+**Lección:** el timeout por defecto estaba fijado a 60 ms mientras el RTT de un camino de dos
+saltos es exactamente 60 ms, así que el emisor retransmitía justo cuando el ACK llegaba y todo
+se veía como duplicados. No era un fallo del dibujo sino una configuración imposible: ahora el
+timeout se calcula del camino (RTT + 50 %) mientras el usuario no escriba uno propio. Un valor
+por defecto que contradice al modelo se lee como un error del programa.
+
+---
+
 ## 2026-09-07 — v2: motor de camino multi-salto y calculadora, con pruebas contra el libro
 
 **Qué:** proyecto nuevo `simulador_stop_and_wait_v2/` — sitio estático sin build, sin

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculadora de enlace — Stop &amp; Wait</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div>
+      <h1>Stop &amp; Wait — calculadora de enlace</h1>
+      <p class="subtitle">Tiempos, utilización y caudal de un camino de varios saltos. Protocolo 3 (PAR) de Tanenbaum, cap. 3.</p>
+    </div>
+    <label class="theme-toggle">
+      <input type="checkbox" id="theme-switch" checked>
+      <span>Modo oscuro</span>
+    </label>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="card">
+    <h2>1 · Trama y canal</h2>
+
+    <div class="field-grid">
+      <label for="frame-bits">Tamaño de la trama · L (bits)</label>
+      <input type="number" id="frame-bits" min="1" step="1" value="1000">
+
+      <label for="ack-bits">Tamaño del ACK (bits)</label>
+      <input type="number" id="ack-bits" min="0" step="1" value="0">
+
+      <label for="duplex-mode">Modo del canal</label>
+      <select id="duplex-mode">
+        <option value="full" selected>Full duplex — ambos sentidos a la vez</option>
+        <option value="half">Half duplex — alternancia estricta</option>
+      </select>
+
+      <label for="processing-ms">Procesamiento por nodo intermedio (ms)</label>
+      <input type="number" id="processing-ms" min="0" step="0.1" value="0">
+    </div>
+
+    <p class="note">
+      El tráfico de datos es <strong>simplex</strong> (solo A→B): así llama el libro a este protocolo.
+      El canal, en cambio, tiene que ser bidireccional para que vuelva el ACK — y con la alternancia
+      estricta de Stop &amp; Wait <em>«a half-duplex physical channel would suffice»</em>.
+      Un ACK de 0 bits reproduce el supuesto del libro: su tiempo de transmisión es despreciable.
+    </p>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="card">
+    <div class="card-head">
+      <h2>2 · Camino</h2>
+      <button type="button" id="btn-add-link" class="btn btn-secondary">Añadir salto</button>
+    </div>
+
+    <div id="links-container" class="links-container"></div>
+
+    <div class="presets">
+      <span class="presets-label">Ejemplos verificados:</span>
+      <button type="button" class="btn btn-ghost" data-preset="satelite">Satélite del libro (50 kbps)</button>
+      <button type="button" class="btn btn-ghost" data-preset="lan">LAN 10 Mbps · 1 km</button>
+      <button type="button" class="btn btn-ghost" data-preset="casa-satelite-casa">Casa → satélite → casa</button>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="card results-card">
+    <h2>3 · Resultados</h2>
+
+    <div id="error-box" class="error-box" hidden></div>
+
+    <div class="result-grid">
+      <div class="result-tile">
+        <span class="result-label">Utilización · U</span>
+        <span class="result-value" id="out-u">—</span>
+        <span class="result-hint">sin errores</span>
+      </div>
+      <div class="result-tile">
+        <span class="result-label">Utilización efectiva</span>
+        <span class="result-value" id="out-u-eff">—</span>
+        <span class="result-hint">con la probabilidad de error</span>
+      </div>
+      <div class="result-tile">
+        <span class="result-label">Canal ocioso</span>
+        <span class="result-value" id="out-idle">—</span>
+        <span class="result-hint">del ciclo</span>
+      </div>
+      <div class="result-tile">
+        <span class="result-label">Caudal útil</span>
+        <span class="result-value" id="out-throughput">—</span>
+        <span class="result-hint">bits entregados por segundo</span>
+      </div>
+    </div>
+
+    <div class="util-bar" aria-hidden="true">
+      <div class="util-bar-busy" id="util-bar-busy"></div>
+    </div>
+
+    <table class="result-table">
+      <tbody>
+        <tr><th>Tt del emisor</th><td id="out-tt-sender">—</td><td class="cell-note">tiempo poniendo bits en el primer tramo</td></tr>
+        <tr><th>Tt total (todos los saltos)</th><td id="out-tt-total">—</td><td class="cell-note">store-and-forward: cada nodo retransmite</td></tr>
+        <tr><th>Tp total</th><td id="out-tp-total">—</td><td class="cell-note">suma de la propagación de cada tramo</td></tr>
+        <tr><th>a = Tp / Tt</th><td id="out-a">—</td><td class="cell-note">parámetro del enlace</td></tr>
+        <tr><th>RTT</th><td id="out-rtt">—</td><td class="cell-note">ida + vuelta del ACK</td></tr>
+        <tr><th>Tiempo de vuelta del medio</th><td id="out-turnaround">—</td><td class="cell-note">solo half duplex, 2 veces por ciclo</td></tr>
+        <tr><th>Ciclo completo</th><td id="out-cycle">—</td><td class="cell-note">lo que el emisor espera entre trama y trama</td></tr>
+        <tr><th>Timeout mínimo razonable</th><td id="out-timeout">—</td><td class="cell-note">por debajo del RTT hay retransmisiones inútiles</td></tr>
+        <tr><th>P de fallo del ciclo</th><td id="out-perr">—</td><td class="cell-note">trama o ACK dañados en cualquier tramo</td></tr>
+        <tr><th>Transmisiones por trama entregada</th><td id="out-attempts">—</td><td class="cell-note">media esperada</td></tr>
+        <tr><th>Producto ancho de banda · retardo</th><td id="out-bdp">—</td><td class="cell-note">bits que caben en el canal en un RTT</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="card">
+    <h2>4 · Desarrollo paso a paso</h2>
+    <p class="note">Las mismas cuentas, escritas como se piden en un examen.</p>
+    <pre id="steps" class="steps">—</pre>
+  </section>
+
+  <section class="card next-card">
+    <h2>Simulador animado</h2>
+    <p class="note">
+      La animación del protocolo (envío, ACK, pérdidas, timeout y retransmisión) está en la
+      versión actual del simulador y se integrará con este motor en el siguiente paso.
+    </p>
+    <a class="btn btn-secondary" href="index.html">Volver al simulador</a>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <p>
+    Fórmulas: Tanenbaum &amp; Wetherall, <em>Computer Networks</em> 5.ª ed., cap. 3 ·
+    notación <code>a = (R·d)/(V·L)</code>, <code>U = 1/(1+2a)</code>.
+    Cada resultado de esta página tiene una prueba automática con un número publicado.
+  </p>
+</footer>
+
+<script src="js/network.js"></script>
+<script src="js/calc.js"></script>
+</body>
+</html>

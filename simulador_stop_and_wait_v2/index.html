@@ -1,151 +1,160 @@
 <!DOCTYPE html>
-<html lang="es" data-theme="dark">
+<html lang="es" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Calculadora Stop &amp; Wait — enlaces de varios saltos</title>
+  <title>Simulador Stop &amp; Wait</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<header class="topbar">
-  <div class="topbar-inner">
-    <div>
-      <h1>Stop &amp; Wait — calculadora de enlace</h1>
-      <p class="subtitle">Tiempos, utilización y caudal de un camino de varios saltos. Protocolo 3 (PAR) de Tanenbaum, cap. 3.</p>
-    </div>
-    <label class="theme-toggle">
-      <input type="checkbox" id="theme-switch" checked>
-      <span>Modo oscuro</span>
-    </label>
+<header class="bar">
+  <div>
+    <h1>Simulador Stop &amp; Wait</h1>
+    <span class="where">Protocolo 3 (PAR) de Tanenbaum sobre un camino de varios saltos</span>
   </div>
+  <nav>
+    <a href="calculadora.html">Calculadora de enlace</a>
+    <label class="switch"><input type="checkbox" id="theme-switch"> Fondo oscuro</label>
+  </nav>
 </header>
 
-<main class="layout">
+<div class="work">
 
-  <!-- ---------------------------------------------------------------- -->
-  <section class="card">
-    <h2>1 · Trama y canal</h2>
-
-    <div class="field-grid">
-      <label for="frame-bits">Tamaño de la trama · L (bits)</label>
-      <input type="number" id="frame-bits" min="1" step="1" value="1000">
-
-      <label for="ack-bits">Tamaño del ACK (bits)</label>
-      <input type="number" id="ack-bits" min="0" step="1" value="0">
-
-      <label for="duplex-mode">Modo del canal</label>
-      <select id="duplex-mode">
-        <option value="full" selected>Full duplex — ambos sentidos a la vez</option>
-        <option value="half">Half duplex — alternancia estricta</option>
-      </select>
-
-      <label for="processing-ms">Procesamiento por nodo intermedio (ms)</label>
-      <input type="number" id="processing-ms" min="0" step="0.1" value="0">
+  <div class="stage">
+    <div class="diagram-wrap">
+      <canvas id="diagram"></canvas>
     </div>
-
-    <p class="note">
-      El tráfico de datos es <strong>simplex</strong> (solo A→B): así llama el libro a este protocolo.
-      El canal, en cambio, tiene que ser bidireccional para que vuelva el ACK — y con la alternancia
-      estricta de Stop &amp; Wait <em>«a half-duplex physical channel would suffice»</em>.
-      Un ACK de 0 bits reproduce el supuesto del libro: su tiempo de transmisión es despreciable.
-    </p>
-  </section>
-
-  <!-- ---------------------------------------------------------------- -->
-  <section class="card">
-    <div class="card-head">
-      <h2>2 · Camino</h2>
-      <button type="button" id="btn-add-link" class="btn btn-secondary">Añadir salto</button>
+    <div class="chain-wrap">
+      <canvas id="chain"></canvas>
     </div>
+  </div>
 
-    <div id="links-container" class="links-container"></div>
+  <aside class="rail">
 
-    <div class="presets">
-      <span class="presets-label">Ejemplos verificados:</span>
-      <button type="button" class="btn btn-ghost" data-preset="satelite">Satélite del libro (50 kbps)</button>
-      <button type="button" class="btn btn-ghost" data-preset="lan">LAN 10 Mbps · 1 km</button>
-      <button type="button" class="btn btn-ghost" data-preset="casa-satelite-casa">Casa → satélite → casa</button>
-    </div>
-  </section>
-
-  <!-- ---------------------------------------------------------------- -->
-  <section class="card results-card">
-    <h2>3 · Resultados</h2>
-
-    <div id="error-box" class="error-box" hidden></div>
-
-    <div class="result-grid">
-      <div class="result-tile">
-        <span class="result-label">Utilización · U</span>
-        <span class="result-value" id="out-u">—</span>
-        <span class="result-hint">sin errores</span>
+    <!-- ---------------- Control ---------------- -->
+    <section class="block">
+      <div class="state-line">
+        <span class="state-name" id="state-name">Inactivo</span>
+        <span class="clock num" id="clock">0 ms</span>
       </div>
-      <div class="result-tile">
-        <span class="result-label">Utilización efectiva</span>
-        <span class="result-value" id="out-u-eff">—</span>
-        <span class="result-hint">con la probabilidad de error</span>
+      <div class="timer-track"><div class="timer-fill" id="timer-fill"></div></div>
+
+      <div class="transport" style="margin-top:10px">
+        <button class="btn" id="btn-run">Iniciar</button>
+        <button class="btn" id="btn-step" disabled>Un paso</button>
+        <button class="btn" id="btn-reset">Reiniciar</button>
       </div>
-      <div class="result-tile">
-        <span class="result-label">Canal ocioso</span>
-        <span class="result-value" id="out-idle">—</span>
-        <span class="result-hint">del ciclo</span>
+
+      <div class="rows">
+        <div class="row">
+          <label for="speed">Velocidad</label>
+          <span class="num" id="speed-label">1,0×</span>
+        </div>
+        <input type="range" id="speed" min="0.25" max="4" step="0.25" value="1">
       </div>
-      <div class="result-tile">
-        <span class="result-label">Caudal útil</span>
-        <span class="result-value" id="out-throughput">—</span>
-        <span class="result-hint">bits entregados por segundo</span>
+
+      <p class="hint">Con la simulación en pausa puedes alterar la trama que va por el canal.</p>
+    </section>
+
+    <!-- ---------------- Inspector ---------------- -->
+    <section class="block">
+      <h2>Trama en el canal</h2>
+      <div class="targets" id="targets"></div>
+      <div id="inspector">
+        <p class="inspector-empty" id="inspector-empty">No hay nada en vuelo.</p>
+        <div id="inspector-body" hidden>
+          <dl class="readout">
+            <dt>Tipo</dt><dd class="num" id="insp-kind">—</dd>
+            <dt>Secuencia</dt><dd class="num" id="insp-seq">—</dd>
+            <dt>Tramo</dt><dd class="num" id="insp-hop">—</dd>
+            <dt>CRC recalculado</dt><dd class="crc-state" id="insp-crc">—</dd>
+          </dl>
+
+          <div class="bits" id="bits" role="group" aria-label="Bits de la trama; pulsa uno para voltearlo"></div>
+          <p class="hint">Azul: los 16 bits del CRC. Pulsa cualquier bit para voltearlo, como haría el ruido del canal.</p>
+
+          <div class="actions">
+            <button class="btn btn-danger" id="btn-destroy">Destruir</button>
+            <button class="btn" id="btn-delay">Retrasar</button>
+            <button class="btn" id="btn-seq0">Forzar seq 0</button>
+            <button class="btn" id="btn-seq1">Forzar seq 1</button>
+          </div>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <div class="util-bar" aria-hidden="true">
-      <div class="util-bar-busy" id="util-bar-busy"></div>
-    </div>
+    <!-- ---------------- Configuración ---------------- -->
+    <section class="block">
+      <h2>Protocolo</h2>
+      <div class="rows">
+        <div class="row"><label for="total-frames">Tramas a enviar</label><input type="number" id="total-frames" min="1" max="30" value="4"></div>
+        <div class="row"><label for="frame-bits">Tamaño de trama (bits)</label><input type="number" id="frame-bits" min="8" step="8" value="1000"></div>
+        <div class="row"><label for="ack-bits">Tamaño del ACK (bits)</label><input type="number" id="ack-bits" min="0" step="8" value="0"></div>
+        <div class="row"><label for="timeout-ms">Timeout (ms simulados)</label><input type="number" id="timeout-ms" min="1" step="1" value="60"></div>
+        <div class="row"><label for="seed">Semilla del ruido</label><input type="number" id="seed" min="1" step="1" value="1"></div>
+      </div>
 
-    <table class="result-table">
-      <tbody>
-        <tr><th>Tt del emisor</th><td id="out-tt-sender">—</td><td class="cell-note">tiempo poniendo bits en el primer tramo</td></tr>
-        <tr><th>Tt total (todos los saltos)</th><td id="out-tt-total">—</td><td class="cell-note">store-and-forward: cada nodo retransmite</td></tr>
-        <tr><th>Tp total</th><td id="out-tp-total">—</td><td class="cell-note">suma de la propagación de cada tramo</td></tr>
-        <tr><th>a = Tp / Tt</th><td id="out-a">—</td><td class="cell-note">parámetro del enlace</td></tr>
-        <tr><th>RTT</th><td id="out-rtt">—</td><td class="cell-note">ida + vuelta del ACK</td></tr>
-        <tr><th>Tiempo de vuelta del medio</th><td id="out-turnaround">—</td><td class="cell-note">solo half duplex, 2 veces por ciclo</td></tr>
-        <tr><th>Ciclo completo</th><td id="out-cycle">—</td><td class="cell-note">lo que el emisor espera entre trama y trama</td></tr>
-        <tr><th>Timeout mínimo razonable</th><td id="out-timeout">—</td><td class="cell-note">por debajo del RTT hay retransmisiones inútiles</td></tr>
-        <tr><th>P de fallo del ciclo</th><td id="out-perr">—</td><td class="cell-note">trama o ACK dañados en cualquier tramo</td></tr>
-        <tr><th>Transmisiones por trama entregada</th><td id="out-attempts">—</td><td class="cell-note">media esperada</td></tr>
-        <tr><th>Producto ancho de banda · retardo</th><td id="out-bdp">—</td><td class="cell-note">bits que caben en el canal en un RTT</td></tr>
-      </tbody>
-    </table>
-  </section>
+      <label class="check" style="margin-top:10px">
+        <input type="checkbox" id="nak-toggle">
+        <span>Enviar NAK cuando el CRC falla. Apagado es el Protocolo 3 de Tanenbaum: el receptor descarta en silencio y el emisor solo se entera al expirar el temporizador.</span>
+      </label>
 
-  <!-- ---------------------------------------------------------------- -->
-  <section class="card">
-    <h2>4 · Desarrollo paso a paso</h2>
-    <p class="note">Las mismas cuentas, escritas como se piden en un examen.</p>
-    <pre id="steps" class="steps">—</pre>
-  </section>
+      <p class="hint" id="timeout-hint"></p>
+    </section>
 
-  <section class="card next-card">
-    <h2>Simulador animado</h2>
-    <p class="note">
-      La animación del protocolo (envío, ACK, pérdidas, timeout y retransmisión) está en la
-      versión actual del simulador y se integrará con este motor en el siguiente paso.
-    </p>
-    <a class="btn btn-secondary" href="../simulador_stop_and_wait_web/index.html">Abrir el simulador animado</a>
-  </section>
+    <!-- ---------------- Camino ---------------- -->
+    <section class="block">
+      <div class="card-head">
+        <h2>Camino</h2>
+        <button class="btn-secondary btn-small" id="btn-add-hop">Añadir punto</button>
+      </div>
+      <div id="hops"></div>
+      <p class="hint">Cada punto intermedio recibe la trama entera antes de reenviarla, así que suma su tiempo de transmisión.</p>
+    </section>
 
-</main>
+    <!-- ---------------- Telemetría ---------------- -->
+    <section class="block">
+      <h2>Telemetría</h2>
+      <dl class="readout">
+        <dt>Tramas entregadas</dt><dd class="num" id="tel-delivered">0</dd>
+        <dt>Transmisiones</dt><dd class="num" id="tel-sent">0</dd>
+        <dt>Retransmisiones</dt><dd class="num" id="tel-retrans">0</dd>
+        <dt>ACK recibidos</dt><dd class="num" id="tel-acks">0</dd>
+        <dt>NAK recibidos</dt><dd class="num" id="tel-naks">0</dd>
+        <dt>CRC incorrectos</dt><dd class="num" id="tel-crc">0</dd>
+        <dt>Duplicadas descartadas</dt><dd class="num" id="tel-dups">0</dd>
+        <dt>ACK fuera de tiempo</dt><dd class="num" id="tel-late">0</dd>
+        <dt>Destruidas a mano</dt><dd class="num" id="tel-destroyed">0</dd>
+        <dt>Utilización teórica</dt><dd class="num" id="tel-u">—</dd>
+        <dt>RTT del camino</dt><dd class="num" id="tel-rtt">—</dd>
+      </dl>
+    </section>
 
-<footer class="footer">
-  <p>
-    Fórmulas: Tanenbaum &amp; Wetherall, <em>Computer Networks</em> 5.ª ed., cap. 3 ·
-    notación <code>a = (R·d)/(V·L)</code>, <code>U = 1/(1+2a)</code>.
-    Cada resultado de esta página tiene una prueba automática con un número publicado.
-  </p>
-</footer>
+    <!-- ---------------- Bitácora ---------------- -->
+    <section class="block">
+      <h2>Qué ha pasado</h2>
+      <ul class="log" id="log"></ul>
+    </section>
 
+    <section class="block">
+      <h2>Cómo leer el diagrama</h2>
+      <div class="legend">
+        <span><i style="border-color: var(--data)"></i> Trama de datos aceptada</span>
+        <span><i style="border-color: var(--ack)"></i> Confirmación (ACK o NAK)</span>
+        <span><i style="border-color: var(--fault); border-top-style: dashed"></i> Descartada: CRC incorrecto o duplicada</span>
+        <span><i style="border-color: var(--fault)"></i> Destruida en el canal</span>
+        <span><i style="border-color: var(--wait); border-top-style: dotted"></i> Expiró el temporizador</span>
+      </div>
+      <p class="hint">El tiempo baja. Cada línea vertical es un punto del camino.</p>
+    </section>
+
+  </aside>
+</div>
+
+<script src="js/frame.js"></script>
 <script src="js/network.js"></script>
-<script src="js/calc.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/ui.js"></script>
 </body>
 </html>

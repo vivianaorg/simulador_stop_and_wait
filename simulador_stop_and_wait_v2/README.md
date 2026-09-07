@@ -1,7 +1,14 @@
-# Simulador Stop &amp; Wait — v2 (calculadora de enlace multi-salto)
+# Simulador Stop &amp; Wait — v2
 
 Sitio estático. **Sin build, sin dependencias, sin base de datos y sin login.**
 Se despliega copiando esta carpeta.
+
+Dos páginas:
+
+- `index.html` — **el simulador**. Diagrama tiempo-espacio (el mismo dibujo con el que el libro
+  explica el protocolo), cadena de puntos editable, inspector de la trama en vuelo con sus bits,
+  detección de errores por CRC y bitácora.
+- `calculadora.html` — los mismos cálculos sin animación, con el desarrollo paso a paso.
 
 ## Ejecutar en local
 
@@ -29,8 +36,11 @@ El motor de cálculo (`js/network.js`) se prueba con el runner nativo de Node �
 ninguna dependencia**:
 
 ```bash
-node --test simulador_stop_and_wait_v2/tests/network.test.js
+node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js
 ```
+
+Al 2026-09-07: **33 pruebas, 0 fallas**. (Pasar una carpeta a `node --test` falla en este
+equipo; hay que nombrar los archivos.)
 
 Cada fórmula que aparece en la interfaz tiene su caso con un número publicado:
 
@@ -44,23 +54,35 @@ Cada fórmula que aparece en la interfaz tiene su caso con un número publicado:
 | Half duplex | + 2 × tiempo de vuelta por ciclo |
 | Con errores | `U_efectiva = (1−P)/(1+2a)`, intentos = `1/(1−P)` |
 | BDP del satélite | 26 000 bits = **26 tramas** en el canal |
+| CRC-16/CCITT | detecta el volteo de **cualquiera** de los 80 bits de la trama |
+| Protocolo | la secuencia alterna 0,1,0 · el ciclo dura Tt + 2·Tp · el tiempo medido coincide con el RTT calculado |
+| Errores | trama dañada descartada y no entregada · sin NAK se espera al timeout · con NAK se retransmite antes · ACK dañado deja al emisor esperando · la copia se descarta como duplicada |
+| Repetibilidad | la misma semilla produce exactamente la misma simulación |
 
 ## Estructura
 
 ```
-index.html          calculadora
+index.html          simulador
+calculadora.html    calculadora
 css/style.css       estilos propios
-js/network.js       modelo: tiempos, utilización, errores (sin DOM)
-js/calc.js          interfaz: lee controles, pinta resultados
-tests/              pruebas del modelo
+js/frame.js         tramas y CRC-16/CCITT
+js/network.js       tiempos, utilización y probabilidades del camino
+js/sim.js           máquina de estados del protocolo, con tiempo simulado
+js/ui.js            interfaz del simulador
+js/calc.js          interfaz de la calculadora
+tests/              pruebas de los tres modelos
 ```
 
-`js/network.js` es el **dueño único** de las fórmulas. `js/calc.js` las consume; no
-recalcula nada.
+Las reglas viven en `frame.js`, `network.js` y `sim.js`. `ui.js` y `calc.js` **solo pintan**.
 
 ## Alcance
 
 Protocolo 3 de Tanenbaum (**Stop &amp; Wait con ARQ**). No entra ventana deslizante
 (Go-Back-N, Selective Repeat): queda fuera del alcance de la asignatura.
+
+La detección de errores **no está simulada con una bandera**: la trama lleva su CRC y el
+receptor lo recalcula. Si volteas un bit desde el inspector, el CRC deja de cuadrar solo.
+El interruptor de NAK enseña las dos variantes: descarte silencioso (Protocolo 3, el emisor
+se entera por el temporizador) o NAK inmediato.
 
 Documentación del proyecto: [`../docs/00-INDEX.md`](../docs/00-INDEX.md).

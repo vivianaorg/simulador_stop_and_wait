@@ -3,17 +3,22 @@
 Comandos y procedimientos, para copiar y pegar. Si un comando cambia, se cambia acá el mismo día.
 Todo se ejecuta desde la raíz del repo salvo que se diga otra cosa.
 
-## Ejecutar el v2 (calculadora, donde se trabaja)
+## Ejecutar el v2 (donde se trabaja)
 
 ```bash
 python -m http.server 8000 --directory simulador_stop_and_wait_v2
 ```
 
-Pruebas del motor, con el runner nativo de Node (**no instala nada**):
+`index.html` es el simulador; `calculadora.html`, la calculadora.
+
+Pruebas, con el runner nativo de Node (**no instala nada**):
 
 ```bash
-node --test simulador_stop_and_wait_v2/tests/network.test.js
+node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js
 ```
+
+**Nombrar los archivos, no la carpeta:** `node --test tests/` falla en este equipo con
+`Cannot find module ...	ests`.
 
 ## Ejecutar el v1 (simulador animado)
 
@@ -41,15 +46,14 @@ ver [04-convenciones.md](04-convenciones.md) § B.1.
 ## Verificación (pipeline)
 
 ```bash
-node --test simulador_stop_and_wait_v2/tests/network.test.js
-node --check simulador_stop_and_wait_v2/js/network.js
-node --check simulador_stop_and_wait_v2/js/calc.js
+node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js
+for f in simulador_stop_and_wait_v2/js/*.js; do node --check "$f"; done
 node --check simulador_stop_and_wait_web/js/protocol.js
 node --check simulador_stop_and_wait_web/js/app.js
 python -m py_compile simulador_stop_and_wait_python/*.py
 ```
 
-Baseline 2026-09-07, Node v24.11.1 y Python 3.13.14: **15 pruebas verdes, 0 fallas**; el resto,
+Baseline 2026-09-07, Node v24.11.1 y Python 3.13.14: **33 pruebas verdes, 0 fallas**; el resto,
 limpio. La interfaz no tiene pruebas automáticas: se verifica con el render sin cabeza y con el
 checklist de humo.
 
@@ -61,9 +65,14 @@ renderizar la página de verdad (ejecuta el JavaScript) y volcar el DOM resultan
 ```bash
 CH="C:/Users/gogam/AppData/Local/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-win64/chrome-headless-shell.exe"
 python -m http.server 8123 --directory simulador_stop_and_wait_v2 &
-"$CH" --disable-gpu --no-sandbox --virtual-time-budget=5000 --dump-dom http://localhost:8123/ > dom.html
-"$CH" --disable-gpu --no-sandbox --virtual-time-budget=5000 --window-size=1280,2200 --screenshot=calc.png http://localhost:8123/
+"$CH" --disable-gpu --no-sandbox --virtual-time-budget=5000 --dump-dom http://localhost:8123/calculadora.html > dom.html
+"$CH" --disable-gpu --no-sandbox --virtual-time-budget=5000 --window-size=1280,2200 --screenshot=calc.png http://localhost:8123/calculadora.html
 ```
+
+**Para el simulador hace falta un truco.** Bajo tiempo virtual, `requestAnimationFrame` apenas
+corre, así que la animación no avanza sola. Se empuja con el botón *Un paso* desde una página
+temporal que carga el simulador en un `iframe` y pulsa los botones; luego se captura esa página
+y se borra el archivo. Con ~350 pulsaciones se ven varios ciclos completos.
 
 Comprobación rápida de que los números son los del libro:
 
@@ -74,6 +83,21 @@ grep -o 'id="out-bdp">[^<]*' dom.html    # -> 26000 bits · 26.00 tramas
 
 También conviene comprobar que todo `getElementById` del JS tiene su `id` en el HTML: es la
 gotcha más habitual de este proyecto y no da error visible.
+
+## Checklist de humo del v2 (simulador)
+
+1. Con un solo tramo: al pulsar *Iniciar*, el diagrama dibuja trama, ACK y la alternancia 0/1,
+   y termina en «Completado».
+2. *Añadir punto* mete un nodo intermedio: la trama se dibuja atravesándolo (dos flechas por
+   sentido) y el RTT crece.
+3. En pausa, pulsar un bit del inspector lo pone en rojo y el CRC pasa a «no cuadra»; al llegar
+   al receptor se descarta y hay que esperar el temporizador.
+4. Con *Enviar NAK* activado, ese mismo caso se recupera sin esperar el temporizador.
+5. *Destruir* y *Retrasar* dejan su marca en el diagrama (aspa y ACK que llega tarde).
+6. *Forzar seq* hace que el receptor la trate como duplicada y repita el ACK.
+7. El timeout se ajusta solo al cambiar el camino; si se escribe uno a mano, se respeta y el
+   aviso dice cuánto margen queda sobre el RTT.
+8. La misma semilla con la misma configuración da la misma simulación.
 
 ## Checklist de humo del v2 (calculadora)
 

@@ -1,0 +1,317 @@
+// sim.test.js — protocolo y detección de errores.
+// `node --test tests/sim.test.js`
+
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const F = require("../js/frame.js");
+const N = require("../js/network.js");
+const S = require("../js/sim.js");
+
+// Camino de prueba corto para que los tiempos sean fáciles de seguir.
+function caminoSimple(extra) {
+  return N.createPath({
+    frameBits: 1000,
+    ackBits: 0,
+    links: [
+      N.createLink({
+        name: "Enlace",
+        rateBps: 100000, // Tt = 10 ms
+        distanceKm: 2000,
+        velocityKmS: 200000, // Tp = 10 ms
+        ...(extra || {}),
+      }),
+    ],
+  });
+}
+
+function caminoDosSaltos() {
+  return N.createPath({
+    frameBits: 1000,
+    ackBits: 0,
+    links: [
+      N.createLink({ name: "A → R", rateBps: 100000, distanceKm: 2000, velocityKmS: 200000 }),
+      N.createLink({ name: "R → B", rateBps: 100000, distanceKm: 2000, velocityKmS: 200000 }),
+    ],
+  });
+}
+
+// Avanza la simulación en pasos pequeños, como hace la animación.
+function correr(sim, msTotales, pasoMs) {
+  const paso = pasoMs || 1;
+  for (let t = 0; t < msTotales; t += paso) S.advance(sim, paso);
+  return sim;
+}
+
+// ---------- CRC ----------
+
+test("El CRC-16/CCITT detecta el volteo de cualquier bit", () => {
+  const frame = F.createFrame({ kind: F.KIND.FRAME, seq: 0, frameIdx: 0, payloadBytes: 8 });
+  assert.equal(F.isIntact(frame), true, "recién creada debe cuadrar");
+
+  for (let bit = 0; bit < F.totalBits(frame); bit++) {
+    const copia = F.cloneFrame(frame);
+    F.flipBit(copia, bit);
+    assert.equal(F.isIntact(copia), false, `el bit ${bit} debería detectarse`);
+  }
+});
+
+test("Volteando dos veces el mismo bit, la trama vuelve a estar sana", () => {
+  const frame = F.createFrame({ kind: F.KIND.FRAME, seq: 1, frameIdx: 3 });
+  F.flipBit(frame, 12);
+  assert.equal(F.isIntact(frame), false);
+  F.flipBit(frame, 12);
+  assert.equal(F.isIntact(frame), true);
+});
+
+test("Un índice de bit fuera de rango se rechaza", () => {
+  const frame = F.createFrame({ kind: F.KIND.ACK, seq: 0 });
+  assert.throws(() => F.flipBit(frame, -1), RangeError);
+  assert.throws(() => F.flipBit(frame, F.totalBits(frame)), RangeError);
+});
+
+// ---------- Camino feliz ----------
+
+test("Sin errores, las 3 tramas se entregan y la secuencia alterna 0,1,0", () => {
+  const sim = S.createSimulation({ path: caminoSimple(), totalFrames: 3 });
+  const secuencias = [];
+  S.start(sim);
+
+  for (let t = 0; t < 500 && sim.state !== S.STATE.FINISHED; t++) {
+    const enVuelo = sim.wire.find((p) => p.frame.kind === F.KIND.FRAME);
+    if (enVuelo && secuencias[secuencias.length - 1] !== enVuelo.frame.seq) {
+      secuencias.push(enVuelo.frame.seq);
+    }
+    S.advance(sim, 1);
+  }
+
+  assert.equal(sim.state, S.STATE.FINISHED);
+  assert.equal(sim.rxDelivered, 3, "el receptor entregó las 3 tramas");
+  assert.equal(sim.stats.framesSent, 3, "sin retransmisiones");
+  assert.equal(sim.stats.acksReceived, 3);
+  assert.deepEqual(secuencias, [0, 1, 0], "la secuencia alterna");
+});
+
+test("El ciclo de una trama dura Tt + 2·Tp cuando no hay errores", () => {
+  const sim = S.createSimulation({ path: caminoSimple(), totalFrames: 1 });
+  S.start(sim);
+  correr(sim, 100, 0.5);
+
+  assert.equal(sim.state, S.STATE.FINISHED);
+  // Tt = 10 ms, Tp = 10 ms de ida y 10 de vuelta (el ACK no ocupa tiempo).
+  assert.ok(Math.abs(sim.clockMs - 30) <= 1, `ciclo ≈ 30 ms, obtenido ${sim.clockMs}`);
+});
+
+// ---------- Detección de errores ----------
+
+test("Una trama con un bit volteado se descarta por CRC y no se entrega", () => {
+  const sim = S.createSimulation({ path: caminoSimple(), totalFrames: 1, timeoutMs: 200 });
+  S.start(sim);
+  correr(sim, 12); // la trama ya salió al medio
+
+  const paquete = S.selected(sim);
+  assert.ok(paquete, "hay una trama en vuelo");
+  S.flipBitOf(sim, paquete, 5);
+
+  correr(sim, 20);
+  assert.equal(sim.stats.crcFailures, 1, "el receptor detectó el error");
+  assert.equal(sim.rxDelivered, 0, "no se entregó nada a la capa de red");
+  assert.equal(sim.stats.acksReceived, 0, "no hubo ACK");
+});
+
+test("Sin NAK, el emisor solo se entera por el temporizador (Protocolo 3)", () => {
+  const sim = S.createSimulation({
+    path: caminoSimple(),
+    totalFrames: 1,
+    timeoutMs: 100,
+    nakOnError: false,
+  });
+  S.start(sim);
+  correr(sim, 12);
+  S.flipBitOf(sim, S.selected(sim), 5);
+  correr(sim, 30);
+
+  assert.equal(sim.stats.retransmissions, 0, "todavía no ha reintentado");
+  assert.equal(sim.stats.naksReceived, 0, "el receptor no manda NAK");
+
+  correr(sim, 100); // se cumple el timeout
+  assert.equal(sim.stats.retransmissions, 1, "reintenta al expirar el temporizador");
+});
+
+test("Con NAK activado, la retransmisión llega antes del temporizador", () => {
+  const sim = S.createSimulation({
+    path: caminoSimple(),
+    totalFrames: 1,
+    timeoutMs: 1000, // deliberadamente enorme
+    nakOnError: true,
+  });
+  S.start(sim);
+  correr(sim, 12);
+  S.flipBitOf(sim, S.selected(sim), 5);
+  correr(sim, 40);
+
+  assert.equal(sim.stats.naksReceived, 1, "llegó el NAK");
+  assert.equal(sim.stats.retransmissions, 1, "retransmitió sin esperar 1000 ms");
+  assert.ok(sim.clockMs < 100, "muy por debajo del timeout");
+});
+
+test("Un ACK dañado deja al emisor esperando el temporizador", () => {
+  const sim = S.createSimulation({ path: caminoSimple(), totalFrames: 1, timeoutMs: 100 });
+  S.start(sim);
+  correr(sim, 25); // la trama llegó y el ACK ya viaja de vuelta
+
+  const ack = sim.wire.find((p) => p.frame.kind === F.KIND.ACK);
+  assert.ok(ack, "hay un ACK en vuelo");
+  S.flipBitOf(sim, ack, 3);
+
+  correr(sim, 15);
+  assert.equal(sim.stats.acksReceived, 0, "el ACK dañado no confirma nada");
+  assert.equal(sim.rxDelivered, 1, "pero el receptor sí había entregado la trama");
+
+  correr(sim, 120);
+  assert.equal(sim.stats.retransmissions, 1, "el emisor reintenta");
+  assert.equal(sim.stats.duplicatesDiscarded, 1, "y el receptor descarta la copia");
+  assert.equal(sim.rxDelivered, 1, "sin entregarla dos veces");
+});
+
+// ---------- Acciones del inspector ----------
+
+test("Destruir la trama en vuelo obliga a esperar el temporizador", () => {
+  const sim = S.createSimulation({ path: caminoSimple(), totalFrames: 1, timeoutMs: 80 });
+  S.start(sim);
+  correr(sim, 12);
+
+  S.destroy(sim, S.selected(sim));
+  assert.equal(sim.wire.length, 0, "ya no hay nada en el canal");
+  assert.equal(sim.stats.framesDestroyed, 1);
+
+  correr(sim, 100);
+  assert.equal(sim.stats.retransmissions, 1);
+});
+
+test("Forzar el número de secuencia hace que el receptor la vea como duplicada", () => {
+  const sim = S.createSimulation({ path: caminoSimple(), totalFrames: 2, timeoutMs: 200 });
+  S.start(sim);
+  correr(sim, 12);
+
+  // El receptor espera seq=0; le mandamos seq=1.
+  S.setSeqOf(sim, S.selected(sim), 1);
+  correr(sim, 20);
+
+  assert.equal(sim.stats.duplicatesDiscarded, 1);
+  assert.equal(sim.rxDelivered, 0, "no la entrega a la capa de red");
+});
+
+test("Retrasar el ACK produce un ACK tardío que el emisor descarta", () => {
+  const sim = S.createSimulation({ path: caminoSimple(), totalFrames: 2, timeoutMs: 60 });
+  S.start(sim);
+  correr(sim, 25);
+
+  const ack = sim.wire.find((p) => p.frame.kind === F.KIND.ACK);
+  assert.ok(ack, "hay un ACK en vuelo");
+  S.freeze(sim, ack, 150); // más que el timeout
+
+  correr(sim, 400);
+  assert.equal(sim.stats.retransmissions >= 1, true, "el emisor reintentó por timeout");
+  assert.equal(sim.stats.lateAcks >= 1, true, "y el ACK viejo llegó fuera de tiempo");
+});
+
+// ---------- Multi-salto ----------
+
+test("Con dos saltos, la trama atraviesa el nodo intermedio y se registra cada tramo", () => {
+  const sim = S.createSimulation({ path: caminoDosSaltos(), totalFrames: 1 });
+  S.start(sim);
+  correr(sim, 200, 0.5);
+
+  assert.equal(sim.state, S.STATE.FINISHED);
+  assert.equal(sim.rxDelivered, 1);
+
+  const tramosDeDatos = sim.events.filter((e) => e.kind === F.KIND.FRAME);
+  assert.equal(tramosDeDatos.length, 2, "un evento por tramo recorrido");
+  assert.deepEqual(
+    tramosDeDatos.map((e) => [e.fromIdx, e.toIdx]),
+    [[0, 1], [1, 2]],
+    "pasa por el nodo intermedio"
+  );
+
+  const tramosDeAck = sim.events.filter((e) => e.kind === F.KIND.ACK);
+  assert.deepEqual(
+    tramosDeAck.map((e) => [e.fromIdx, e.toIdx]),
+    [[2, 1], [1, 0]],
+    "y el ACK vuelve por el mismo camino"
+  );
+});
+
+test("Añadir un salto alarga el ciclo medido por la simulación", () => {
+  const uno = S.createSimulation({ path: caminoSimple(), totalFrames: 1 });
+  const dos = S.createSimulation({ path: caminoDosSaltos(), totalFrames: 1 });
+  S.start(uno);
+  S.start(dos);
+  correr(uno, 300, 0.5);
+  correr(dos, 300, 0.5);
+
+  assert.equal(uno.state, S.STATE.FINISHED);
+  assert.equal(dos.state, S.STATE.FINISHED);
+  assert.ok(dos.clockMs > uno.clockMs, "dos saltos tardan más");
+});
+
+test("El tiempo medido por la simulación coincide con el RTT que calcula el modelo", () => {
+  const path = caminoDosSaltos();
+  const esperado = N.analyze(path).rttMs;
+  const sim = S.createSimulation({ path, totalFrames: 1 });
+  S.start(sim);
+  correr(sim, 400, 0.25);
+
+  assert.ok(
+    Math.abs(sim.clockMs - esperado) <= 1,
+    `la simulación (${sim.clockMs} ms) debe coincidir con el RTT calculado (${esperado} ms)`
+  );
+});
+
+// ---------- Ruido del canal y repetibilidad ----------
+
+test("Con probabilidad de error 1 el canal daña siempre, y con 0 nunca", () => {
+  const siempre = S.createSimulation({
+    path: caminoSimple({ errorProbData: 1 }),
+    totalFrames: 1,
+    timeoutMs: 500,
+  });
+  S.start(siempre);
+  correr(siempre, 40);
+  assert.equal(siempre.stats.crcFailures, 1, "el receptor detecta el daño");
+
+  const nunca = S.createSimulation({ path: caminoSimple({ errorProbData: 0 }), totalFrames: 1 });
+  S.start(nunca);
+  correr(nunca, 60);
+  assert.equal(nunca.stats.crcFailures, 0);
+  assert.equal(nunca.rxDelivered, 1);
+});
+
+test("La misma semilla produce exactamente la misma simulación", () => {
+  function ejecutar(seed) {
+    const sim = S.createSimulation({
+      path: caminoSimple({ errorProbData: 0.5 }),
+      totalFrames: 4,
+      timeoutMs: 80,
+      seed,
+    });
+    S.start(sim);
+    correr(sim, 2000);
+    return { crc: sim.stats.crcFailures, envios: sim.stats.framesSent, reloj: sim.clockMs };
+  }
+
+  assert.deepEqual(ejecutar(7), ejecutar(7), "misma semilla, mismo resultado");
+});
+
+test("Pausar detiene el reloj y el temporizador", () => {
+  const sim = S.createSimulation({ path: caminoSimple(), totalFrames: 2, timeoutMs: 50 });
+  S.start(sim);
+  correr(sim, 5);
+  const reloj = sim.clockMs;
+  const restante = sim.timerRemainingMs;
+
+  S.pause(sim);
+  correr(sim, 100);
+
+  assert.equal(sim.clockMs, reloj, "el reloj no avanza en pausa");
+  assert.equal(sim.timerRemainingMs, restante, "el temporizador tampoco");
+});

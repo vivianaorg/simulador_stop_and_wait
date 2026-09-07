@@ -104,9 +104,22 @@ y sin login**. Diseño completo en
 
 | Archivo | Rol |
 |---|---|
-| `js/network.js` | **Dueño único de las fórmulas.** Sin DOM, exportable con UMD: el navegador lo ve como `window.NetworkModel` y Node lo carga con `require` |
-| `js/calc.js` | Interfaz: lee los controles, llama a `analyze()` y pinta. **No calcula nada** |
-| `tests/network.test.js` | 15 pruebas con el runner nativo de Node |
+| `js/frame.js` | Tramas y **CRC-16/CCITT-FALSE**. Voltear bits, recalcular el CRC, generador con semilla |
+| `js/network.js` | **Dueño de las fórmulas**: tiempos, utilización, probabilidades del camino |
+| `js/sim.js` | **Máquina de estados del protocolo** con tiempo simulado explícito (`advance(dtMs)`) |
+| `js/ui.js` | Interfaz del simulador: diagrama, cadena, inspector. **No decide nada del protocolo** |
+| `js/calc.js` | Interfaz de la calculadora |
+| `tests/` | 33 pruebas con el runner nativo de Node |
+
+Los tres modelos usan el mismo envoltorio UMD: el navegador los ve como `window.FrameModel`,
+`window.NetworkModel` y `window.SimModel`, y Node los carga con `require`. Por eso las mismas
+reglas que corren en pantalla son las que se prueban.
+
+## Las dos páginas
+
+`index.html` es **el simulador** y es la portada. `calculadora.html` tiene los mismos cálculos
+sin animación. La calculadora dejó de ser la portada el 2026-09-07: el trabajo pedido es el
+simulador.
 
 ## Modelo
 
@@ -135,7 +148,45 @@ Cada tramo tiene `errorProbData` y `errorProbAck` independientes. Se componen:
 transmisiones esperadas `1/(1−P)` y el caudal útil. El emisor **no distingue** si se perdió la
 trama o el ACK: hay una prueba que lo fija.
 
+## El diagrama tiempo-espacio
+
+Es la pieza principal, y es deliberado: el simulador v1 animaba un paquete que iba, volvía y
+**se borraba**, así que al terminar no quedaba rastro de lo ocurrido. El diagrama acumula la
+historia y produce en pantalla la misma figura con la que el libro explica el protocolo
+(trama, ACK, timeout, duplicada). El tiempo baja; cada vertical es un punto del camino.
+
+Referencia de la forma: los *bounce diagrams* de las herramientas de traza y el visualizador de
+actividad de ruta de OMNeT++/INET, que dibuja polilíneas de origen a destino **atravesando los
+nodos intermedios**.
+
+## Detección de errores
+
+Real, no simulada con una bandera. El emisor calcula el CRC y lo mete en la trama; el receptor
+**recalcula** el suyo y compara (`frame.js`, `isIntact`). Voltear un bit desde el inspector hace
+que el CRC deje de cuadrar por sí solo. Hay una prueba que voltea **cada uno** de los 80 bits y
+exige que todos se detecten.
+
+Dos comportamientos, con interruptor:
+
+| NAK | Qué pasa | De dónde sale |
+|---|---|---|
+| Apagado | El receptor descarta en silencio; el emisor se entera al expirar el temporizador | Protocolo 3 de Tanenbaum |
+| Encendido | El receptor manda NAK y el emisor retransmite sin esperar | Variante ARQ con NAK |
+
+## Alterar la trama en vuelo
+
+Con la simulación en pausa (o en marcha, si se prefiere) el inspector permite: voltear cualquier
+bit —incluidos los del CRC—, forzar el número de secuencia, destruir la trama o retrasarla. Cada
+acción tiene su prueba en `tests/sim.test.js`, así que lo que se enseña en clase es lo que el
+motor hace de verdad.
+
+## Estética
+
+Plana a propósito: sin degradados, sin sombras y sin brillos. Un borde de 1 px separa las zonas
+y el color **solo significa** — verde trama aceptada, azul confirmación, ámbar espera, rojo
+error. Los números van en monoespaciada de ancho tabular para que no bailen al actualizarse.
+
 ## Lo que el v2 todavía no tiene
 
-Animación (sigue en el v1), dibujo de la cadena de nodos, y la integración de ambos. Es el
-trabajo de las tareas 4 y 5 del plan.
+Modos de canal half/full duplex dentro de la animación (el cálculo sí los tiene), y la
+integración del simulador v1, que sigue existiendo aparte.

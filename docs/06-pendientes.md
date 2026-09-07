@@ -17,9 +17,10 @@ Revisión completa: 2026-09-07. Entrega comprometida: **2026-09-09**.
 | ID | P | Tarea | Detalle / evidencia |
 |---|---|---|---|
 | `E-01` | P0 | Correr el **checklist de humo** del v1 completo | 8 puntos en [05-runbook.md](05-runbook.md). Nunca se corrió entero y anotado |
-| `V2-01` | P0 | Correr el checklist de humo del **v2**: presets LAN y multi-salto, quitar saltos, valores inválidos, half duplex | Solo se verificó el preset del satélite, con render sin cabeza (2026-09-07). Los otros dos presets no se han visto en pantalla |
-| `V2-02` | P1 | Tarea 4 del plan: dibujar la cadena de N nodos | Las coordenadas del canvas del v1 están cableadas (`app.js:117-125`) |
-| `V2-03` | P1 | Tarea 5: integrar la animación del v1 contra `network.js` | El v1 pasa a ser "cadena de 1" y no debe cambiar de comportamiento |
+| `V2-01` | P0 | Correr a mano el checklist de humo del **v2**: 8 puntos del simulador y 5 de la calculadora | Verificado sin cabeza el 2026-09-07: camino de 2 saltos, alternancia 0/1, CRC roto a mano, timeout y recuperación. **Falta** probarlo con ratón y teclado: NAK, destruir, retrasar, forzar seq, quitar puntos, tema oscuro |
+| `V2-02` | P1 | Modos half / full duplex dentro de la animación | El cálculo ya los distingue (`network.js`), el simulador todavía no |
+| `V2-03` | P2 | Decidir qué pasa con el simulador v1 | Sigue en el repo y ya no aporta nada que el v2 no haga mejor. O se retira, o se declara como anexo |
+| `V2-04` | P2 | Que el diagrama se pueda desplazar hacia atrás | Ahora solo muestra la ventana reciente; la historia anterior se pierde de vista |
 | `E-02` | P2 | Decidir si la versión Tkinter se entrega, se deja como anexo o se saca del repo | Hoy está congelada (2026-09-07) pero sigue en el repo y en el `README.md`. Es una decisión, no un olvido |
 
 ## Calidad y pipeline

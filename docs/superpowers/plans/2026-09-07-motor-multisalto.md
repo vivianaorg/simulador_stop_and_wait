@@ -9,11 +9,12 @@ aprieta, se corta por abajo.
 |---|---|---|---|---|
 | 1 | Motor `network.js` + pruebas con los números del libro | `js/network.js`, `tests/network.test.js` | `node --test` → **15/15 verde** (2026-09-07) | ✅ hecho |
 | 2 | Página de calculadora desplegable | `index.html`, `css/style.css`, `js/calc.js` | 25/25 `getElementById` cableados; falta prueba en navegador | ✅ hecho, sin verificar en navegador |
-| 3 | Verificar la página en el navegador con los tres presets | — | Los números en pantalla deben coincidir con los de las pruebas | ⬜ `V2-01` |
-| 4 | Canvas de N nodos (hoy las coordenadas del v1 están cableadas) | `js/*` | La cadena se dibuja con 1, 2 y 3 saltos | ⬜ |
-| 5 | Integrar la animación del v1 contra este motor | — | El v1 pasa a ser "cadena de 1" y no cambia de comportamiento | ⬜ |
-| 6 | Modos de canal en la animación (half / full) + pérdida probabilística | — | Se ve la diferencia de utilización entre modos | ⬜ |
-| 7 | Piggybacking como casilla opcional declarada | — | Se puede apagar sin que se caiga nada | ⬜ opcional |
+| 3 | Verificar la página en el navegador | — | Números en pantalla iguales a los de las pruebas | ✅ calculadora · ⬜ simulador a mano (`V2-01`) |
+| 4 | **El simulador pasa a ser la portada**: diagrama tiempo-espacio, cadena de puntos editable | `index.html`, `js/ui.js` | Render sin cabeza con 2 saltos: alternancia 0/1 y timeout | ✅ hecho |
+| 5 | **Detección de errores con CRC real** y NAK opcional | `js/frame.js`, `js/sim.js` | 33 pruebas verdes, incluido el volteo de los 80 bits | ✅ hecho |
+| 6 | **Inspector**: voltear bits, forzar secuencia, destruir, retrasar | `js/ui.js` | Una prueba por acción en `tests/sim.test.js` | ✅ hecho |
+| 7 | Modos half / full duplex dentro de la animación | — | Se ve la diferencia de utilización entre modos | ⬜ `V2-02` |
+| 8 | Pérdida probabilística visible con `P` por tramo | `js/sim.js` | El ruido daña la trama y el CRC lo detecta | ✅ hecho |
 
-**Regla de corte:** las tareas 1–3 más la calculadora son la entrega mínima defendible.
-La 4 y la 5 son las caras.
+**Regla de corte:** con las tareas 1–6 el trabajo ya es defendible. La 7 es mejora, no
+requisito.

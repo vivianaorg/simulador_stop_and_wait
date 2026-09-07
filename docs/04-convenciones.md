@@ -47,8 +47,15 @@ entre archivos: se enlaza · corto · referencias a código como `ruta/archivo.e
   está **congelada** desde el 2026-09-07: se lee y se porta de ahí, no se modifica.
 - **Nada de backend.** Sin base de datos, sin login, sin sesiones, sin API. Es un sitio estático
   y así se despliega (petición explícita del usuario, 2026-09-07).
-- **`js/network.js` es el dueño único de las fórmulas.** Ni `calc.js` ni la animación
-  recalculan tiempos, utilización ni probabilidades: los consumen.
+- **Las reglas viven en `frame.js`, `network.js` y `sim.js`.** `ui.js` y `calc.js` solo pintan:
+  no calculan tiempos ni deciden qué hace el protocolo.
+- **La detección de errores se calcula, no se finge.** Nada de banderas del tipo
+  «esta trama venía mal»: el receptor recalcula el CRC. Si alguna vez hace falta un atajo, se
+  discute antes, porque rompe lo que el trabajo demuestra.
+- **La simulación tiene que poder repetirse:** el ruido usa un generador con semilla, nunca
+  `Math.random`.
+- **Sin degradados, sin sombras y sin brillos.** El color solo significa (verde entregada, azul
+  confirmación, ámbar espera, rojo error); nunca decora.
 - **Ninguna fórmula llega a la interfaz sin una prueba con un número publicado.** Si no se puede
   verificar contra el libro o contra su forma cerrada, no se muestra.
 - **`js/protocol.js` es el dueño de la lógica del protocolo.** Secuencias, contadores, tiempos
@@ -83,7 +90,7 @@ declarada** frente al N1 global (falta lint, formateador y cobertura), no un des
 
 | Paso | Comando | Estado |
 |---|---|---|
-| **Pruebas del motor v2** | `node --test simulador_stop_and_wait_v2/tests/network.test.js` | **obligatorio** — 15 pruebas, 0 fallas al 2026-09-07 |
+| **Pruebas del v2** | `node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js` | **obligatorio** — 33 pruebas, 0 fallas al 2026-09-07 |
 | Sintaxis JS | `node --check` sobre los `.js` de `simulador_stop_and_wait_web/` y `simulador_stop_and_wait_v2/` | **obligatorio** |
 | Sintaxis Python (versión congelada) | `python -m py_compile simulador_stop_and_wait_python/*.py` | obligatorio mientras el archivo siga en el repo |
 | Prueba manual en navegador | [05-runbook.md](05-runbook.md) § *Checklist de humo* | **obligatorio antes de entregar** |
