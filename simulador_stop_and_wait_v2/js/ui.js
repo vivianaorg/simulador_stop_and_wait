@@ -28,6 +28,9 @@
   // presente; > 0 = el usuario se ha ido a mirar historia.
   let retrocesoMs = 0;
   let zoom = 1;
+  // Ventana [fromMs, toMs] de la última ráfaga de ruido pedida, para pintar su
+  // banda en el diagrama. null si nunca se pidió ninguna en esta simulación.
+  let burstBand = null;
 
   // ---------- Arranque ----------
 
@@ -72,6 +75,8 @@
       btnDelay: id("btn-delay"),
       btnSeq0: id("btn-seq0"),
       btnSeq1: id("btn-seq1"),
+      burstMs: id("burst-ms"),
+      btnBurst: id("btn-burst"),
 
       totalFrames: id("total-frames"),
       frameBits: id("frame-bits"),
@@ -100,6 +105,7 @@
         dups: id("tel-dups"),
         late: id("tel-late"),
         destroyed: id("tel-destroyed"),
+        burst: id("tel-burst"),
         u: id("tel-u"),
         rtt: id("tel-rtt"),
       },
@@ -184,6 +190,21 @@
     );
     dom.btnSeq0.addEventListener("click", () => actOnSelected((p) => S.setSeqOf(sim, p, 0)));
     dom.btnSeq1.addEventListener("click", () => actOnSelected((p) => S.setSeqOf(sim, p, 1)));
+
+    // La ráfaga ensucia el canal, no una trama: a diferencia de los botones de
+    // arriba, no pasa por actOnSelected ni exige nada seleccionado.
+    dom.btnBurst.addEventListener("click", () => {
+      if (!sim) return;
+      const duracionMs = Number(dom.burstMs.value);
+      try {
+        S.startBurst(sim, duracionMs);
+      } catch (err) {
+        dom.timeoutHint.textContent = err.message;
+        return;
+      }
+      burstBand = { fromMs: sim.burst.endsAtMs - duracionMs, toMs: sim.burst.endsAtMs };
+      renderAll();
+    });
 
     dom.themeSwitch.addEventListener("change", () =>
       setTheme(dom.themeSwitch.checked ? "dark" : "light", true)
@@ -357,6 +378,7 @@
     ultimoInstante = 0;
     retrocesoMs = 0;
     zoom = 1;
+    burstBand = null;
     dom.btnRun.textContent = "Iniciar";
     resizeCanvases();
     avisoDeTimeout(avisoDeAjuste);
@@ -516,6 +538,20 @@
       ctx.fillText(nombreNodo(i), x, cabecera - 18);
     }
     ctx.textAlign = "left";
+
+    // Banda del canal sucio mientras duró la última ráfaga de ruido pedida,
+    // del ancho del escenario y transparente para no tapar las flechas que
+    // caigan encima. Se pinta antes que ellas justamente por eso.
+    const ALPHA_BANDA_RUIDO = 0.18;
+    if (burstBand && burstBand.toMs >= t0 && burstBand.fromMs <= tFin) {
+      const yInicio = yDe(Math.max(burstBand.fromMs, t0));
+      const yFin = yDe(Math.min(burstBand.toMs, tFin));
+      ctx.save();
+      ctx.globalAlpha = ALPHA_BANDA_RUIDO;
+      ctx.fillStyle = css("--fault");
+      ctx.fillRect(margenX - 40, yInicio, w - 10 - (margenX - 40), yFin - yInicio);
+      ctx.restore();
+    }
 
     // Flechas de los eventos.
     for (const e of sim.events) {
@@ -956,6 +992,7 @@
     dom.tel.dups.textContent = String(s.duplicatesDiscarded);
     dom.tel.late.textContent = String(s.lateAcks);
     dom.tel.destroyed.textContent = String(s.framesDestroyed + s.acksDestroyed);
+    dom.tel.burst.textContent = String(s.burstBitsRuined);
     dom.tel.u.textContent = `${(sim.analysis.utilization * 100).toFixed(2)} %`;
     dom.tel.rtt.textContent = `${fmt(sim.analysis.rttMs)} ms`;
   }
