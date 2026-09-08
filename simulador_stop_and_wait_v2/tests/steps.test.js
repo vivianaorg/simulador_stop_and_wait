@@ -150,6 +150,22 @@ test("Los pasos de error solo aparecen cuando hay probabilidad de error", () => 
   assert.match(porId(conError, "uefectiva").detalle.join(" "), /1,25/); // 1/(1−0,2)
 });
 
+// Sin probabilidades de error, el caudal es L/ciclo a secas. Arrastrar un
+// "· (1 − P)" con P = 0 es ruido en la pizarra.
+test("sin errores el caudal no arrastra el (1 - P)", () => {
+  const s = Steps.build(satelite());
+  const caudal = porId(s, "caudal");
+  assert.equal(caudal.formula, "caudal = L / ciclo");
+  // Ojo con comprobar esto buscando un "1": la sustitucion es "1000 / 520 ms" y
+  // lleva unos de sobra. Lo que no debe aparecer es el producto por (1 - P).
+  assert.ok(!caudal.sustitucion.includes("·"), `sobra el factor: ${caudal.sustitucion}`);
+});
+
+test("con errores el caudal sigue mostrando el (1 - P)", () => {
+  const s = Steps.build(satelite({ errorProbData: 0.1 }));
+  assert.equal(porId(s, "caudal").formula, "caudal = L · (1 − P) / ciclo");
+});
+
 test("El titular incluye la utilización efectiva solo si hay errores", () => {
   const sin = Steps.build(satelite());
   const con = Steps.build(satelite({ errorProbData: 0.1 }));

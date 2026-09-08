@@ -18,28 +18,29 @@
   const PRESETS = {
     satelite: {
       frameBits: 1000, ackBits: 0, duplexMode: "full", processingMs: 0,
-      links: [{ name: "Enlace satelital", rateBps: 50000, distanceKm: 50000, velocityKmS: 200000, errorProbData: 0, errorProbAck: 0, turnaroundMs: 0 }],
+      links: [{ name: "Enlace satelital", rateBps: 50000, distanceKm: 50000, velocityKmS: 200000, turnaroundMs: 0 }],
     },
     lan: {
       frameBits: 500, ackBits: 0, duplexMode: "full", processingMs: 0,
-      links: [{ name: "LAN", rateBps: 10000000, distanceKm: 1, velocityKmS: 200000, errorProbData: 0, errorProbAck: 0, turnaroundMs: 0 }],
+      links: [{ name: "LAN", rateBps: 10000000, distanceKm: 1, velocityKmS: 200000, turnaroundMs: 0 }],
     },
     "casa-satelite-casa": {
       frameBits: 1000, ackBits: 0, duplexMode: "full", processingMs: 1,
       links: [
-        { name: "Casa A → Satélite", rateBps: 1000000, distanceKm: 35786, velocityKmS: 300000, errorProbData: 0, errorProbAck: 0, turnaroundMs: 0 },
-        { name: "Satélite → Casa B", rateBps: 500000, distanceKm: 35786, velocityKmS: 300000, errorProbData: 0, errorProbAck: 0, turnaroundMs: 0 },
+        { name: "Casa A → Satélite", rateBps: 1000000, distanceKm: 35786, velocityKmS: 300000, turnaroundMs: 0 },
+        { name: "Satélite → Casa B", rateBps: 500000, distanceKm: 35786, velocityKmS: 300000, turnaroundMs: 0 },
       ],
     },
   };
 
+  // Sin probabilidades de error: la calculadora calcula tiempos de un canal
+  // limpio (decisión del usuario, 2026-09-08). El ruido vive en el simulador,
+  // en sim.js y ui.js, y ahí no se ha tocado nada.
   const CAMPOS = [
     { key: "name", label: "Nombre", type: "text" },
     { key: "rateBps", label: "Tasa R (bits/s)", type: "number", min: 1, step: 1 },
     { key: "distanceKm", label: "Distancia d (km)", type: "number", min: 0, step: 0.001 },
     { key: "velocityKmS", label: "Velocidad V (km/s)", type: "number", min: 1, step: 1 },
-    { key: "errorProbData", label: "P error trama (0–1)", type: "number", min: 0, max: 1, step: 0.01 },
-    { key: "errorProbAck", label: "P error ACK (0–1)", type: "number", min: 0, max: 1, step: 0.01 },
     { key: "turnaroundMs", label: "Tiempo de vuelta (ms)", type: "number", min: 0, step: 1 },
   ];
 
@@ -217,7 +218,7 @@
       rateBps: ultimo ? ultimo.rateBps : 1000000,
       distanceKm: ultimo ? ultimo.distanceKm : 100,
       velocityKmS: ultimo ? ultimo.velocityKmS : 200000,
-      errorProbData: 0, errorProbAck: 0, turnaroundMs: 0,
+      turnaroundMs: 0,
     });
     pintarTramos(valores);
     recalcular();
@@ -239,8 +240,6 @@
           rateBps: v.rateBps,
           distanceKm: v.distanceKm,
           velocityKmS: v.velocityKmS,
-          errorProbData: v.errorProbData,
-          errorProbAck: v.errorProbAck,
           turnaroundMs: v.turnaroundMs,
         })
       );

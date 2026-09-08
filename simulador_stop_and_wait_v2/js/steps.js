@@ -290,8 +290,10 @@
       paso({
         id: "caudal",
         titulo: "Caudal útil",
-        formula: "caudal = L · (1 − P) / ciclo",
-        sustitucion: `${crudo(r.frameBits)} · ${redondear(r.cycleSuccessProb)} / ${ms(r.cycleMs)}`,
+        formula: conErrores ? "caudal = L · (1 − P) / ciclo" : "caudal = L / ciclo",
+        sustitucion: conErrores
+          ? `${crudo(r.frameBits)} · ${redondear(r.cycleSuccessProb)} / ${ms(r.cycleMs)}`
+          : `${crudo(r.frameBits)} / ${ms(r.cycleMs)}`,
         resultado: bps(r.throughputBps),
         detalle: [
           `De los ${bps(r.perLink[0].rateBps)} que da el primer tramo, en la práctica se aprovechan ${bps(r.throughputBps)}.`,
