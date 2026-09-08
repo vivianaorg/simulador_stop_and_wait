@@ -151,6 +151,7 @@
           : [
               "Con varios tramos se usan los totales del camino: a = ΣTp / ΣTt.",
               `a = ${ms(r.tpTotalMs)} / ${ms(r.ttDataTotalMs)} = ${redondear(r.aRatio)}`,
+              `Ojo: con varios tramos esta a NO reproduce U, porque U mide solo el tramo del emisor. La que se dibuja en la curva es a efectiva = (ciclo − Tt del emisor) / (2 · Tt del emisor) = ${redondear(r.aEfectiva)}.`,
             ],
         nota: "a mide cuántas veces cabe el tiempo de transmisión dentro del de propagación. Cuanto mayor es a, peor le sienta Stop & Wait.",
       })
@@ -364,7 +365,7 @@
    * @returns {Array} pasos, con el mismo `paso(spec)` que usa `build`
    */
   function buildTransfer(spec) {
-    const r = N.transferAnalysis(spec.path, spec.totalBits);
+    const r = N.transferAnalysis(spec.path, spec.totalBits);
 
     return [
       paso({
@@ -415,7 +416,9 @@
     return {
       curva: {
         puntos,
-        actual: Number.isFinite(r.aRatio) ? { a: r.aRatio, u: r.utilization } : null,
+        // aEfectiva y no aRatio: con varios tramos aRatio no reproduce U y el
+        // punto salía disparado fuera de la curva. Ver defecto 1 del spec.
+        actual: Number.isFinite(r.aEfectiva) ? { a: r.aEfectiva, u: r.utilization } : null,
       },
       ciclo: {
         totalMs: r.cycleMs,

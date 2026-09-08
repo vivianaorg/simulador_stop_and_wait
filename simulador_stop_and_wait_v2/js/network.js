@@ -178,6 +178,14 @@
     // definición del libro: a = (R·d)/(V·L).
     const aRatio = ttDataTotalMs > 0 ? tpTotalMs / ttDataTotalMs : Infinity;
 
+    // `a` que SÍ reproduce U. Despejando de U = Tt(emisor)/ciclo:
+    //   U = 1/(1+2a)  ->  a = (ciclo − Tt(emisor)) / (2 · Tt(emisor))
+    // Con un solo salto y ACK despreciable coincide con aRatio, así que el caso
+    // del libro no cambia. Con varios tramos es la única de las dos que puede
+    // dibujarse sobre la curva sin mentir: aRatio mide ΣTp/ΣTt, y U mide otra
+    // cosa. Es el defecto 1 del spec del 2026-09-08.
+    const aEfectiva = senderTtMs > 0 ? (cycleMs - senderTtMs) / (2 * senderTtMs) : Infinity;
+
     // U = fracción del ciclo en la que el emisor transmite datos útiles.
     const utilization = cycleMs > 0 ? senderTtMs / cycleMs : 0;
 
@@ -220,6 +228,7 @@
       cycleMs,
 
       aRatio,
+      aEfectiva,
       utilization,
       idleFraction: 1 - utilization,
       cycleErrorProb,

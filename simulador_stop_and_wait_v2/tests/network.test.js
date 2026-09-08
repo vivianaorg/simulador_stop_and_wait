@@ -331,3 +331,47 @@ test("Tamaño de transferencia con parámetros imposibles se rechaza", () => {
   assert.throws(() => N.bitsFromSize(0, "kb"), RangeError);
   assert.throws(() => N.bitsFromSize(1, "gb"), RangeError);
 });
+
+// El punto de la gráfica tiene que caer SOBRE la curva U = 1/(1+2a), y con la
+// `a` agregada (ΣTp/ΣTt) no cae: mide una cosa y U mide otra. `aEfectiva` se
+// define para que la identidad se cumpla por construcción, no por suerte.
+test("aEfectiva reproduce U en caminos aleatorios de 1 a 5 saltos", () => {
+  let semilla = 987654321;
+  const rnd = () => (semilla = (semilla * 1103515245 + 12345) % 2147483648) / 2147483648;
+  const logEntre = (lo, hi) => Math.pow(10, Math.log10(lo) + rnd() * (Math.log10(hi) - Math.log10(lo)));
+
+  let peor = 0;
+  for (let i = 0; i < 500; i++) {
+    const saltos = 1 + Math.floor(rnd() * 5);
+    const enlaces = [];
+    for (let h = 0; h < saltos; h++) {
+      enlaces.push(
+        N.createLink({
+          name: `t${h}`,
+          rateBps: logEntre(1e4, 1e9),
+          distanceKm: logEntre(1, 4e4),
+          velocityKmS: 200000,
+        })
+      );
+    }
+    const r = N.analyze(
+      N.createPath({
+        frameBits: Math.round(logEntre(64, 1e6)),
+        ackBits: Math.round(logEntre(1, 1000)),
+        processingMsPerHop: rnd() * 5,
+        links: enlaces,
+      })
+    );
+    const porLaCurva = 1 / (1 + 2 * r.aEfectiva);
+    peor = Math.max(peor, Math.abs(porLaCurva - r.utilization) / r.utilization);
+  }
+  assert.ok(peor < 1e-12, `la identidad U = 1/(1+2·aEfectiva) se rompe: desvío ${peor}`);
+});
+
+test("con un salto y ACK despreciable, aEfectiva es la `a` de siempre", () => {
+  const r = N.singleLinkAnalysis({
+    frameBits: 1000, ackBits: 0,
+    rateBps: 50000, distanceKm: 50000, velocityKmS: 200000,
+  });
+  assert.ok(Math.abs(r.aEfectiva - r.aRatio) < 1e-12, `aEfectiva=${r.aEfectiva} aRatio=${r.aRatio}`);
+});
