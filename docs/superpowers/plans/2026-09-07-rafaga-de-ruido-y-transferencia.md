@@ -293,13 +293,6 @@ test("Una ráfaga se reparte sobre tramas de L bits", () => {
   assert.equal(N.burstDamage({ bits: 0, frameBits: 1000 }).frames, 0);
 });
 
-test("Una ráfaga de hasta 16 bits cabe en lo que el CRC garantiza", () => {
-  // Tanenbaum, cap. 3: un código con r bits de verificación detecta todas las
-  // ráfagas de longitud <= r. La comprobación sobre el CRC real vive en
-  // frame.test.js; aquí solo se afirma el umbral que la interfaz enseña.
-  assert.equal(N.CRC_BURST_GUARANTEE_BITS, 16);
-});
-
 test("Ráfaga con parámetros imposibles se rechaza", () => {
   assert.throws(() => N.burstBitsFromMs({ rateBps: 0, burstMs: 10 }), RangeError);
   assert.throws(() => N.burstBitsFromMs({ rateBps: 1000, burstMs: -1 }), RangeError);
@@ -321,10 +314,6 @@ Esperado: FALLA con `N.burstBitsFromMs is not a function`.
 En `js/network.js`, junto a las demás fórmulas:
 
 ```js
-  // Hasta esta longitud, el CRC-16 detecta cualquier ráfaga: Tanenbaum, cap. 3,
-  // un código con r bits de verificación caza todas las de longitud <= r.
-  const CRC_BURST_GUARANTEE_BITS = 16;
-
   /**
    * Cuántos bits arruina una ráfaga que dura `burstMs` sobre un canal de
    * `rateBps`. No es una fórmula del libro —Tanenbaum mide las ráfagas en
@@ -355,7 +344,11 @@ En `js/network.js`, junto a las demás fórmulas:
   }
 ```
 
-Exportar `burstBitsFromMs`, `burstDamage` y `CRC_BURST_GUARANTEE_BITS`.
+Exportar `burstBitsFromMs` y `burstDamage`.
+
+**El umbral de 16 bits no se declara aquí.** Ya existe como `CRC_BITS` en `frame.js`, que es su
+dueño; quien lo necesite en la interfaz lo lee de allí. Un mismo número en dos módulos es
+exactamente lo que `04` prohíbe.
 
 - [ ] **Paso 4: Ejecutar y ver que pasa**
 
@@ -363,9 +356,9 @@ Exportar `burstBitsFromMs`, `burstDamage` y `CRC_BURST_GUARANTEE_BITS`.
 node --test simulador_stop_and_wait_v2/tests/network.test.js
 ```
 
-Esperado: verde, 4 pruebas más que antes.
+Esperado: verde, 3 pruebas más que antes.
 
-- [ ] **Paso 5: Actualizar el conteo de pruebas en su fuente única** (`docs/05-runbook.md`): 96.
+- [ ] **Paso 5: Actualizar el conteo de pruebas en su fuente única** (`docs/05-runbook.md`): 95.
 
 - [ ] **Paso 6: Suite completa y lint verdes**
 
@@ -502,7 +495,7 @@ casillas.
 
 **Esta comprobación se anota con lo que se vio, no se da por hecha.**
 
-- [ ] **Paso 7: Suite completa y lint verdes; anotar el conteo nuevo** (99) en `docs/05-runbook.md`.
+- [ ] **Paso 7: Suite completa y lint verdes; anotar el conteo nuevo** (98) en `docs/05-runbook.md`.
 
 - [ ] **Paso 8: Commit**
 
@@ -702,7 +695,7 @@ node --test simulador_stop_and_wait_v2/tests/sim.test.js
 Suite entera verde **y** el navegador: arrancar una simulación sin tocar la ráfaga y ver que
 termina como antes. Es lo que caza que `proximoSucesoMs` se haya roto.
 
-- [ ] **Paso 6: Conteo nuevo en `docs/05-runbook.md`** (103) y lint verde.
+- [ ] **Paso 6: Conteo nuevo en `docs/05-runbook.md`** (102) y lint verde.
 
 - [ ] **Paso 7: Commit**
 
@@ -833,7 +826,7 @@ que los demás. `calc.js` no calcula nada.
 `http://localhost:8000/calculadora.html`, 100 kbps y 10 ms → 1000 bits, 2 tramas con L = 500.
 Anotar lo que se vio.
 
-- [ ] **Paso 7: Conteo nuevo en `docs/05-runbook.md`** (106) y lint verde.
+- [ ] **Paso 7: Conteo nuevo en `docs/05-runbook.md`** (105) y lint verde.
 
 - [ ] **Paso 8: Commit**
 
@@ -935,7 +928,7 @@ gráfica lleva tabla, si este bloque añade alguna, lleva la suya.
 
 - [ ] **Paso 6: Comprobar en el navegador y anotar lo que se vio**
 
-- [ ] **Paso 7: Conteo nuevo en `docs/05-runbook.md`** (104) y lint verde.
+- [ ] **Paso 7: Conteo nuevo en `docs/05-runbook.md`** (103) y lint verde.
 
 - [ ] **Paso 8: Commit**
 
