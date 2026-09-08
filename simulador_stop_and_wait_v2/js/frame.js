@@ -154,6 +154,33 @@
     return bitIndex;
   }
 
+  /**
+   * Voltea `count` bits contiguos a partir de `startBit`, como hace una ráfaga
+   * de ruido: ensucia un intervalo de tiempo, y en el cable el tiempo es
+   * posición. No recibe generador porque no hay nada que sortear.
+   *
+   * Si el tramo se sale del final de la trama se corta ahí. Devuelve cuántos
+   * bits llegó a tocar, que es lo que el simulador necesita para saber si a la
+   * ráfaga le sobró alcance para la trama siguiente.
+   */
+  function flipRun(frame, startBit, count) {
+    const total = totalBits(frame);
+    if (!Number.isInteger(startBit) || startBit < 0) {
+      throw new RangeError(`Índice de bit fuera de rango: ${startBit}`);
+    }
+    if (!Number.isInteger(count) || count < 0) {
+      throw new RangeError(`Número de bits inválido: ${count}`);
+    }
+
+    const hasta = Math.min(startBit + count, total);
+    let tocados = 0;
+    for (let i = startBit; i < hasta; i++) {
+      flipBit(frame, i);
+      tocados++;
+    }
+    return tocados;
+  }
+
   // Voltea un bit "al azar" con un generador propio: la simulación tiene que
   // poder repetirse, así que no se usa Math.random.
   function flipRandomBit(frame, random) {
@@ -215,6 +242,7 @@
     label,
     totalBits,
     flipBit,
+    flipRun,
     flipRandomBit,
     isIntact,
     seededRandom,

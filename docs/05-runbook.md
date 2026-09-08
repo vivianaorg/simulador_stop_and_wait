@@ -14,7 +14,7 @@ python -m http.server 8000 --directory simulador_stop_and_wait_v2
 Pruebas, con el runner nativo de Node (**no instala nada**):
 
 ```bash
-node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js simulador_stop_and_wait_v2/tests/steps.test.js simulador_stop_and_wait_v2/tests/bordes.test.js
+node --test simulador_stop_and_wait_v2/tests/frame.test.js simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js simulador_stop_and_wait_v2/tests/steps.test.js simulador_stop_and_wait_v2/tests/bordes.test.js
 ```
 
 **Nombrar los archivos, no la carpeta:** `node --test tests/` falla en este equipo con
@@ -46,7 +46,7 @@ ver [04-convenciones.md](04-convenciones.md) § B.1.
 ## Verificación (pipeline)
 
 ```bash
-node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js simulador_stop_and_wait_v2/tests/steps.test.js simulador_stop_and_wait_v2/tests/bordes.test.js
+node --test simulador_stop_and_wait_v2/tests/frame.test.js simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js simulador_stop_and_wait_v2/tests/steps.test.js simulador_stop_and_wait_v2/tests/bordes.test.js
 node tools/lint-docs.js
 for f in simulador_stop_and_wait_v2/js/*.js; do node --check "$f"; done
 node --check simulador_stop_and_wait_web/js/protocol.js
@@ -54,7 +54,7 @@ node --check simulador_stop_and_wait_web/js/app.js
 python -m py_compile simulador_stop_and_wait_python/*.py
 ```
 
-Baseline 2026-09-07, Node v24.11.1 y Python 3.13.14: **86 pruebas verdes, 0 fallas**; el banco de
+Baseline 2026-09-07, Node v24.11.1 y Python 3.13.14: **92 pruebas verdes, 0 fallas**; el banco de
 interfaz con 54 comprobaciones sin problemas; el lint de documentación limpio; el resto, sin
 avisos.
 
