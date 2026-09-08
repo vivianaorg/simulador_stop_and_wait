@@ -300,6 +300,15 @@ test("Conversión de tamaño con unidad a bits: KB y MB son decimales, no 1024",
   assert.equal(N.bitsFromSize(2, "mb"), 16000000, "2 MB = 2 000 000 bytes = 16 000 000 bits");
 });
 
+test("Conversión de tamaño fraccionario: el número exacto de bits, sin aproximar", () => {
+  // 1,5 MB es el caso normal en un ejercicio ("fichero de 1,5 MB"), no un
+  // entero. El aserto exige el bit exacto: si algún día se cuela un
+  // redondeo en bitsFromSize, esta prueba lo tiene que cazar.
+  assert.equal(N.bitsFromSize(1.5, "mb"), 12000000, "1,5 MB = 1 500 000 bytes = 12 000 000 bits");
+  assert.equal(N.bitsFromSize(0.5, "kb"), 4000, "0,5 KB = 500 bytes = 4000 bits");
+  assert.equal(N.bitsFromSize(0.125, "bits"), 0.125, "en bits no hay conversión que redondear");
+});
+
 test("Tamaño de transferencia con parámetros imposibles se rechaza", () => {
   assert.throws(() => N.transferAnalysis(N.createPath({
     frameBits: 1000,
