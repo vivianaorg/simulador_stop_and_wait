@@ -12,6 +12,7 @@
   "use strict";
 
   const N = window.NetworkModel;
+  const F = window.FrameModel;
   const Steps = window.StepsModel;
 
   const PRESETS = {
@@ -54,6 +55,9 @@
 
   function init() {
     cacheDom();
+    // El mínimo del formulario lo declara el modelo, no el HTML: así el campo
+    // y `roundFrameBits` no pueden decir cosas distintas.
+    dom.frameBits.min = String(F.MIN_FRAME_BITS);
     initTheme();
     bindEvents();
     aplicarPreset("satelite");
@@ -66,10 +70,12 @@
     const id = (x) => document.getElementById(x);
     Object.assign(dom, {
       frameBits: id("frame-bits"),
+      frameBitsHint: id("frame-bits-hint"),
       ackBits: id("ack-bits"),
       duplexMode: id("duplex-mode"),
       processingMs: id("processing-ms"),
       burstMs: id("burst-ms"),
+      transferPod: id("transfer-pod"),
       transferSize: id("transfer-size"),
       transferUnit: id("transfer-unit"),
       transferStepsList: id("transfer-steps-list"),
@@ -229,6 +235,24 @@
 
   function recalcular() {
     let analisis;
+
+    // Mismo trato que en el simulador (`rebuild()` en `ui.js`): el tamaño de
+    // trama tiene que caber en bytes enteros de carga más los 16 del CRC, así
+    // que un valor no representable se ajusta y se dice. Si la calculadora no
+    // lo hiciera, enseñaría los tiempos de una trama de 1005 bits que en
+    // pantalla mide 1008: el hueco que este trabajo venía a cerrar.
+    const pedidos = Number(dom.frameBits.value);
+    const validos = F.roundFrameBits(pedidos);
+    if (validos !== pedidos) {
+      dom.frameBits.value = String(validos);
+      dom.frameBitsHint.hidden = false;
+      dom.frameBitsHint.textContent =
+        `Tamaño de trama ajustado a ${validos} bits: la carga va en bytes enteros más 16 de CRC.`;
+    } else {
+      dom.frameBitsHint.hidden = true;
+      dom.frameBitsHint.textContent = "";
+    }
+
     try {
       const enlaces = leerTramos().map((v, i) =>
         N.createLink({
@@ -351,12 +375,19 @@
   function pintarTransferencia() {
     const tamano = Number(dom.transferSize.value);
     dom.transferStepsList.innerHTML = "";
-    if (!ultimoPath || !(tamano > 0)) return;
+    // Mismo guardián que `pintarRafaga`: sin tamaño no hay nada que enseñar, y
+    // un bloque con una sección vacía solo estorba.
+    if (!ultimoPath || !(tamano > 0)) {
+      dom.transferPod.hidden = true;
+      return;
+    }
+    dom.transferPod.hidden = false;
 
     let totalBits;
     try {
       totalBits = N.bitsFromSize(tamano, dom.transferUnit.value);
     } catch (err) {
+      dom.transferPod.hidden = true;
       return; // unidad inválida: no debería pasar con el <select>, pero no se pinta nada roto
     }
 
