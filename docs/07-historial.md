@@ -8,6 +8,31 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-08 — La bibliografía entra al PC, no al repositorio, y se verifica el motor contra ella
+
+**Qué.** Tres cosas. (1) `.gitignore` pasa a ignorar `referencia/` y `*.pdf`: el libro de
+Tanenbaum vive ahora en `referencia/` de este PC, se consulta y no se versiona. (2) Se verificó
+el motor de `network.js` con **12 635 comprobaciones sobre valores aleatorios** —no los presets—
+y salió **sin una sola falla de cálculo**. (3) De esa verificación y del contraste contra el
+libro salieron seis defectos de presentación y de atribución, que van con spec propia:
+[2026-09-08-calculadora-granular-design.md](superpowers/specs/2026-09-08-calculadora-granular-design.md).
+
+**Por qué.** Hasta hoy «el libro» se citaba sin poder abrirlo, y varias afirmaciones del
+repositorio resultaron ser inexactas al comprobarlas: el preset «LAN 10 Mbps · 1 km» **no sale
+de Tanenbaum** (`83,3` y `1 + 2a` no aparecen en sus 820 páginas; es formulación de Stallings),
+y lo que se llama BDP es en realidad la ventana `2BD+1` del libro, no su producto
+ancho de banda-retardo, que son 12,5 tramas. El PDF no se versiona porque son 22 MB con
+copyright y el historial de git no los suelta nunca.
+
+**Lección.** Las pruebas del repositorio comprobaban los números contra el libro, y los números
+estaban bien. Lo que nadie comprobó fue **de qué libro**. Una prueba verde sobre una atribución
+falsa sigue siendo una atribución falsa: verifica el cálculo, no la cita.
+
+**Cómo revertir.** Quitar las dos líneas del final de `.gitignore` y borrar el spec. La
+verificación no cambió ningún código, así que no hay nada más que deshacer.
+
+---
+
 ## 2026-09-08 (cierre) — El conteo del banco deja de estar tecleado en `06-pendientes.md`
 
 **Qué.** La ficha `V2-01` afirmaba «42 comprobaciones» del banco de interfaz. El número llevaba

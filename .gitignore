@@ -2,3 +2,8 @@ simulador_stop_and_wait_python/__pycache__/gui.cpython-313.pyc
 simulador_stop_and_wait_python/__pycache__/protocol.cpython-313.pyc
 simulador_stop_and_wait_python/__pycache__/main.cpython-313.pyc
 simulador_stop_and_wait_python/__pycache__/__init__.cpython-313.pyc
+
+# Bibliografia local (Tanenbaum, 5.a ed.). Se consulta, no se versiona:
+# son decenas de MB con copyright y el historial de git no los suelta.
+referencia/
+*.pdf
