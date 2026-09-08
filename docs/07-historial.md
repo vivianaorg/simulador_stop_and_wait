@@ -8,6 +8,36 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-08 — La calculadora deja de pedir probabilidades de error
+
+**Qué.** Se quitaron los dos campos `errorProbData`/`errorProbAck` de `js/calc.js` (constante
+`CAMPOS`, `PRESETS`, `anadirTramo()` y `recalcular()`): la calculadora pasa a calcular tiempos de
+un canal limpio. En `js/steps.js` el paso `caudal` pasa a ser condicional: con `conErrores` falso
+muestra `caudal = L / ciclo` en vez de arrastrar un `· (1 − P)` con P = 0.
+
+**Por qué.** Decisión explícita del usuario (2026-09-08). El modelo de errores de `network.js`
+**no se tocó** —lo usa el simulador (`sim.js`/`ui.js`), que conserva su ruido entero— y los pasos
+«Probabilidad de que el ciclo falle» y «Utilización efectiva» de `steps.js` tampoco se borraron:
+sin probabilidades que pasar, `conErrores = r.cycleErrorProb > 0` da falso y esos pasos se apagan
+solos, igual que ya hacía el interruptor de ruido del 2026-09-08 anterior con `ui.js`.
+
+**Evidencia.** `node --test` sobre los cinco ficheros de `simulador_stop_and_wait_v2/tests/` →
+**128 pruebas, 0 fallas** (126 previas + 2 nuevas: caudal sin y con errores). `node tools/lint-docs.js`
+confirma el conteo contra el repositorio real. `node --check` limpio en `calc.js` y `steps.js`.
+Barrido de `grep -rn "errorProb" simulador_stop_and_wait_v2/banco-interfaz.html
+simulador_stop_and_wait_v2/calculadora.html simulador_stop_and_wait_v2/README.md docs/`: solo
+aparece en `docs/01-arquitectura.md` (describe `network.js`, no la calculadora) y en entradas
+fechadas de este mismo archivo (exentas de corrección); ninguno afirma que la calculadora ofrezca
+esos campos, así que no hizo falta tocarlos. Las pruebas de `bordes.test.js` que usan
+`errorProbData`/`errorProbAck` llaman todas a `N.createLink`/`enlace()` directamente —comprueban
+el modelo, no la calculadora— y se dejaron como estaban.
+
+**Cómo revertir.** `git revert` del commit; o a mano, devolver las dos líneas de `CAMPOS` y los
+`errorProbData: 0, errorProbAck: 0,` de `PRESETS`/`anadirTramo`/`recalcular` en `js/calc.js`, y
+quitar la condición `conErrores ?` del paso `caudal` en `js/steps.js`.
+
+---
+
 ## 2026-09-08 — La bibliografía entra al PC, no al repositorio, y se verifica el motor contra ella
 
 **Qué.** Tres cosas. (1) `.gitignore` pasa a ignorar `referencia/` y `*.pdf`: el libro de
