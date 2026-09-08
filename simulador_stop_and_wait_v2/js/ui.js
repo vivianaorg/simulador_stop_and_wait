@@ -789,14 +789,38 @@
     const inicioCrc = bits.length - F.CRC_BITS;
     dom.bits.innerHTML = "";
 
-    for (let i = 0; i < bits.length; i++) {
+    // Por encima de este tamaño la tira pasa a una casilla por byte: 1000
+    // cuadritos no se leen, y para enseñar una ráfaga el bloque dice más que el
+    // bit suelto.
+    const BITS_MAX_INDIVIDUALES = 128;
+    const agrupar = F.totalBits(p.frame) > BITS_MAX_INDIVIDUALES;
+    const paso = agrupar ? 8 : 1;
+
+    for (let i = 0; i < bits.length; i += paso) {
+      const finGrupo = Math.min(i + paso, bits.length);
+      const grupo = bits.slice(i, finGrupo);
       const b = document.createElement("button");
       b.type = "button";
       b.className = "bit";
-      b.textContent = bits[i];
+      // Ocho caracteres de "0"/"1" no caben en una casilla pensada para uno
+      // solo: en hex el mismo byte entra en dos.
+      b.textContent = agrupar
+        ? parseInt(grupo, 2).toString(16).padStart(2, "0")
+        : bits[i];
       b.dataset.part = i >= inicioCrc ? "crc" : "payload";
-      b.dataset.flipped = String(p.frame.flippedBits.includes(i));
-      b.title = `Bit ${i}${i >= inicioCrc ? " (CRC)" : ""}`;
+      let volteado = false;
+      for (let j = i; j < finGrupo; j++) {
+        if (p.frame.flippedBits.includes(j)) {
+          volteado = true;
+          break;
+        }
+      }
+      b.dataset.flipped = String(volteado);
+      b.title = agrupar
+        ? `Bits ${i}-${finGrupo - 1}${i >= inicioCrc ? " (CRC)" : ""}`
+        : `Bit ${i}${i >= inicioCrc ? " (CRC)" : ""}`;
+      // Agrupado o no, el clic siempre voltea un solo bit: el daño de un bit
+      // y el daño en ráfaga son dos modos distintos que no deben mezclarse.
       b.addEventListener("click", () => {
         S.flipBitOf(sim, p, i);
         renderAll();
