@@ -448,3 +448,15 @@ test("El cierre de la ráfaga entra en el próximo suceso", () => {
   // El reloj no puede saltarse el final de la ventana.
   assert.ok(S.proximoSucesoMs(sim) <= 1);
 });
+
+test("Dos ráfagas seguidas dejan dos sucesos, cada una con su propia ventana", () => {
+  const sim = S.createSimulation({ path: caminoSimple(), totalFrames: 3 });
+  S.start(sim);
+  S.startBurst(sim, 5);
+  correr(sim, 20, 1); // deja que la primera ventana se cierre sola
+  S.startBurst(sim, 5);
+
+  const sucesos = sim.events.filter((e) => e.kind === "BURST");
+  assert.equal(sucesos.length, 2, "cada startBurst tiene que dejar su propio suceso");
+  assert.ok(sucesos[0].tEnd <= sucesos[1].tStart, "las dos ventanas no se pisan en el tiempo");
+});

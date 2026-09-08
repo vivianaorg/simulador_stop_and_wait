@@ -395,7 +395,20 @@
     if (!Number.isFinite(durationMs) || durationMs <= 0) {
       throw new RangeError("la ráfaga tiene que durar más de 0 ms");
     }
-    sim.burst = { endsAtMs: sim.clockMs + durationMs, cursorPorPaquete: new Map() };
+    const endsAtMs = sim.clockMs + durationMs;
+    sim.burst = { endsAtMs, cursorPorPaquete: new Map() };
+    // La ventana viaja como suceso, igual que TURN y TIMEOUT: quien la dibuja
+    // no necesita repetir esta cuenta ni guardar su propio estado.
+    pushEvent(sim, {
+      tStart: sim.clockMs,
+      tEnd: endsAtMs,
+      fromIdx: 0,
+      toIdx: 0,
+      kind: "BURST",
+      label: "ráfaga de ruido",
+      status: STATUS.OK,
+      fraction: 1,
+    });
     note(sim, "ERROR", `Ráfaga de ruido: el canal queda sucio ${durationMs} ms`);
     return sim;
   }
