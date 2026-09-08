@@ -262,13 +262,19 @@ async function probarCalculadora() {
   intentar("calc · tasa válida otra vez", () => fijar(campos[1], 50000));
   comprobar("calc · el aviso desaparece", d.getElementById("error-box").hidden, "el aviso se quedó");
 
-  // La calculadora ajusta el tamaño de trama igual que el simulador: 0 sube al
-  // mínimo representable (24 bits) y lo dice, en vez de dar un error.
+  // L = 0 no es un tamaño: el modelo lo rechaza y la calculadora lo dice. Ojo,
+  // esto NO es el redondeo del simulador: la calculadora no redondea (ver
+  // notaDeTramaReal() en js/calc.js), solo avisa de lo que usaría la otra
+  // página, y ese aviso no es un error.
   intentar("calc · trama de 0 bits", () => fijar(d.getElementById("frame-bits"), 0));
+  comprobar("calc · avisa de la trama inválida", !d.getElementById("error-box").hidden, "sin aviso");
+  intentar("calc · trama de 500 bits, la del libro", () => fijar(d.getElementById("frame-bits"), 500));
   comprobar(
-    "calc · la trama imposible se ajusta al mínimo y lo avisa",
-    d.getElementById("frame-bits").value === "24" && !d.getElementById("frame-bits-hint").hidden,
-    d.getElementById("frame-bits").value + " / aviso " + (d.getElementById("frame-bits-hint").hidden ? "oculto" : "visible")
+    "calc · con 500 bits calcula los 500 y solo anota lo que haría el simulador",
+    d.getElementById("frame-bits").value === "500" &&
+      !d.getElementById("frame-bits-hint").hidden &&
+      d.getElementById("error-box").hidden,
+    d.getElementById("frame-bits").value + " / nota " + (d.getElementById("frame-bits-hint").hidden ? "oculta" : "visible")
   );
   intentar("calc · trama válida", () => fijar(d.getElementById("frame-bits"), 1000));
 

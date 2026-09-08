@@ -54,8 +54,8 @@ node --check simulador_stop_and_wait_web/js/app.js
 python -m py_compile simulador_stop_and_wait_python/*.py
 ```
 
-Baseline 2026-09-08, Node v24.11.1 y Python 3.13.14: **115 pruebas verdes, 0 fallas**; el banco de
-interfaz con 54 comprobaciones sin problemas; el lint de documentación limpio; el resto, sin
+Baseline 2026-09-08, Node v24.11.1 y Python 3.13.14: **116 pruebas verdes, 0 fallas**; el banco de
+interfaz con 55 comprobaciones sin problemas; el lint de documentación limpio; el resto, sin
 avisos.
 
 > **Este archivo es la fuente única del conteo de pruebas.** Ningún otro documento lo repite: lo
@@ -95,16 +95,16 @@ python -m http.server 8000 --directory simulador_stop_and_wait_v2
 # abrir http://localhost:8000/banco-interfaz.html
 ```
 
-El resumen sale arriba del todo. Al 2026-09-08: **54 comprobaciones, 0 problemas**, corrido con
+El resumen sale arriba del todo. Al 2026-09-08: **55 comprobaciones, 0 problemas**, corrido con
 el Chromium sin cabeza de la receta de abajo, y repetible: espera a que cada iframe termine de
 montarse en vez de dormir un rato fijo.
 
-> Dos comprobaciones se corrigieron el 2026-09-08 porque afirmaban lo que ya no es cierto: la
-> del CRC paso a paso esperaba 8 filas (el `payloadBytes` fijo que desapareció al unificar el
-> tamaño de trama; con L = 1000 son 123 bytes), y la del tamaño de trama de la calculadora
-> esperaba un error donde ahora hay un ajuste avisado. La primera llevaba en rojo desde que se
-> unificó el tamaño de trama, sin que nadie lo viera: en esa sesión ningún agente tenía
-> navegador.
+> Una comprobación se corrigió el 2026-09-08 porque afirmaba lo que ya no es cierto: la del CRC
+> paso a paso esperaba 8 filas (el `payloadBytes` fijo que desapareció al unificar el tamaño de
+> trama; con L = 1000 son 123 bytes). Llevaba en rojo desde entonces sin que nadie lo viera: en
+> esa sesión ningún agente tenía navegador. Ese mismo día se añadió una comprobación de que la
+> calculadora **no** redondea el tamaño de trama: con 500 calcula los 500 y solo deja la nota de
+> lo que haría el simulador.
 
 **No sustituye a probarlo a mano.** Ve si el comportamiento es el esperado, no si algo se ve mal:
 el selector de canal cortado o una etiqueta encima de otra solo se ven mirando.
@@ -172,13 +172,14 @@ gotcha más habitual de este proyecto y no da error visible.
 
 ## Checklist de humo del v2 (calculadora)
 
-1. Los tres presets cargan y dan: **satélite** U = 3,846 % y BDP 26 tramas · **LAN** a = 0,0992
-   y U = 83,44 % · **casa → satélite → casa** RTT = 482,15 ms, a = 79,52 y U = 0,207 % con 2
+1. Los tres presets cargan y dan: **satélite** U = 3,846 % y BDP 26 tramas · **LAN** a = 0,1 y
+   U = 83,33 % · **casa → satélite → casa** RTT = 482,15 ms, a = 79,52 y U = 0,207 % con 2
    saltos.
-   > El preset de LAN trae L = 500, que **no es representable** (la carga va en bytes enteros
-   > más 16 de CRC): la calculadora lo ajusta a 504 y lo avisa, igual que el simulador. Por eso
-   > ya no salen los 0,1 y 83,33 % de antes. Si en clase hace falta el a = 0,1 exacto, sirve
-   > L = 1000 bits con d = 2 km, que sí es representable.
+   > El preset de LAN trae L = 500, que **no es una trama construible** (la real lleva la carga
+   > en bytes enteros más 16 de CRC, así que el simulador usaría 504). La calculadora **no
+   > redondea, a propósito**: calcula tiempos, no construye tramas, y así conserva el número del
+   > libro. Bajo los datos aparece una nota diciendo qué tamaño usaría el simulador; no es un
+   > error y no cambia el resultado.
 2. "Añadir salto" y "Quitar" funcionan; con un solo salto, "Quitar" avisa y no borra.
 3. Un valor inválido (R = 0, V = 0, P = 1,5) muestra el mensaje de error, no un `NaN`.
 4. Cambiar a half duplex con tiempo de vuelta > 0 sube el ciclo y baja U, **sin mover el RTT**.
@@ -195,8 +196,10 @@ gotcha más habitual de este proyecto y no da error visible.
     tamaño en bits, en KB y en MB.
 11. El bloque **Ráfaga** da los bits de `R · t` y las tramas que abarca; con duración 0 el bloque
     se oculta. El de **Transferencia** se oculta igual con tamaño 0.
-12. Un tamaño de trama no representable (1005) se ajusta a 1008 y aparece el aviso bajo los
-    campos; con uno válido el aviso desaparece.
+12. Un tamaño de trama no construible (500 o 1005) **se calcula tal cual** —el campo no se
+    reescribe— y aparece bajo los datos la nota de qué usaría el simulador (504, 1008). Con uno
+    construible (1000) la nota desaparece; con uno inválido (0) sale el error de siempre y la
+    nota se esconde.
 
 ## Checklist de humo del v1 (simulador animado)
 

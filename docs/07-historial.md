@@ -8,6 +8,45 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-08 (tarde) — La calculadora deja de redondear el tamaño de trama: el redondeo es de la trama real, no de la fórmula
+
+**Qué:** se revierte el arreglo «MEDIA 3» de la entrada de abajo, que se hizo esta misma mañana y
+que **no se reescribe**. `js/calc.js` ya no aplica `F.roundFrameBits`: calcula con el valor exacto
+que se escriba. En su lugar, `notaDeTramaReal()` deja una nota informativa cuando el tamaño no es
+construible («el simulador ajustaría estos 500 bits a 504»), con el tono apagado de las pistas,
+bajo los datos y lejos del resultado: no es un aviso de validación y no cambia ningún número de
+esa página. El `min` del campo de `calculadora.html` vuelve a `1` con `step="1"`. El redondeo del
+**simulador** no se toca: ahí es correcto.
+
+**Por qué:** el redondeo es una restricción de la trama *real* —la que construye `createFrame`,
+con la carga en bytes enteros más los 16 bits del CRC—, no de la fórmula. El simulador construye
+tramas y no tiene más remedio que aplicarlo; la calculadora no construye ninguna, solo calcula
+tiempos, y `Tt = L / R` funciona igual con L = 500 que con 504. Imponérselo rompía el ejemplo de
+LAN del libro (10 Mbps, 1 km, 500 bits): pasaba de a = 0,1 y U = 83,33 % a 0,0992 y 83,44 %, y
+ese es uno de los números publicados contra los que está probado el proyecto. Por la misma razón,
+el `min` del modelo (`F.MIN_FRAME_BITS = 24`) es del simulador y no de la calculadora, donde la
+única restricción de la fórmula es L > 0.
+
+- **Prueba que protege el número por el camino que se rompió** (`tests/steps.test.js`): «El
+  ejemplo de LAN llega al desarrollo del libro: a = 0,1 y U = 83,33 %» recorre la misma cadena
+  que la calculadora —`Steps.build` sobre un enlace con `frameBits: 500`— y lee los campos por su
+  identificador (`porId(s, "a")`, `porId(s, "u")`, el titular y la entrada), no buscando en
+  texto. La de `tests/network.test.js` pasaba llamando al modelo directamente y se saltó el fallo
+  sin enterarse. Comprobada por mutación: metiendo un `roundFrameBits` en `createPath` se pone
+  roja con `0,0992`.
+- **Banco de interfaz:** vuelve la comprobación de que L = 0 da error, y se añade una nueva de que
+  con L = 500 la calculadora calcula los 500 y solo deja la nota. 55 comprobaciones, 0 problemas.
+- **La razón queda escrita** en el bloque de comentario de `notaDeTramaReal()` en `js/calc.js`,
+  que es donde alguien intentará «arreglar» la inconsistencia dentro de seis meses, y en
+  `01-arquitectura.md` § «Un solo tamaño de trama».
+
+**Cómo revertir:** `git revert` de este commit devuelve el redondeo a la calculadora y, con él,
+el preset de LAN a a = 0,0992 y U = 83,44 %; hay que quitar en el mismo movimiento la prueba «El
+ejemplo de LAN llega al desarrollo del libro», que quedaría en rojo, y las dos comprobaciones del
+banco que la acompañan. No afecta al simulador.
+
+---
+
 ## 2026-09-08 — Revisión final de la rama de la ráfaga: los bits que se cuentan son los que se enseñan
 
 **Qué:** los siete hallazgos de la revisión final de `feat/rafaga-de-ruido`. La entrada del

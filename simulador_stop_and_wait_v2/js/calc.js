@@ -55,9 +55,6 @@
 
   function init() {
     cacheDom();
-    // El mínimo del formulario lo declara el modelo, no el HTML: así el campo
-    // y `roundFrameBits` no pueden decir cosas distintas.
-    dom.frameBits.min = String(F.MIN_FRAME_BITS);
     initTheme();
     bindEvents();
     aplicarPreset("satelite");
@@ -235,24 +232,6 @@
 
   function recalcular() {
     let analisis;
-
-    // Mismo trato que en el simulador (`rebuild()` en `ui.js`): el tamaño de
-    // trama tiene que caber en bytes enteros de carga más los 16 del CRC, así
-    // que un valor no representable se ajusta y se dice. Si la calculadora no
-    // lo hiciera, enseñaría los tiempos de una trama de 1005 bits que en
-    // pantalla mide 1008: el hueco que este trabajo venía a cerrar.
-    const pedidos = Number(dom.frameBits.value);
-    const validos = F.roundFrameBits(pedidos);
-    if (validos !== pedidos) {
-      dom.frameBits.value = String(validos);
-      dom.frameBitsHint.hidden = false;
-      dom.frameBitsHint.textContent =
-        `Tamaño de trama ajustado a ${validos} bits: la carga va en bytes enteros más 16 de CRC.`;
-    } else {
-      dom.frameBitsHint.hidden = true;
-      dom.frameBitsHint.textContent = "";
-    }
-
     try {
       const enlaces = leerTramos().map((v, i) =>
         N.createLink({
@@ -276,10 +255,14 @@
       ultimoPath = camino;
     } catch (err) {
       mostrarError(err.message);
+      // Sin resultado no hay nada de lo que dejar nota: una nota sobre un
+      // tamaño que no se está calculando confunde más que ayuda.
+      dom.frameBitsHint.hidden = true;
       return;
     }
 
     dom.errorBox.hidden = true;
+    notaDeTramaReal(analisis.frameBits);
     solucion = Steps.build(analisis);
     ultimoAnalisis = analisis;
     pasosVisibles = Math.min(pasosVisibles, solucion.pasos.length);
@@ -289,6 +272,40 @@
     dibujarCiclo();
     dibujarCurva();
     pintarTablaCurva();
+  }
+
+  /**
+   * La calculadora **no redondea el tamaño de trama, y es a propósito.**
+   *
+   * El redondeo de `F.roundFrameBits` es una restricción de la trama *real*: la
+   * que construye `createFrame`, con la carga en bytes enteros más los 16 bits
+   * del CRC. El simulador no tiene más remedio que aplicarlo, porque construye
+   * tramas. Aquí no se construye ninguna: solo se calculan tiempos, y
+   * `Tt = L / R` funciona igual de bien con L = 500 que con L = 504.
+   *
+   * Importa porque el ejemplo de LAN del libro es exactamente ese: 10 Mbps,
+   * 1 km, tramas de 500 bits, a = 0,1 y U = 83,33 %. Redondear a 504 lo
+   * convierte en a = 0,0992 y U = 83,44 %, y deja de ser el número publicado
+   * contra el que está probado el proyecto. La prueba «El ejemplo de LAN llega
+   * al desarrollo del libro: a = 0,1 y U = 83,33 %» (`tests/steps.test.js`) se
+   * pone roja si alguien vuelve a meter un redondeo por encima del modelo.
+   *
+   * Lo que sí se hace es **decirlo**: una nota de que el simulador usaría otro
+   * tamaño. No es un error del formulario y no cambia ningún resultado de esta
+   * página, así que no se pinta como los avisos de validación.
+   */
+  function notaDeTramaReal(frameBits) {
+    const real = F.roundFrameBits(frameBits);
+    if (real === frameBits) {
+      dom.frameBitsHint.hidden = true;
+      dom.frameBitsHint.textContent = "";
+      return;
+    }
+    dom.frameBitsHint.hidden = false;
+    dom.frameBitsHint.textContent =
+      `Nota: los tiempos de aquí son los de una trama de ${frameBits} bits, exactos. ` +
+      `Una trama construible lleva la carga en bytes enteros más 16 de CRC, así que el ` +
+      `simulador ajustaría estos ${frameBits} bits a ${real}.`;
   }
 
   // ---------- Bloques ----------

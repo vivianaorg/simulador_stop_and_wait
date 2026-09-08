@@ -192,16 +192,28 @@ viniera en el formulario). Ahora **`frameBits` manda**: la interfaz deriva la ca
 Como el CRC son 16 bits fijos (`CRC_BITS`), no todo valor de `frameBits` es representable: hace
 falta que la carga quede en bytes enteros. `roundFrameBits(frameBits)` ajusta al múltiplo válido
 más cercano y la interfaz **avisa** del ajuste en vez de rechazar el valor o mentir sobre qué
-calculó. Lo hacen **las dos páginas**: `rebuild()` en `js/ui.js` y `recalcular()` en
-`js/calc.js`, con el mismo aviso. Si solo lo hiciera el simulador, la calculadora enseñaría los
-tiempos de una trama de 1005 bits que en pantalla mide 1008, que es justo la grieta que este
-cambio venía a cerrar. Consecuencia visible en la calculadora: el ejemplo de LAN, con L = 500,
-se ajusta a **504 bits** y lo dice (a = 0,0992 y U = 83,44 %, en vez de los 0,1 y 83,33 % de un
-L de 500 que ninguna trama con CRC-16 puede tener).
+calculó.
 
-El mínimo representable lo publica el modelo (`F.MIN_FRAME_BITS`) y las dos interfaces lo
-escriben en el `min` del campo al arrancar, para que el formulario no pueda anunciar un conjunto
-de valores distinto del que acepta `roundFrameBits`.
+**El redondeo es del simulador, no de la calculadora, y esa asimetría es deliberada.** El
+redondeo es una restricción de la trama *real*: la que construye `createFrame`, con la carga en
+bytes enteros más los 16 bits del CRC. El simulador no tiene más remedio que aplicarlo porque
+construye tramas y las dibuja. La calculadora **no construye ninguna**: solo calcula tiempos, y
+`Tt = L / R` funciona igual de bien con L = 500 que con L = 504. Imponerle ahí el redondeo
+rompía el ejemplo de LAN del libro —10 Mbps, 1 km, tramas de 500 bits, a = 0,1 y U = 83,33 %—,
+que es un número publicado contra el que está probado el proyecto: con 504 sale 0,0992 y
+83,44 %.
+
+Lo que sí hace la calculadora es **decirlo**: cuando el tamaño no es construible, una nota bajo
+los datos (`notaDeTramaReal` en `js/calc.js`) avisa de qué tamaño usaría el simulador. Es una
+nota sobre la otra página, no un aviso de validación: no cambia ningún resultado y no se pinta
+como los errores. La prueba «El ejemplo de LAN llega al desarrollo del libro» en
+`tests/steps.test.js` recorre la misma cadena que la calculadora (`Steps.build` sobre un enlace
+con `frameBits: 500`) y se pone roja si alguien vuelve a meter un redondeo por encima del modelo.
+
+Por lo mismo, el `min` del campo difiere entre las dos páginas y no es un descuido: en
+`index.html` es `24` (`F.MIN_FRAME_BITS`, que `js/ui.js` reescribe desde el modelo) porque el
+simulador necesita una trama construible; en `calculadora.html` es `1`, porque la única
+restricción de la fórmula es L > 0.
 
 Consecuencia visible: la tira de bits de la trama en vuelo ahora refleja de verdad el tamaño que
 se pidió (hasta miles de bits, no 80 fijos), lo que hace falta para que una ráfaga medida en

@@ -27,7 +27,7 @@
 
     <div class="field-grid">
       <label for="frame-bits">Tamaño de la trama · L (bits)</label>
-      <input type="number" id="frame-bits" class="num" min="24" step="8" value="1000">
+      <input type="number" id="frame-bits" class="num" min="1" step="1" value="1000">
 
       <label for="ack-bits">Tamaño del ACK (bits)</label>
       <input type="number" id="ack-bits" class="num" min="0" step="1" value="0">
@@ -44,8 +44,10 @@
       <label for="burst-ms">Ráfaga de ruido (ms, 0 = sin ráfaga)</label>
       <input type="number" id="burst-ms" class="num" min="0" step="0.1" value="0">
     </div>
-    <!-- Fuera de la rejilla de dos columnas a propósito: dentro ocuparía una
-         celda y descolocaría las etiquetas siguientes. -->
+    <!-- Nota informativa sobre la otra página, no un aviso de validación: va con
+         el tono apagado de las pistas, fuera de la rejilla de dos columnas (dentro
+         ocuparía una celda y descolocaría las etiquetas siguientes) y arriba, en el
+         bloque de datos, donde no compite con el resultado. -->
     <p class="hint" id="frame-bits-hint" hidden></p>
 
     <div class="pod-head" style="margin-top:18px">
@@ -146,8 +148,8 @@
   </p>
 </footer>
 
-<!-- frame.js aporta el tamaño de trama representable (roundFrameBits, MIN_FRAME_BITS):
-     el mismo que usa el simulador, para que las dos páginas no cuenten cosas distintas. -->
+<!-- frame.js solo para poder decir qué tamaño usaría el simulador (roundFrameBits).
+     La calculadora no redondea, y es a propósito: ver notaDeTramaReal() en js/calc.js. -->
 <script src="js/frame.js"></script>
 <script src="js/network.js"></script>
 <script src="js/steps.js"></script>

@@ -30,6 +30,37 @@ function porId(solucion, id) {
   return p;
 }
 
+// El ejemplo de LAN del libro (Tanenbaum, cap. 3: 10 Mbps, 1 km, V = 2·10^8 m/s,
+// tramas de 500 bits) por el mismo camino que recorre la calculadora, que es
+// donde se rompió: `tests/network.test.js` lo comprueba llamando al modelo
+// directamente, así que no se enteraría de un redondeo metido por encima.
+//
+// L = 500 NO es una trama construible —la real lleva la carga en bytes enteros
+// más 16 de CRC, así que roundFrameBits(500) = 504—, y aun así el desarrollo
+// tiene que dar los números del libro: la calculadora calcula tiempos, no
+// construye tramas. Si alguien vuelve a aplicar roundFrameBits aquí, esto se
+// pone rojo con a = 0,0992 y U = 83,44 %.
+function lanDelLibro() {
+  return N.analyze(
+    N.createPath({
+      frameBits: 500,
+      ackBits: 0,
+      links: [
+        N.createLink({ name: "LAN", rateBps: 10e6, distanceKm: 1, velocityKmS: 200000 }),
+      ],
+    })
+  );
+}
+
+test("El ejemplo de LAN llega al desarrollo del libro: a = 0,1 y U = 83,33 %", () => {
+  const s = Steps.build(lanDelLibro());
+
+  assert.equal(porId(s, "a").resultado, "0,1");
+  assert.equal(porId(s, "u").resultado, "83,33 %");
+  assert.equal(s.titular[0].valor, "83,33 %", "el titular dice lo mismo que el paso");
+  assert.equal(s.entrada[0].valor, "500 bits", "y con los 500 bits que se pidieron");
+});
+
 test("El satélite del libro produce los pasos con sus números", () => {
   const s = Steps.build(satelite());
 
