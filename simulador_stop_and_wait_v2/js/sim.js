@@ -60,7 +60,11 @@
       // razonable (el RTT) más un 50 % de margen.
       timeoutMs: spec.timeoutMs === undefined ? analysis.rttMs * 1.5 : spec.timeoutMs,
       nakOnError: spec.nakOnError === true,
-      payloadBytes: spec.payloadBytes === undefined ? 8 : spec.payloadBytes,
+      // Sin payloadBytes explícito, la carga sale de path.frameBits: es la
+      // misma regla de la Tarea 3 (frameBits manda), aquí en sim.js para que
+      // una simulación construida directamente (sin pasar por la UI) no
+      // vuelva a tener un tamaño de trama de mentira desacoplado del real.
+      payloadBytes: spec.payloadBytes === undefined ? F.payloadBytesFor(path.frameBits) : spec.payloadBytes,
       random: F.seededRandom(spec.seed === undefined ? 1 : spec.seed),
 
       clockMs: 0,

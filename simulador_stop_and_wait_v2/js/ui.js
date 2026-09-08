@@ -288,13 +288,16 @@
 
     // El tamaño de trama tiene que caber en bytes enteros de carga más el CRC.
     // Se ajusta y se dice: pelearse con el formulario no ayuda a nadie, pero
-    // mentir sobre qué se calculó, menos.
+    // mentir sobre qué se calculó, menos. Se guarda en vez de escribirlo ya:
+    // avisoDeTimeout() reescribe dom.timeoutHint más abajo en la misma
+    // ejecución de rebuild(), y sin esto el aviso de ajuste desaparecía sin
+    // que el usuario llegara a verlo.
+    let avisoDeAjuste = "";
     const pedidos = Number(dom.frameBits.value);
     const validos = F.roundFrameBits(pedidos);
     if (validos !== pedidos) {
       dom.frameBits.value = String(validos);
-      dom.timeoutHint.textContent =
-        `Tamaño de trama ajustado a ${validos} bits: la carga va en bytes enteros más 16 de CRC.`;
+      avisoDeAjuste = `Tamaño de trama ajustado a ${validos} bits: la carga va en bytes enteros más 16 de CRC. `;
     }
 
     try {
@@ -330,7 +333,7 @@
         ),
       });
     } catch (err) {
-      dom.timeoutHint.textContent = err.message;
+      dom.timeoutHint.textContent = avisoDeAjuste + err.message;
       return;
     }
 
@@ -355,19 +358,21 @@
     zoom = 1;
     dom.btnRun.textContent = "Iniciar";
     resizeCanvases();
-    avisoDeTimeout();
+    avisoDeTimeout(avisoDeAjuste);
     renderAll();
   }
 
-  function avisoDeTimeout() {
+  function avisoDeTimeout(avisoDeAjuste) {
     const rtt = sim.analysis.rttMs;
+    let mensaje;
     if (sim.timeoutMs <= rtt) {
-      dom.timeoutHint.textContent = `El timeout (${fmt(sim.timeoutMs)} ms) no supera el RTT del camino (${fmt(rtt)} ms): el emisor retransmitirá tramas cuyo ACK todavía viene en camino, y el receptor las verá como duplicadas.`;
+      mensaje = `El timeout (${fmt(sim.timeoutMs)} ms) no supera el RTT del camino (${fmt(rtt)} ms): el emisor retransmitirá tramas cuyo ACK todavía viene en camino, y el receptor las verá como duplicadas.`;
     } else if (timeoutManual) {
-      dom.timeoutHint.textContent = `RTT del camino: ${fmt(rtt)} ms. Tu timeout le deja ${fmt(sim.timeoutMs - rtt)} ms de margen.`;
+      mensaje = `RTT del camino: ${fmt(rtt)} ms. Tu timeout le deja ${fmt(sim.timeoutMs - rtt)} ms de margen.`;
     } else {
-      dom.timeoutHint.textContent = `Timeout ajustado al camino: RTT ${fmt(rtt)} ms más un 50 % de margen. Escribe otro valor para fijarlo tú.`;
+      mensaje = `Timeout ajustado al camino: RTT ${fmt(rtt)} ms más un 50 % de margen. Escribe otro valor para fijarlo tú.`;
     }
+    dom.timeoutHint.textContent = (avisoDeAjuste || "") + mensaje;
   }
 
   // ---------- Bucle ----------
