@@ -282,3 +282,69 @@ test("el paso Tp tambien trae derivacion", () => {
   const d = porId(Steps.build(satelite()), "tp").derivacion;
   assert.ok(d.length >= 4, `derivacion corta: ${d.length}`);
 });
+
+// Ronda de correcciones 1/5, hallazgo Important 1: rateBps = 1e-300 es
+// "positivo y finito" según isPositive() de network.js, así que pasa la
+// validación. crudo() lo redondeaba a "0" en la fila de sustitución: un cero
+// que no está en los datos, inventado por Math.round(). Ahora esa fila usa
+// notación científica en vez de mentir.
+test("la fila de sustitucion no inventa un cero cuando el dato es mas chico que el redondeo", () => {
+  const d = porId(Steps.build(satelite({ rateBps: 1e-300 })), "tt").derivacion;
+  const sustitucion = d[1];
+  const texto = JSON.stringify(sustitucion);
+
+  assert.doesNotMatch(texto, /"v":"0"/, `el denominador se redondeo a un 0 falso: ${texto}`);
+  assert.match(texto, /"pot10"/, "un dato subunitario deberia enseñarse en notacion cientifica");
+  assert.match(texto, /"-300"/, "el exponente del dato original no aparece");
+});
+
+// Ronda de correcciones 1/5, hallazgo Important 2: con rateBps tan chico que
+// L/R desborda a Infinity, la derivacion decia "Tt = Infinity s" mientras
+// paso.resultado (que pasa por ms(), y ya devuelve "—" para no finitos)
+// decia "—". Los dos campos son la fórmula y su red de seguridad: no pueden
+// contradecirse.
+test("la derivacion no contradice al resultado plano cuando el valor no es finito", () => {
+  const tt = porId(Steps.build(satelite({ rateBps: Number.MIN_VALUE })), "tt");
+  assert.equal(tt.resultado, "—", "precondicion: el caso elegido debe desbordar a Infinity");
+
+  const ultimo = JSON.stringify(tt.derivacion.at(-1));
+  assert.match(ultimo, /"—"/, "la derivacion tiene que enseñar el mismo guion que el resultado");
+  assert.doesNotMatch(ultimo, /Infinity/i, "no debe quedar un Infinity crudo en la derivacion");
+});
+
+// La ampliación pedida en la ronda 1: U y caudal escondían un factor del
+// mismo tipo que el 1000 de Tt/Tp (×100 para pasar a por ciento, ×1000 para
+// pasar de bit/ms a bit/s), y a no tenía derivación en absoluto.
+test("el paso a trae derivacion sin factor de escala: las unidades se cancelan solas", () => {
+  const d = porId(Steps.build(satelite()), "a").derivacion;
+  assert.equal(d.length, 3, "a no esconde ningun factor: no debe tener renglones de mas");
+  assert.match(d.map((x) => x.motivo).join(" | "), /cancel/i);
+  assert.match(JSON.stringify(d.at(-1)), /"12,5"/);
+});
+
+test("el paso U ensena el factor 100 que lo pasa de fraccion a por ciento", () => {
+  const d = porId(Steps.build(satelite()), "u").derivacion;
+  const motivos = d.map((x) => x.motivo).join(" | ");
+  assert.match(motivos, /cancel/i);
+  assert.match(motivos, /100/, "no dice de donde sale el factor 100");
+  assert.match(JSON.stringify(d.at(-1)), /"3,846".*"%"/);
+});
+
+test("el paso caudal ensena el factor 1000 que lo pasa de bit\\/ms a bit\\/s", () => {
+  const d = porId(Steps.build(satelite()), "caudal").derivacion;
+  const motivos = d.map((x) => x.motivo).join(" | ");
+  assert.match(motivos, /1000/, "no dice de donde sale el factor 1000");
+  assert.match(JSON.stringify(d), /"pot10"/, "el resultado deberia traer notacion cientifica");
+});
+
+// Los pasos que no esconden ningun factor (ida, vuelta, ciclo, bd, ventana,
+// timeout) solo necesitan tipografiarse: formula, sustitucion y resultado,
+// sin renglones inventados de mas.
+test("ida, vuelta, ciclo, bd, ventana y timeout se tipografian sin renglones extra", () => {
+  const s = Steps.build(satelite());
+  for (const id of ["ida", "vuelta", "ciclo", "bd", "ventana", "timeout"]) {
+    const d = porId(s, id).derivacion;
+    assert.equal(d.length, 3, `${id}: se esperaban 3 renglones (formula/sustitucion/resultado), hay ${d.length}`);
+    assert.match(JSON.stringify(d), /"frac"|"fila"|"num"|"sim"/, `${id}: no se emitio como estructura de mathml.js`);
+  }
+});

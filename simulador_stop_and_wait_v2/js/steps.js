@@ -58,40 +58,86 @@
 
   // ---------- Construcción del desarrollo ----------
 
+  // Renglón izquierdo común a toda derivación: "<símbolo> <relación> <expr>".
+  // `filaIgual` es el caso normal (relación "="); `timeout` necesita "≥".
+  function filaRel(simbolo, rel, expr) {
+    return { t: "fila", partes: [{ t: "sim", v: simbolo }, { t: "op", v: rel }, expr] };
+  }
+  function filaIgual(simbolo, expr) {
+    return filaRel(simbolo, "=", expr);
+  }
+
+  // `crudo()` redondea a entero, que está bien para bits/bps/km: en la
+  // práctica siempre son >= 1. Pero `network.js` solo exige "positivo y
+  // finito" (`isPositive`), así que un dato entre 0 y 0,5 es válido y
+  // `crudo()` lo aplasta a "0" — un cero que no está en los datos, inventado
+  // por el redondeo (hallazgo de revisión: rateBps = 1e-300 pasa la
+  // validación y `crudo()` lo enseñaba como "0 bit/s"). Solo la fila de
+  // "sustituidos los datos" puede recibir esos extremos, así que aquí se
+  // enseña en notación científica en vez de mentir con un cero.
+  function crudoExpr(v, u) {
+    if (v !== 0 && Math.abs(v) < 0.5) {
+      const c = U.cientifica(v);
+      return { t: "pot10", mantisa: redondear(c.mantisa), exponente: String(c.exponente), u };
+    }
+    return { t: "num", v: crudo(v), u };
+  }
+
+  // Igual que ms(), pero como estructura de mathml.js en vez de texto: elige
+  // la misma unidad (ns/µs/ms/s) para que la fórmula tipografiada de un paso
+  // "sin derivación propia" (ida, vuelta, ciclo, bd, ventana, timeout) diga
+  // exactamente lo mismo que el `resultado` plano de al lado. No se
+  // reescribió `ms()` para devolver esto y formatear aparte, porque `ms()`
+  // ya tiene sus propias pruebas contra el texto exacto que produce.
+  function msExpr(v) {
+    if (!Number.isFinite(v)) return { t: "sim", v: "—" };
+    if (v === 0) return { t: "num", v: "0", u: "ms" };
+    if (v < 0.001) return { t: "num", v: (v * 1e6).toFixed(2).replace(".", ","), u: "ns" };
+    if (v < 1) return { t: "num", v: (v * 1000).toFixed(2).replace(".", ","), u: "µs" };
+    if (v < 1000) return { t: "num", v: redondear(v), u: "ms" };
+    return { t: "num", v: redondear(v / 1000), u: "s" };
+  }
+
   // Convierte una división "algo / algo" en la cadena completa de renglones,
   // con la cancelación de unidades y el factor de escala dichos en voz alta.
   // Es lo que faltaba: la pantalla saltaba de "1000 / 50000" a "20 ms" sin
   // explicar el mil.
   function derivarTiempo(spec) {
     const { simbolo, numSim, denSim, numV, numU, denV, denU, segundos, cancelacion } = spec;
-    const esc = U.escalarTiempo(segundos * 1000);
-    const cien = U.cientifica(segundos);
-
-    const izq = (der) => ({ t: "fila", partes: [{ t: "sim", v: simbolo }, { t: "op", v: "=" }, der] });
 
     const renglones = [
       {
-        expr: izq({ t: "frac", num: { t: "sim", v: numSim }, den: { t: "sim", v: denSim } }),
+        expr: filaIgual(simbolo, { t: "frac", num: { t: "sim", v: numSim }, den: { t: "sim", v: denSim } }),
         motivo: "La fórmula.",
       },
       {
-        expr: izq({
-          t: "frac",
-          num: { t: "num", v: crudo(numV), u: numU },
-          den: { t: "num", v: crudo(denV), u: denU },
-        }),
+        expr: filaIgual(simbolo, { t: "frac", num: crudoExpr(numV, numU), den: crudoExpr(denV, denU) }),
         motivo: "Sustituidos los datos, con sus unidades.",
       },
-      {
-        expr: izq({ t: "num", v: redondear(segundos), u: "s" }),
-        motivo: cancelacion,
-      },
     ];
+
+    if (!Number.isFinite(segundos)) {
+      // Mismo criterio que ya usan ms()/bps()/pct(): un valor no finito no
+      // se pinta como si fuera un número —mentiría—, se enseña el mismo
+      // guion que el campo `resultado` (que pasa por ms()) muestra para este
+      // mismo caso. Antes de esto la derivación decía "Infinity" mientras
+      // `resultado` decía "—": los dos campos se contradecían.
+      renglones.push({
+        expr: filaIgual(simbolo, { t: "sim", v: "—" }),
+        motivo: `${cancelacion} El valor no se puede representar: se enseña igual que el resultado.`,
+      });
+      return renglones;
+    }
+
+    const esc = U.escalarTiempo(segundos * 1000);
+    const cien = U.cientifica(segundos);
+
+    renglones.push({ expr: filaIgual(simbolo, { t: "num", v: redondear(segundos), u: "s" }), motivo: cancelacion });
 
     // Si la unidad natural ya es el segundo, no hay factor que explicar.
     if (esc.factorDesdeMs !== 0.001) {
       renglones.push({
-        expr: izq({
+        expr: filaIgual(simbolo, {
           t: "fila",
           partes: [
             { t: "num", v: redondear(segundos), u: "s" },
@@ -104,7 +150,7 @@
     }
 
     renglones.push({
-      expr: izq({
+      expr: filaIgual(simbolo, {
         t: "fila",
         partes: [
           { t: "num", v: redondear(esc.valor), u: esc.unidad },
@@ -116,6 +162,142 @@
     });
 
     return renglones;
+  }
+
+  // Deriva un cociente adimensional (a = Tp / Tt): fórmula, sustitución con
+  // unidades, y el resultado ya cancelado. Sin factor de escala que explicar
+  // porque las unidades se cancelan solas — a diferencia de Tt/Tp (factor
+  // 1000), U (factor 100) o caudal (factor 1000), a no esconde ninguna
+  // multiplicación.
+  function derivarRatio(spec) {
+    const { simbolo, numSim, denSim, numV, numU, denV, denU, valor, motivoCancelacion, noFinito } = spec;
+    const renglones = [
+      {
+        expr: filaIgual(simbolo, { t: "frac", num: { t: "sim", v: numSim }, den: { t: "sim", v: denSim } }),
+        motivo: "La fórmula.",
+      },
+      {
+        expr: filaIgual(simbolo, { t: "frac", num: crudoExpr(numV, numU), den: crudoExpr(denV, denU) }),
+        motivo: "Sustituidos los datos, con sus unidades.",
+      },
+    ];
+    if (!Number.isFinite(valor)) {
+      // `a` no usa "—" para el infinito: su `resultado` ya muestra "∞"
+      // (Tt = 0 es un caso legítimo, a diferencia de los cocientes que usan
+      // ms()/bps()/pct()), así que la derivación tiene que decir lo mismo.
+      renglones.push({
+        expr: filaIgual(simbolo, { t: "sim", v: noFinito || "∞" }),
+        motivo: `${motivoCancelacion} El valor no se puede representar: se enseña igual que el resultado.`,
+      });
+      return renglones;
+    }
+    renglones.push({ expr: filaIgual(simbolo, { t: "num", v: redondear(valor) }), motivo: motivoCancelacion });
+    return renglones;
+  }
+
+  // Los dos primeros renglones (fórmula + sustitución) y el cociente crudo,
+  // comunes a U (factor 100, fracción → por ciento) y a caudal (factor 1000,
+  // bit/ms → bit/s): las dos esconden un factor de escala que "de la nada"
+  // convierte un cociente en el número que se ve en pantalla, igual que
+  // Tt/Tp escondían el 1000. Quien llama arma el/los renglón(es) final(es),
+  // porque U termina en por ciento y caudal en notación científica.
+  function derivarConFactor(spec) {
+    const { simbolo, numSim, denSim, numV, numU, denV, denU, crudoVal, factor, factorU, motivoCancelacion, motivoFactor } = spec;
+
+    const renglones = [
+      {
+        expr: filaIgual(simbolo, { t: "frac", num: { t: "sim", v: numSim }, den: { t: "sim", v: denSim } }),
+        motivo: "La fórmula.",
+      },
+      {
+        expr: filaIgual(simbolo, { t: "frac", num: crudoExpr(numV, numU), den: crudoExpr(denV, denU) }),
+        motivo: "Sustituidos los datos, con sus unidades.",
+      },
+    ];
+
+    if (!Number.isFinite(crudoVal)) {
+      renglones.push({
+        expr: filaIgual(simbolo, { t: "sim", v: "—" }),
+        motivo: `${motivoCancelacion} El valor no se puede representar: se enseña igual que el resultado.`,
+      });
+      return { renglones, finito: false };
+    }
+
+    renglones.push({ expr: filaIgual(simbolo, { t: "num", v: redondear(crudoVal) }), motivo: motivoCancelacion });
+    renglones.push({
+      expr: filaIgual(simbolo, {
+        t: "fila",
+        partes: [
+          { t: "num", v: redondear(crudoVal) },
+          { t: "op", v: "×" },
+          { t: "num", v: crudo(factor), u: factorU },
+        ],
+      }),
+      motivo: motivoFactor,
+    });
+
+    return { renglones, finito: true };
+  }
+
+  // U = Tt(emisor) / ciclo: la fracción "cruda" no cae sola en el por
+  // ciento que se ve en pantalla, hay un × 100 escondido — el mismo defecto
+  // que el 1000 de Tt/Tp, solo que aquí pasa de fracción a porcentaje.
+  function derivarPorcentaje(spec) {
+    const { simbolo, numSim, denSim, numV, numU, denV, denU, fraccion, motivoCancelacion } = spec;
+    const { renglones, finito } = derivarConFactor({
+      simbolo, numSim, denSim, numV, numU, denV, denU,
+      crudoVal: fraccion, factor: 100, factorU: "",
+      motivoCancelacion, motivoFactor: "De fracción a por ciento: por eso aparece el 100.",
+    });
+    if (finito) {
+      renglones.push({
+        expr: filaIgual(simbolo, { t: "num", v: redondear(fraccion * 100), u: "%" }),
+        motivo: "El resultado, en por ciento.",
+      });
+    }
+    return renglones;
+  }
+
+  // caudal = L / ciclo (o L·(1−P) / ciclo, con errores): el cociente da
+  // bit/ms, y hace falta × 1000 para llegar al bit/s que se enseña — el
+  // mismo defecto que el 1000 de Tt/Tp, con otro factor y otra unidad.
+  function derivarCaudal(spec) {
+    const { simbolo, numSim, denSim, numV, numU, denV, denU, cocienteBitsPorMs, motivoCancelacion } = spec;
+    const { renglones, finito } = derivarConFactor({
+      simbolo, numSim, denSim, numV, numU, denV, denU,
+      crudoVal: cocienteBitsPorMs, factor: 1000, factorU: "ms/s",
+      motivoCancelacion, motivoFactor: "De bit/ms a bit/s: por eso aparece el 1000.",
+    });
+    if (finito) {
+      const valorFinal = cocienteBitsPorMs * 1000;
+      const cien = U.cientifica(valorFinal);
+      renglones.push({
+        expr: filaIgual(simbolo, {
+          t: "fila",
+          partes: [
+            { t: "num", v: redondear(valorFinal), u: "bit/s" },
+            { t: "op", v: "=" },
+            { t: "pot10", mantisa: redondear(cien.mantisa), exponente: String(cien.exponente), u: "bit/s" },
+          ],
+        }),
+        motivo: "El resultado, en bit/s y en notación científica.",
+      });
+    }
+    return renglones;
+  }
+
+  // Los pasos que no esconden ningún factor (ida, vuelta, ciclo, bd, ventana,
+  // timeout: sumas y cocientes de cosas que ya se calcularon antes) no
+  // necesitan renglones extra — solo que su fórmula/sustitución/resultado se
+  // vean tipografiados en vez de en texto monoespaciado plano, para que la
+  // página se lea uniforme de arriba abajo.
+  function derivarPlano(simbolo, formulaExpr, sustExpr, resultadoExpr, rel) {
+    const r = rel || "=";
+    return [
+      { expr: filaRel(simbolo, r, formulaExpr), motivo: "La fórmula." },
+      { expr: filaRel(simbolo, r, sustExpr), motivo: "Sustituidos los datos." },
+      { expr: filaIgual(simbolo, resultadoExpr), motivo: "El resultado." },
+    ];
   }
 
   function paso(spec) {
@@ -235,6 +417,14 @@
               `Ojo: con varios tramos esta a NO reproduce U, porque U mide solo el tramo del emisor. La que se dibuja en la curva es a efectiva = (ciclo − Tt del emisor) / (2 · Tt del emisor) = ${redondear(r.aEfectiva)}.`,
             ],
         nota: "a mide cuántas veces cabe el tiempo de transmisión dentro del de propagación. Cuanto mayor es a, peor le sienta Stop & Wait.",
+        derivacion: derivarRatio({
+          simbolo: "a",
+          numSim: "Tp", denSim: "Tt",
+          numV: r.tpTotalMs, numU: "ms",
+          denV: r.ttDataTotalMs, denU: "ms",
+          valor: r.aRatio,
+          motivoCancelacion: "Los ms se cancelan: a no tiene unidad.",
+        }),
       })
     );
 
@@ -260,6 +450,16 @@
             : `${ms(r.ttDataTotalMs)} + ${ms(r.tpTotalMs)}`,
         resultado: ms(r.forwardMs),
         detalle: detalleIda,
+        derivacion: derivarPlano(
+          "ida",
+          r.processingMs > 0
+            ? { t: "fila", partes: [{ t: "sim", v: "ΣTt" }, { t: "op", v: "+" }, { t: "sim", v: "ΣTp" }, { t: "op", v: "+" }, { t: "sim", v: "procesamiento" }] }
+            : { t: "fila", partes: [{ t: "sim", v: "ΣTt" }, { t: "op", v: "+" }, { t: "sim", v: "ΣTp" }] },
+          r.processingMs > 0
+            ? { t: "fila", partes: [msExpr(r.ttDataTotalMs), { t: "op", v: "+" }, msExpr(r.tpTotalMs), { t: "op", v: "+" }, msExpr(r.processingMs)] }
+            : { t: "fila", partes: [msExpr(r.ttDataTotalMs), { t: "op", v: "+" }, msExpr(r.tpTotalMs)] },
+          msExpr(r.forwardMs)
+        ),
       })
     );
 
@@ -274,6 +474,12 @@
           r.ackBits === 0
             ? ["El ACK se toma como despreciable en tiempo de transmisión, así que solo cuenta la propagación."]
             : [`El ACK ocupa el medio ${ms(r.ttAckTotalMs)} en total, sumando todos los tramos.`],
+        derivacion: derivarPlano(
+          "vuelta",
+          { t: "fila", partes: [{ t: "sim", v: "ΣTt(ACK)" }, { t: "op", v: "+" }, { t: "sim", v: "ΣTp" }] },
+          { t: "fila", partes: [msExpr(r.ttAckTotalMs), { t: "op", v: "+" }, msExpr(r.tpTotalMs)] },
+          msExpr(r.ackReturnMs)
+        ),
       })
     );
 
@@ -296,6 +502,19 @@
         resultado: ms(r.cycleMs),
         detalle: detalleCiclo,
         nota: "Durante todo el ciclo el emisor no puede mandar nada más: esa es la penalización de Stop & Wait.",
+        derivacion: conVuelta
+          ? derivarPlano(
+              "ciclo",
+              { t: "fila", partes: [{ t: "sim", v: "RTT" }, { t: "op", v: "+" }, { t: "num", v: "2" }, { t: "op", v: "·" }, { t: "sim", v: "tiempo de vuelta" }] },
+              { t: "fila", partes: [msExpr(r.rttMs), { t: "op", v: "+" }, msExpr(r.turnaroundTotalMs)] },
+              msExpr(r.cycleMs)
+            )
+          : derivarPlano(
+              "ciclo",
+              { t: "fila", partes: [{ t: "sim", v: "RTT" }, { t: "op", v: "=" }, { t: "sim", v: "ida" }, { t: "op", v: "+" }, { t: "sim", v: "vuelta" }] },
+              { t: "fila", partes: [msExpr(r.forwardMs), { t: "op", v: "+" }, msExpr(r.ackReturnMs)] },
+              msExpr(r.cycleMs)
+            ),
       })
     );
 
@@ -329,6 +548,14 @@
         resultado: pct(r.utilization),
         detalle: detalleU,
         nota: `El canal queda ocioso el ${pct(r.idleFraction)} del tiempo.`,
+        derivacion: derivarPorcentaje({
+          simbolo: "U",
+          numSim: "Tt(emisor)", denSim: "ciclo",
+          numV: r.senderTtMs, numU: "ms",
+          denV: r.cycleMs, denU: "ms",
+          fraccion: r.utilization,
+          motivoCancelacion: "Los ms se cancelan: queda una fracción sin unidad.",
+        }),
       })
     );
 
@@ -379,6 +606,17 @@
         detalle: [
           `De los ${bps(r.perLink[0].rateBps)} que da el primer tramo, en la práctica se aprovechan ${bps(r.throughputBps)}.`,
         ],
+        derivacion: derivarCaudal({
+          simbolo: "caudal",
+          numSim: conErrores ? "L · (1 − P)" : "L", denSim: "ciclo",
+          numV: conErrores ? r.frameBits * r.cycleSuccessProb : r.frameBits, numU: "bits",
+          denV: r.cycleMs, denU: "ms",
+          cocienteBitsPorMs:
+            r.cycleMs > 0
+              ? (conErrores ? r.frameBits * r.cycleSuccessProb : r.frameBits) / r.cycleMs
+              : Infinity,
+          motivoCancelacion: "Los ms se cancelan: queda bit/ms.",
+        }),
       })
     );
 
@@ -394,6 +632,19 @@
           "Es lo que cabe en el canal en UN sentido: los bits que ya salieron y todavía no han llegado.",
           "El libro lo llama BD y lo mide con el tiempo de tránsito en un sentido, no con el de ida y vuelta.",
         ],
+        derivacion: derivarPlano(
+          "BD",
+          { t: "fila", partes: [{ t: "sim", v: "R" }, { t: "op", v: "·" }, { t: "sim", v: "Tp" }] },
+          {
+            t: "fila",
+            partes: [
+              crudoExpr(r.perLink[0].rateBps, "bit/s"),
+              { t: "op", v: "·" },
+              { t: "num", v: redondear(r.tpTotalMs / 1000), u: "s" },
+            ],
+          },
+          crudoExpr(r.bandwidthDelayBits, "bits")
+        ),
       })
     );
 
@@ -409,6 +660,21 @@
           "Stop & Wait tiene ventana 1: deja ese hueco vacío, y eso es exactamente lo que mide U.",
           `El «+1» sale de que el receptor no manda el ACK hasta recibir la trama entera. En bits, esto es ${entero(r.bandwidthDelayProductBits)} = 2·BD + L.`,
         ],
+        derivacion: derivarPlano(
+          "ventana",
+          { t: "fila", partes: [{ t: "num", v: "2" }, { t: "op", v: "·" }, { t: "sim", v: "BD" }, { t: "op", v: "+" }, { t: "num", v: "1" }] },
+          {
+            t: "fila",
+            partes: [
+              { t: "num", v: "2" },
+              { t: "op", v: "·" },
+              { t: "num", v: redondear(r.bandwidthDelayFrames) },
+              { t: "op", v: "+" },
+              { t: "num", v: "1" },
+            ],
+          },
+          { t: "num", v: redondear(r.windowFrames), u: "tramas" }
+        ),
       })
     );
 
@@ -423,6 +689,7 @@
           "Por debajo del RTT el emisor retransmite tramas cuyo ACK todavía viene en camino.",
           "El receptor las verá como duplicadas y las descartará, así que el trabajo se pierde entero.",
         ],
+        derivacion: derivarPlano("timeout", { t: "sim", v: "RTT" }, msExpr(r.rttMs), msExpr(r.minimumTimeoutMs), "≥"),
       })
     );
 
