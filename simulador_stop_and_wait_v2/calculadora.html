@@ -125,8 +125,11 @@
     <ol class="steps-list" id="transfer-steps-list"></ol>
   </section>
 
-  <!-- ---------------- Curva ---------------- -->
-  <section class="pod">
+  <!-- ---------------- Curva ----------------
+       Oculta por decisión del usuario (2026-09-08). Se conserva el marcado y el
+       código que la dibuja: quitarla del todo obligaría a tocar calc.js y sus
+       pruebas, y volver a enseñarla es sólo borrar el `hidden`. -->
+  <section class="pod" id="curve-pod" hidden>
     <div class="pod-head"><h2>Dónde cae este enlace</h2></div>
     <figure class="figure">
       <figcaption id="curve-caption">Utilización de Stop &amp; Wait según el parámetro <em>a</em>, con este enlace marcado</figcaption>
