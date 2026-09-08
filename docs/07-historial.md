@@ -8,6 +8,47 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-08 (noche, más tarde) — La tira del inspector vuelve a mostrar bits, no bytes en hex
+
+**Qué:** `renderInspector` en `js/ui.js` deja de agrupar la tira por bytes en hexadecimal por
+encima de 128 bits. Se quita `BITS_MAX_INDIVIDUALES` y toda la rama `agrupar`/`paso`: ahora
+siempre pinta un `<button class="bit">` por bit, con la trama por defecto (1000) igual que con
+una pequeña. Cada casilla lleva `data-byte-start="true"` en el primer bit de cada byte (`i % 8
+=== 0`), y `style.css` le pone `border-left: 2px solid var(--rule-strong)` para que la carga y el
+CRC se lean en bloques de ocho sin dejar de ser bits — la rejilla `.bits` ya era de 16 columnas
+fijas (`repeat(16, 1fr)`), así que cada fila son exactamente dos bytes y no hizo falta tocar el
+tamaño de la casilla. El rótulo (`aria-label` y el texto sobre `#bits-hint`) vuelve a decir «bit»
+en vez de «byte en hexadecimal», y el texto del CRC vuelve a hablar de `F.CRC_BITS` bits (16), no
+de `F.CRC_BITS / 8` bytes.
+
+`banco-interfaz.html` gana cuatro comprobaciones nuevas: que la tira de 1000 bits tiene 1000
+casillas (no 125), que cada casilla es un carácter «0»/«1» y no dos dígitos hex, que el CRC son
+16 casillas azules, y que una ráfaga de ruido deja un solo bloque de bits contiguos en vez de
+bits salteados. El banco sube de 51 a 55 comprobaciones — número corregido en
+`docs/05-runbook.md`, única fuente.
+
+**Por qué:** pedido del usuario. El umbral de 128 bits se introdujo (`243de6b`, `563b540`) porque
+mil casillas de un bit no se leían; pero agrupar por byte en hexadecimal convertía la tira de
+*bits* en una tira de *bytes*, y esta vista existe para señalar bits volteados y seguir el CRC
+bit a bit — enseñar hexadecimal esconde justo eso. Con la rejilla de 16 columnas que ya existía,
+1000 bits caben en 63 filas dentro de un panel que ya tenía scroll vertical (`.rail { overflow-y:
+auto }`), sin desbordar nunca en horizontal: el umbral dejó de tener motivo y se quitó en vez de
+conservarse sin usar.
+
+**Verificado en navegador** (Chrome real headless por CDP, sin Playwright — ver
+`docs/05-runbook.md` § *Banco de pruebas de la interfaz*): con 1000 bits, las 1000 casillas son
+bits de verdad, sin desborde horizontal, con la carga y el CRC distinguibles por fila de 16; una
+ráfaga de ruido deja 500 bits volteados en un único tramo contiguo (0 a 499); un clic voltea
+exactamente el bit señalado (`Bit 300`) y el CRC pasa a «no cuadra»; con 24 y 64 bits se ve igual
+de bien.
+
+**Cómo revertir:** en `js/ui.js`, restaurar `BITS_MAX_INDIVIDUALES`, la rama `agrupar` y los dos
+textos de `aria-label`/`bitsHint` (ver el commit que los quita para el texto exacto). En
+`css/style.css`, quitar la regla de `.bit[data-byte-start="true"]`. En `banco-interfaz.html`,
+quitar las cuatro comprobaciones nuevas y devolver el número a 51 en `docs/05-runbook.md`.
+
+---
+
 ## 2026-09-08 (noche) — Se oculta de la interfaz el ruido del canal por probabilidad
 
 **Qué:** se quitan de `simulador_stop_and_wait_v2/index.html` el campo *Semilla del ruido*

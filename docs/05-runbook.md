@@ -55,7 +55,7 @@ python -m py_compile simulador_stop_and_wait_python/*.py
 ```
 
 Baseline 2026-09-08, Node v24.11.1 y Python 3.13.14: **116 pruebas verdes, 0 fallas**; el banco de
-interfaz con 51 comprobaciones sin problemas; el lint de documentación limpio; el resto, sin
+interfaz con 55 comprobaciones sin problemas; el lint de documentación limpio; el resto, sin
 avisos.
 
 > **Este archivo es la fuente única del conteo de pruebas.** Ningún otro documento lo repite: lo
@@ -95,7 +95,7 @@ python -m http.server 8000 --directory simulador_stop_and_wait_v2
 # abrir http://localhost:8000/banco-interfaz.html
 ```
 
-El resumen sale arriba del todo. Al 2026-09-08: **51 comprobaciones, 0 problemas**, corrido con
+El resumen sale arriba del todo. Al 2026-09-08: **55 comprobaciones, 0 problemas**, corrido con
 el Chromium sin cabeza de la receta de abajo, y repetible: espera a que cada iframe termine de
 montarse en vez de dormir un rato fijo.
 
@@ -111,6 +111,14 @@ montarse en vez de dormir un rato fijo.
 > él se fueron las tres comprobaciones que encendían y apagaban esa casilla más la que probaba
 > una probabilidad fuera de rango en una columna que ya no existe. El modelo y sus pruebas
 > siguen intactos; ver `docs/07-historial.md`.
+>
+> El mismo día, aún más tarde, el conteo subió de 51 a 55: la tira de bits volvió a pintar bits
+> de verdad en vez de bytes en hexadecimal (ver `docs/01-arquitectura.md` § *La tira de bits
+> siempre pinta bits, agrupados visualmente por byte*), y se añadieron cuatro comprobaciones —
+> que la tira de 1000 bits tiene 1000 casillas de un carácter cada una, que el CRC son 16
+> casillas azules, y que una ráfaga de ruido deja un solo bloque de bits contiguos, no bits
+> salteados. Corrido con Chrome real por CDP (sin Playwright), no con el Chromium sin cabeza de
+> la receta de abajo.
 
 **No sustituye a probarlo a mano.** Ve si el comportamiento es el esperado, no si algo se ve mal:
 el selector de canal cortado o una etiqueta encima de otra solo se ven mirando.
@@ -171,9 +179,12 @@ gotcha más habitual de este proyecto y no da error visible.
     marcar lo mismo que la calculadora para esa duración y esa tasa, **y no cambiar al mover el
     control de velocidad**: eso es lo que se arregló el 2026-09-08. La banda tiene ya su entrada
     en la leyenda.
-13. **Trama de 1000 bits, tira agrupada** ⚠️ **pendiente de comprobación manual**: con `frameBits`
-    en 1000 la tira debería agruparse por bytes y cada casilla debería leerse como dos dígitos
-    hexadecimales legibles, no como texto recortado o solapado.
+13. **Trama de 1000 bits, tira de bits** comprobado el 2026-09-08 con Chrome real (CDP) sin
+    cabeza: las 1000 casillas son bits de verdad («0»/«1», no hex), caben sin desbordar la
+    ventana en horizontal, y la rejilla de 16 columnas deja ver la carga y el CRC en bloques de
+    dos bytes por fila. Con una ráfaga de ruido, los bits dañados salen como un solo bloque rojo
+    contiguo (500 de 500 bits seguidos en la prueba). Con tramas pequeñas (24 y 64 bits) se ve
+    igual de bien, sin desbordar.
 
 El ruido del canal por probabilidad (el que se tira, no el que se dispara a mano) ya no tiene
 control en el formulario: se quitó de `index.html` el 2026-09-08 porque en un aula no se puede

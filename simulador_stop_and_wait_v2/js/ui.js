@@ -807,59 +807,24 @@
     const inicioCrc = bits.length - F.CRC_BITS;
     dom.bits.innerHTML = "";
 
-    // Por encima de este tamaño la tira pasa a una casilla por byte: 1000
-    // cuadritos no se leen, y para enseñar una ráfaga el bloque dice más que el
-    // bit suelto.
-    const BITS_MAX_INDIVIDUALES = 128;
-    const agrupar = F.totalBits(p.frame) > BITS_MAX_INDIVIDUALES;
-    const paso = agrupar ? 8 : 1;
+    dom.bits.setAttribute("aria-label", "Bits de la trama; pulsa uno para voltearlo");
+    dom.bitsHint.innerHTML =
+      `<strong>Pulsa cualquier bit para voltearlo</strong> — eso es meter un error a mano. ` +
+      `Los últimos ${F.CRC_BITS} bits, en azul, son el CRC. El receptor lo recalcula al ` +
+      `llegar: no hay ninguna marca de «esta venía dañada».`;
 
-    // El rótulo tiene que decir la verdad en los dos modos: agrupada, cada
-    // casilla es un byte en hex, no un bit, y el CRC ya no son 16 casillas
-    // sino F.CRC_BITS / 8 de ellas.
-    if (agrupar) {
-      dom.bits.setAttribute(
-        "aria-label",
-        "Bytes de la trama en hexadecimal; pulsa uno para voltear su primer bit",
-      );
-      dom.bitsHint.innerHTML =
-        `<strong>Cada casilla es un byte en hexadecimal, no un bit</strong> — pulsa una ` +
-        `para voltear el primer bit de ese byte; eso es meter un error a mano. Los últimos ` +
-        `${F.CRC_BITS / 8} bytes, en azul, son el CRC. El receptor lo recalcula al llegar: ` +
-        `no hay ninguna marca de «esta venía dañada».`;
-    } else {
-      dom.bits.setAttribute("aria-label", "Bits de la trama; pulsa uno para voltearlo");
-      dom.bitsHint.innerHTML =
-        `<strong>Pulsa cualquier bit para voltearlo</strong> — eso es meter un error a mano. ` +
-        `Los últimos ${F.CRC_BITS} bits, en azul, son el CRC. El receptor lo recalcula al ` +
-        `llegar: no hay ninguna marca de «esta venía dañada».`;
-    }
-
-    for (let i = 0; i < bits.length; i += paso) {
-      const finGrupo = Math.min(i + paso, bits.length);
-      const grupo = bits.slice(i, finGrupo);
+    for (let i = 0; i < bits.length; i++) {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "bit";
-      // Ocho caracteres de "0"/"1" no caben en una casilla pensada para uno
-      // solo: en hex el mismo byte entra en dos.
-      b.textContent = agrupar
-        ? parseInt(grupo, 2).toString(16).padStart(2, "0")
-        : bits[i];
+      b.textContent = bits[i];
       b.dataset.part = i >= inicioCrc ? "crc" : "payload";
-      let volteado = false;
-      for (let j = i; j < finGrupo; j++) {
-        if (p.frame.flippedBits.includes(j)) {
-          volteado = true;
-          break;
-        }
-      }
-      b.dataset.flipped = String(volteado);
-      b.title = agrupar
-        ? `Byte de los bits ${i}-${finGrupo - 1} en hex${i >= inicioCrc ? " (CRC)" : ""}`
-        : `Bit ${i}${i >= inicioCrc ? " (CRC)" : ""}`;
-      // Agrupado o no, el clic siempre voltea un solo bit: el daño de un bit
-      // y el daño en ráfaga son dos modos distintos que no deben mezclarse.
+      // Marca el inicio de cada byte para que la tira se lea en bloques de
+      // ocho, no como mil casillas sueltas: la carga y el CRC se cuentan en
+      // bytes y el trazo tiene que dejarlo ver.
+      b.dataset.byteStart = String(i % 8 === 0);
+      b.dataset.flipped = String(p.frame.flippedBits.includes(i));
+      b.title = `Bit ${i}${i >= inicioCrc ? " (CRC)" : ""}`;
       b.addEventListener("click", () => {
         S.flipBitOf(sim, p, i);
         renderAll();

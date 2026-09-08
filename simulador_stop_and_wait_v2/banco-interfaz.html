@@ -123,6 +123,18 @@ async function probarSimulador() {
   const enVuelo = d.querySelectorAll(".target").length;
   comprobar("sim · hay algo en el canal tras avanzar", enVuelo >= 1, enVuelo);
 
+  // --- inspector: la tira son bits de verdad, no bytes en hexadecimal ---
+  // Con la trama por defecto (1000 bits): 1000 casillas de un carácter cada
+  // una ("0"/"1"), no 125 casillas de dos dígitos hex. Ver docs/07-historial.md.
+  const bitsTira = d.querySelectorAll(".bit");
+  comprobar("sim · la tira tiene una casilla por bit (1000, no 125)", bitsTira.length === 1000, bitsTira.length);
+  comprobar(
+    "sim · cada casilla es un bit, no un byte en hex",
+    [...bitsTira].every((b) => b.textContent === "0" || b.textContent === "1"),
+    [...bitsTira].map((b) => b.textContent).find((t) => t !== "0" && t !== "1"),
+  );
+  comprobar("sim · el CRC son 16 casillas azules", d.querySelectorAll('.bit[data-part="crc"]').length === 16, d.querySelectorAll('.bit[data-part="crc"]').length);
+
   // --- inspector: voltear un bit ---
   const bit = d.querySelector(".bit");
   if (bit) {
@@ -132,6 +144,19 @@ async function probarSimulador() {
   } else {
     resultados.push("AVISO sim · no había trama en vuelo para voltear un bit");
   }
+
+  // --- ráfaga de ruido: se ve como un bloque rojo contiguo, no bits sueltos ---
+  intentar("sim · disparar una ráfaga de ruido", () => d.getElementById("btn-burst").click());
+  pasos(d, 15);
+  const volteados = [...d.querySelectorAll(".bit")]
+    .map((b, i) => (b.dataset.flipped === "true" ? i : -1))
+    .filter((i) => i >= 0);
+  const contiguos = volteados.every((v, i) => i === 0 || v === volteados[i - 1] + 1);
+  comprobar(
+    "sim · la ráfaga deja un solo bloque de bits contiguos",
+    volteados.length > 0 && contiguos,
+    `${volteados.length} bits, contiguos=${contiguos}`,
+  );
 
   // --- error metido a mano, sin azar ---
   comprobar("sim · hay una trama seleccionada antes de dañarla", d.querySelector(".bit") !== null, "el inspector estaba vacío");

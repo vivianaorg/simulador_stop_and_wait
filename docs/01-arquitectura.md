@@ -316,14 +316,19 @@ instante correcto —y el riesgo de tocarlo mal— está descrito en `docs/07-hi
 del 2026-09-07, «La ráfaga de ruido entra en el reloj del simulador»): no se repite aquí para no
 duplicar la misma explicación en dos archivos.
 
-## La tira de bits se agrupa por bytes
+## La tira de bits siempre pinta bits, agrupados visualmente por byte
 
-Por encima de 128 bits (`BITS_MAX_INDIVIDUALES` en `js/ui.js`) la tira deja de pintar un
-cuadradito por bit —ilegible con una trama de miles— y pasa a un cuadradito por byte, en
-hexadecimal. El rótulo dice la verdad en los dos modos: agrupada, avisa de que cada casilla es
-un byte y de que pulsarla voltea el primer bit de ese byte; sin agrupar, seguía siendo un bit
-por casilla. El CRC se marca igual en ambos modos: los últimos `CRC_BITS` bits, o los últimos
-`CRC_BITS / 8` bytes.
+`renderInspector` en `js/ui.js` pinta un cuadradito por bit, siempre — con 24 o con 1000. Se
+probó agrupar por byte en hexadecimal por encima de un umbral (`BITS_MAX_INDIVIDUALES`) para que
+mil cuadraditos no fueran ilegibles, pero eso convertía la tira de bits en una tira de bytes: la
+vista existe para señalar bits volteados y seguir el CRC bit a bit, y el hexadecimal escondía
+justo eso. El umbral se quitó (2026-09-08): la tira de bits `.bits` es una rejilla CSS de 16
+columnas fija (`grid-template-columns: repeat(16, 1fr)` en `style.css`), así que cada fila son
+exactamente dos bytes y la trama por defecto de 1000 bits cae en 63 filas dentro de un panel que
+ya scrollea verticalmente. Cada casilla marca si abre un byte (`data-byte-start`) y `style.css`
+le pone un borde izquierdo más grueso: la carga y el CRC se leen en bloques de ocho sin dejar de
+ser bits. El CRC se sigue marcando igual que antes: los últimos `CRC_BITS` bits, en azul — con
+`CRC_BITS = 16`, la última fila entera.
 
 ## Transferencia y ráfaga en la calculadora
 
