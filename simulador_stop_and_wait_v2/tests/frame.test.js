@@ -70,7 +70,7 @@ test("Ningún tramo volteado de longitud <= 16 sobrevive al CRC (Tanenbaum, cap.
 
 // El mismo pasaje: una ráfaga de r+1 bits pasa desapercibida si, y solo si,
 // es idéntica a G(x). Con CRC-16/CCITT eso es 0x11021, o sea 17 bits:
-// 1 0000 0001 0010 0001. Es el único patrón de 17 que se cuela por posición.
+// 1 0001 0000 0010 0001. Es el único patrón de 17 que se cuela por posición.
 test("La ráfaga de 17 bits igual a G(x) sí se cuela (Tanenbaum, cap. 3)", () => {
   // 0x11021 = 1 0001 0000 0010 0001, los 17 bits de G(x) = x^16+x^12+x^5+1.
   const PATRON = [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
