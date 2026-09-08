@@ -57,10 +57,14 @@
     <div id="links-container" class="links-container"></div>
 
     <div class="presets">
-      <span class="presets-label">Ejemplos verificados:</span>
-      <button type="button" class="btn-ghost btn-small" data-preset="satelite">Satélite del libro</button>
-      <button type="button" class="btn-ghost btn-small" data-preset="lan">LAN 10 Mbps · 1 km</button>
+      <span class="presets-label">Ejemplos del libro:</span>
+      <button type="button" class="btn-ghost btn-small" data-preset="satelite">Satélite · Tanenbaum p. 200</button>
       <button type="button" class="btn-ghost btn-small" data-preset="casa-satelite-casa">Casa → satélite → casa</button>
+    </div>
+    <div class="presets">
+      <span class="presets-label">Ejemplo de clase:</span>
+      <button type="button" class="btn-ghost btn-small" data-preset="lan">LAN 10 Mbps · 1 km</button>
+      <span class="hint">No sale de Tanenbaum: la letra <em>a</em> y la forma U = 1/(1+2a) son de Stallings.</span>
     </div>
 
     <div id="error-box" class="error-box" hidden></div>
@@ -143,8 +147,9 @@
 
 <footer class="footer">
   <p>
-    Fórmulas de Tanenbaum &amp; Wetherall, <em>Computer Networks</em> 5.ª ed., cap. 3.
-    Cada resultado de esta página tiene una prueba automática con un número publicado.
+    Protocolo, ejemplos y CRC: Tanenbaum &amp; Wetherall, <em>Redes de computadoras</em>, 5.ª ed., cap. 3.
+    El parámetro <em>a</em> y la forma cerrada U = 1/(1+2a) son de Stallings, no de Tanenbaum.
+    Cada resultado de esta página tiene una prueba automática.
   </p>
 </footer>
 

@@ -30,10 +30,10 @@ function porId(solucion, id) {
   return p;
 }
 
-// El ejemplo de LAN del libro (Tanenbaum, cap. 3: 10 Mbps, 1 km, V = 2·10^8 m/s,
-// tramas de 500 bits) por el mismo camino que recorre la calculadora, que es
-// donde se rompió: `tests/network.test.js` lo comprueba llamando al modelo
-// directamente, así que no se enteraría de un redondeo metido por encima.
+// El ejemplo de LAN de clase (10 Mbps, 1 km, V = 2·10^8 m/s, tramas de 500
+// bits). NO es de Tanenbaum: se buscó `83,3` y `1 + 2a` en las 820 páginas de
+// la 5.ª edición y no aparecen. Es formulación de Stallings. Se recorre por el
+// mismo camino que la calculadora, que es donde se rompió:
 //
 // L = 500 NO es una trama construible —la real lleva la carga en bytes enteros
 // más 16 de CRC, así que roundFrameBits(500) = 504—, y aun así el desarrollo
@@ -52,7 +52,7 @@ function lanDelLibro() {
   );
 }
 
-test("El ejemplo de LAN llega al desarrollo del libro: a = 0,1 y U = 83,33 %", () => {
+test("El ejemplo de LAN de clase llega al desarrollo: a = 0,1 y U = 83,33 %", () => {
   const s = Steps.build(lanDelLibro());
 
   assert.equal(porId(s, "a").resultado, "0,1");
@@ -113,6 +113,31 @@ test("Con varios saltos, el detalle avisa de que 1/(1+2a) ya no basta", () => {
   assert.match(porId(s, "ida").detalle.join(" "), /store-and-forward/);
   // Un paso por tramo dentro del detalle de Tt.
   assert.equal(porId(s, "tt").detalle.length, 2);
+});
+
+// El libro (p. 200) dice "sólo se usó 4% del ancho de banda". El 3,846 % es
+// nuestro 20/520 exacto: correcto, pero no es una cita. Decir cuál es cuál.
+test("el desarrollo distingue el 4 % del libro del 3,846 % exacto", () => {
+  const s = Steps.build(satelite());
+  const u = porId(s, "u");
+  const texto = [u.resultado, ...u.detalle, u.nota].join(" ");
+  assert.match(texto, /3,846/);
+  assert.match(texto, /4 ?%/);
+  assert.match(texto, /redondea/i);
+});
+
+test("con varios saltos U se llama la del enlace del emisor, no la del canal", () => {
+  const dos = N.analyze(
+    N.createPath({
+      frameBits: 1000, ackBits: 0,
+      links: [
+        N.createLink({ name: "A", rateBps: 1000000, distanceKm: 35786, velocityKmS: 300000 }),
+        N.createLink({ name: "B", rateBps: 500000, distanceKm: 35786, velocityKmS: 300000 }),
+      ],
+    })
+  );
+  assert.match(porId(Steps.build(dos), "u").titulo, /emisor/i);
+  assert.match(porId(Steps.build(satelite()), "u").titulo, /^Utilización del canal$/);
 });
 
 test("Los pasos de error solo aparecen cuando hay probabilidad de error", () => {

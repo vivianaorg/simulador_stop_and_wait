@@ -223,18 +223,26 @@
     ];
     if (unSalto && r.ackBits === 0 && !conVuelta) {
       detalleU.push(
-        `Comprobación con la forma del libro: U = 1 / (1 + 2a) = 1 / (1 + 2 · ${redondear(r.aRatio)}) = ${pct(1 / (1 + 2 * r.aRatio))}`
+        `Comprobación con la forma cerrada: U = 1 / (1 + 2a) = 1 / (1 + 2 · ${redondear(r.aRatio)}) = ${pct(1 / (1 + 2 * r.aRatio))}`
+      );
+      detalleU.push(
+        "Esa forma cerrada, y la letra a, son de Stallings. Tanenbaum razona con tiempos crudos y nunca define a: para el satélite dice que el emisor está bloqueado 500/520 = 96 % del tiempo y redondea a «sólo se usó 4 %». El valor exacto que sale aquí es el mismo número sin redondear."
       );
     } else {
       detalleU.push(
         "Con varios tramos, ACK con tamaño o canal half duplex, la forma 1/(1+2a) ya no basta: hay que dividir por el ciclo real."
       );
     }
+    if (!unSalto) {
+      detalleU.push(
+        "Con varios tramos esta U es la del enlace del emisor: mide qué fracción del ciclo pasa ese primer tramo empujando bits. Los tramos siguientes tienen la suya, y no es la misma."
+      );
+    }
 
     pasos.push(
       paso({
         id: "u",
-        titulo: "Utilización del canal",
+        titulo: unSalto ? "Utilización del canal" : "Utilización del enlace del emisor",
         formula: "U = Tt(emisor) / ciclo",
         sustitucion: `${ms(r.senderTtMs)} / ${ms(r.cycleMs)}`,
         resultado: pct(r.utilization),
