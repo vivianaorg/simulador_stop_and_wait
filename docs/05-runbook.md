@@ -54,7 +54,7 @@ node --check simulador_stop_and_wait_web/js/app.js
 python -m py_compile simulador_stop_and_wait_python/*.py
 ```
 
-Baseline 2026-09-08, Node v24.11.1 y Python 3.13.14: **140 pruebas verdes, 0 fallas**; el banco de
+Baseline 2026-09-08, Node v24.11.1 y Python 3.13.14: **143 pruebas verdes, 0 fallas**; el banco de
 interfaz con 57 comprobaciones sin problemas; el lint de documentación limpio; el resto, sin
 avisos.
 

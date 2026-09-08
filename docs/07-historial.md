@@ -8,6 +8,48 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-08 — El desarrollo enseña la cancelación de unidades y el factor 1000
+
+**Qué.** Los pasos `Tt` y `Tp` de `js/steps.js` ganan un campo `derivacion`: un array de
+renglones `{ expr, motivo }` que arma el nuevo helper `derivarTiempo()`, consumiendo
+`Unidades.escalarTiempo`/`Unidades.cientifica` (tarea 6) y las formas de `MathMLModel.describir`
+(tarea 7). `js/calc.js` (`bloquePaso`) pinta esos renglones con `MM.render`, uno por línea, con el
+motivo al lado; si un paso no trae `derivacion` (todos menos `tt`/`tp`) sigue cayendo en el
+camino viejo de `formula`/`sustitucion`/`resultado`. `calculadora.html` carga `js/unidades.js` y
+`js/mathml.js` entre `network.js` y `steps.js` —el orden importa: `steps.js` lee `root.Unidades`
+al cargarse—. `css/style.css` gana `.math-row`/`.math-why` para las filas apiladas.
+
+**Por qué.** Pedido explícito del usuario (2026-09-08): la pantalla saltaba de `1000 / 50000` a
+`20 ms` sin explicar de dónde salía el mil que convierte `0,02 s` en milisegundos. Ahora cada paso
+es una cadena de renglones —fórmula, sustitución, cancelación de unidades, factor de escala,
+resultado en notación científica— con su motivo en español al lado.
+
+**Detalle de una desviación del brief:** la variable CSS `--muted` que pedía el brief para
+`.math-why` **no existe** en este proyecto (comprobado con
+`grep -n "\-\-muted" css/style.css`, cero resultados); se usó `--ink-soft`, que es la variable de
+texto apagado ya definida en `:root` y usada en el resto de la hoja.
+
+**Evidencia.** `node --test` sobre los siete ficheros de `simulador_stop_and_wait_v2/tests/` →
+**143 pruebas, 0 fallas** (140 previas + 3 nuevas: la derivación de `Tt` enseña la cancelación y
+el 1000, termina en el mismo número que `resultado`, y `Tp` también trae derivación).
+`node tools/lint-docs.js` confirma el conteo contra el repositorio real y no encontró el número
+repetido en otro sitio. `node --check` limpio en `steps.js` y `calc.js`. Capturada
+`calculadora.html` con el Chromium headless del proyecto (con "Mostrar todos" pulsado por script,
+porque el desarrollo empieza plegado): el paso «Tiempo de transmisión de cada tramo» muestra
+`Tt = 1000 bits / 50000 bit/s` como fracción apilada de verdad (numerador y denominador uno sobre
+otro, con raya), y el renglón siguiente dice `Tt = 0,02 s × 1000 ms/s` con el motivo "De segundos
+a ms: por eso aparece el 1000." La captura se borró al terminar, no se commiteó.
+Barrido de `grep -rn "step-math|math-row|lineaMath" simulador_stop_and_wait_v2/`: solo aparecen en
+`calc.js` (que se tocó) y `css/style.css`; `banco-interfaz.html` no referencia esa estructura, así
+que no hizo falta tocarlo.
+
+**Cómo revertir.** `git revert` del commit; o a mano, quitar `derivacion` de `paso(spec)` y de los
+pasos `tt`/`tp` en `js/steps.js`, volver `bloquePaso` a su rama única (`formula`/`sustitucion`/
+`resultado`) en `js/calc.js`, quitar las dos líneas `<script>` nuevas de `calculadora.html`, y el
+bloque `.math-row`/`.math-why` de `css/style.css`.
+
+---
+
 ## 2026-09-08 — La calculadora deja de pedir probabilidades de error
 
 **Qué.** Se quitaron los dos campos `errorProbData`/`errorProbAck` de `js/calc.js` (constante
