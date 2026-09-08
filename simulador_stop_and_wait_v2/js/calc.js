@@ -283,12 +283,14 @@
    * tramas. Aquí no se construye ninguna: solo se calculan tiempos, y
    * `Tt = L / R` funciona igual de bien con L = 500 que con L = 504.
    *
-   * Importa porque el ejemplo de LAN del libro es exactamente ese: 10 Mbps,
-   * 1 km, tramas de 500 bits, a = 0,1 y U = 83,33 %. Redondear a 504 lo
-   * convierte en a = 0,0992 y U = 83,44 %, y deja de ser el número publicado
-   * contra el que está probado el proyecto. La prueba «El ejemplo de LAN llega
-   * al desarrollo del libro: a = 0,1 y U = 83,33 %» (`tests/steps.test.js`) se
-   * pone roja si alguien vuelve a meter un redondeo por encima del modelo.
+   * Importa porque el ejemplo de LAN de clase es exactamente ese: 10 Mbps,
+   * 1 km, tramas de 500 bits, a = 0,1 y U = 83,33 %. NO es de Tanenbaum —
+   * `83,3` y `1 + 2a` no aparecen en las 820 páginas de la 5.ª edición; es
+   * formulación de Stallings—, pero igual es el número publicado contra el
+   * que está probado el proyecto. Redondear a 504 lo convierte en a = 0,0992
+   * y U = 83,44 %. La prueba «El ejemplo de LAN de clase llega al desarrollo:
+   * a = 0,1 y U = 83,33 %» (`tests/steps.test.js`) se pone roja si alguien
+   * vuelve a meter un redondeo por encima del modelo.
    *
    * Lo que sí se hace es **decirlo**: una nota de que el simulador usaría otro
    * tamaño. No es un error del formulario y no cambia ningún resultado de esta

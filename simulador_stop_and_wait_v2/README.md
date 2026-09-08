@@ -51,7 +51,7 @@ Cada fórmula que aparece en la interfaz tiene su caso con un número publicado:
 |---|---|
 | Satélite de Tanenbaum: 50 kbps, 1000 bits, 500 ms de RTT | Tt = 20 ms, ciclo = 520 ms, **U = 3,846 %** |
 | LAN: 10 Mbps, 1 km, V = 2·10⁸ m/s, 500 bits | **a = 0,1 · U = 0,8333** |
-| Reducción a la forma del libro | `U = 1/(1+2a)` con un salto y ACK despreciable |
+| Reducción a la forma cerrada (Stallings, no Tanenbaum) | `U = 1/(1+2a)` con un salto y ACK despreciable |
 | `a` frente a su forma cerrada | `a = (R·d)/(V·L)` |
 | Cadena casa → satélite → casa | RTT = suma de tramos (store-and-forward) |
 | Half duplex | + 2 × tiempo de vuelta por ciclo |

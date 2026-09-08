@@ -181,8 +181,9 @@
     // realmente ocupado poniendo bits en el medio.
     const senderTtMs = perLink[0].ttDataMs;
 
-    // a = Tp / Tt, en su forma agregada. Con un solo salto coincide con la
-    // definición del libro: a = (R·d)/(V·L).
+    // a = Tp / Tt, en su forma agregada. Con un solo salto coincide con
+    // a = (R·d)/(V·L). La letra a y esta fórmula son de Stallings, no del
+    // libro de Tanenbaum: él razona con tiempos crudos y nunca define a.
     const aRatio = ttDataTotalMs > 0 ? tpTotalMs / ttDataTotalMs : Infinity;
 
     // `a` que SÍ reproduce U. Despejando de U = Tt(emisor)/ciclo:

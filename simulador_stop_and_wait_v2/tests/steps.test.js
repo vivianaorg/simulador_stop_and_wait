@@ -37,10 +37,10 @@ function porId(solucion, id) {
 //
 // L = 500 NO es una trama construible —la real lleva la carga en bytes enteros
 // más 16 de CRC, así que roundFrameBits(500) = 504—, y aun así el desarrollo
-// tiene que dar los números del libro: la calculadora calcula tiempos, no
-// construye tramas. Si alguien vuelve a aplicar roundFrameBits aquí, esto se
-// pone rojo con a = 0,0992 y U = 83,44 %.
-function lanDelLibro() {
+// tiene que dar los números publicados de este ejemplo de clase: la
+// calculadora calcula tiempos, no construye tramas. Si alguien vuelve a
+// aplicar roundFrameBits aquí, esto se pone rojo con a = 0,0992 y U = 83,44 %.
+function lanDeClase() {
   return N.analyze(
     N.createPath({
       frameBits: 500,
@@ -53,7 +53,7 @@ function lanDelLibro() {
 }
 
 test("El ejemplo de LAN de clase llega al desarrollo: a = 0,1 y U = 83,33 %", () => {
-  const s = Steps.build(lanDelLibro());
+  const s = Steps.build(lanDeClase());
 
   assert.equal(porId(s, "a").resultado, "0,1");
   assert.equal(porId(s, "u").resultado, "83,33 %");
@@ -194,7 +194,8 @@ test("La curva de la gráfica pasa por el punto que se está calculando", () => 
   assert.equal(curva.actual.a.toFixed(4), "12.5000");
   assert.ok(Math.abs(curva.actual.u - 1 / (1 + 2 * 12.5)) < 1e-9);
 
-  // La curva es la fórmula del libro en toda su extensión.
+  // La curva es la forma cerrada 1/(1+2a) en toda su extensión (Stallings,
+  // no Tanenbaum: él nunca define a).
   for (const p of curva.puntos) {
     assert.ok(Math.abs(p.u - 1 / (1 + 2 * p.a)) < 1e-12);
   }

@@ -199,16 +199,18 @@ redondeo es una restricción de la trama *real*: la que construye `createFrame`,
 bytes enteros más los 16 bits del CRC. El simulador no tiene más remedio que aplicarlo porque
 construye tramas y las dibuja. La calculadora **no construye ninguna**: solo calcula tiempos, y
 `Tt = L / R` funciona igual de bien con L = 500 que con L = 504. Imponerle ahí el redondeo
-rompía el ejemplo de LAN del libro —10 Mbps, 1 km, tramas de 500 bits, a = 0,1 y U = 83,33 %—,
-que es un número publicado contra el que está probado el proyecto: con 504 sale 0,0992 y
-83,44 %.
+rompía el ejemplo de LAN de clase —10 Mbps, 1 km, tramas de 500 bits, a = 0,1 y U = 83,33 %—,
+que **no es de Tanenbaum** (`83,3` y `1 + 2a` no aparecen en las 820 páginas de la 5.ª edición;
+es formulación de Stallings) pero sí es un número publicado contra el que está probado el
+proyecto: con 504 sale 0,0992 y 83,44 %.
 
 Lo que sí hace la calculadora es **decirlo**: cuando el tamaño no es construible, una nota bajo
 los datos (`notaDeTramaReal` en `js/calc.js`) avisa de qué tamaño usaría el simulador. Es una
 nota sobre la otra página, no un aviso de validación: no cambia ningún resultado y no se pinta
-como los errores. La prueba «El ejemplo de LAN llega al desarrollo del libro» en
-`tests/steps.test.js` recorre la misma cadena que la calculadora (`Steps.build` sobre un enlace
-con `frameBits: 500`) y se pone roja si alguien vuelve a meter un redondeo por encima del modelo.
+como los errores. La prueba «El ejemplo de LAN de clase llega al desarrollo: a = 0,1 y
+U = 83,33 %» en `tests/steps.test.js` recorre la misma cadena que la calculadora (`Steps.build`
+sobre un enlace con `frameBits: 500`) y se pone roja si alguien vuelve a meter un redondeo por
+encima del modelo.
 
 Por lo mismo, el `min` del campo difiere entre las dos páginas y no es un descuido: en
 `index.html` es `24` (`F.MIN_FRAME_BITS`, que `js/ui.js` reescribe desde el modelo) porque el
