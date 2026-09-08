@@ -8,6 +8,300 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-08 (noche, más tarde) — La tira del inspector vuelve a mostrar bits, no bytes en hex
+
+**Qué:** `renderInspector` en `js/ui.js` deja de agrupar la tira por bytes en hexadecimal por
+encima de 128 bits. Se quita `BITS_MAX_INDIVIDUALES` y toda la rama `agrupar`/`paso`: ahora
+siempre pinta un `<button class="bit">` por bit, con la trama por defecto (1000) igual que con
+una pequeña. Cada casilla lleva `data-byte-start="true"` en el primer bit de cada byte (`i % 8
+=== 0`), y `style.css` le pone `border-left: 2px solid var(--rule-strong)` para que la carga y el
+CRC se lean en bloques de ocho sin dejar de ser bits — la rejilla `.bits` ya era de 16 columnas
+fijas (`repeat(16, 1fr)`), así que cada fila son exactamente dos bytes y no hizo falta tocar el
+tamaño de la casilla. El rótulo (`aria-label` y el texto sobre `#bits-hint`) vuelve a decir «bit»
+en vez de «byte en hexadecimal», y el texto del CRC vuelve a hablar de `F.CRC_BITS` bits (16), no
+de `F.CRC_BITS / 8` bytes.
+
+`banco-interfaz.html` gana cuatro comprobaciones nuevas: que la tira de 1000 bits tiene 1000
+casillas (no 125), que cada casilla es un carácter «0»/«1» y no dos dígitos hex, que el CRC son
+16 casillas azules, y que una ráfaga de ruido deja un solo bloque de bits contiguos en vez de
+bits salteados. El banco sube de 51 a 55 comprobaciones — número corregido en
+`docs/05-runbook.md`, única fuente.
+
+**Por qué:** pedido del usuario. El umbral de 128 bits se introdujo (`243de6b`, `563b540`) porque
+mil casillas de un bit no se leían; pero agrupar por byte en hexadecimal convertía la tira de
+*bits* en una tira de *bytes*, y esta vista existe para señalar bits volteados y seguir el CRC
+bit a bit — enseñar hexadecimal esconde justo eso. Con la rejilla de 16 columnas que ya existía,
+1000 bits caben en 63 filas dentro de un panel que ya tenía scroll vertical (`.rail { overflow-y:
+auto }`), sin desbordar nunca en horizontal: el umbral dejó de tener motivo y se quitó en vez de
+conservarse sin usar.
+
+**Verificado en navegador** (Chrome real headless por CDP, sin Playwright — ver
+`docs/05-runbook.md` § *Banco de pruebas de la interfaz*): con 1000 bits, las 1000 casillas son
+bits de verdad, sin desborde horizontal, con la carga y el CRC distinguibles por fila de 16; una
+ráfaga de ruido deja 500 bits volteados en un único tramo contiguo (0 a 499); un clic voltea
+exactamente el bit señalado (`Bit 300`) y el CRC pasa a «no cuadra»; con 24 y 64 bits se ve igual
+de bien.
+
+**Cómo revertir:** en `js/ui.js`, restaurar `BITS_MAX_INDIVIDUALES`, la rama `agrupar` y los dos
+textos de `aria-label`/`bitsHint` (ver el commit que los quita para el texto exacto). En
+`css/style.css`, quitar la regla de `.bit[data-byte-start="true"]`. En `banco-interfaz.html`,
+quitar las cuatro comprobaciones nuevas y devolver el número a 51 en `docs/05-runbook.md`.
+
+---
+
+## 2026-09-08 (noche) — Se oculta de la interfaz el ruido del canal por probabilidad
+
+**Qué:** se quitan de `simulador_stop_and_wait_v2/index.html` el campo *Semilla del ruido*
+(`#seed`), la casilla *Ruido del canal* (`#noise-toggle`) con su texto, y —dentro de
+`js/ui.js`— la columna *P error trama* que la tabla de tramos generaba (era la única columna de
+probabilidad que existía; no había una segunda para el ACK). En `js/ui.js` se limpiaron todas las
+referencias a `dom.seed` y `dom.noiseToggle`: el cacheo del DOM, el `forEach` que dispara
+`rebuild()` al cambiar un campo, el `addEventListener("change", ...)` del interruptor, el
+`if (campo.key === "errorProbData" && !dom.noiseToggle.checked)` que deshabilitaba la columna, los
+campos `errorProbData`/`errorProbAck` de los objetos de tramo (`hops`, en el array inicial y en
+`addHop()`) y las dos llamadas a `N.createLink()` en `rebuild()` que los leían. La primera de esas
+dos llamadas —un `hops.forEach` que solo validaba los valores crudos antes de que el interruptor
+los pusiera a 0— quedó sin motivo para existir (`createLink()` ya valida lo mismo al construir el
+camino) y se borró en vez de dejarla como código muerto. `S.createSimulation()` ya no recibe
+`Number(dom.seed.value)`: recibe `SEMILLA_BIT_AL_AZAR`, una constante nueva en `ui.js` con su
+comentario, porque *Dañar un bit al azar* (`F.flipRandomBit`) sigue necesitando el generador con
+semilla de `frame.js` aunque el formulario ya no tenga campo para fijarla.
+
+En `banco-interfaz.html` se quitaron las tres comprobaciones que encendían y apagaban
+`#noise-toggle` («el ruido viene apagado», «con el ruido apagado, la probabilidad no se puede
+tocar», «encendido, la probabilidad se habilita») y la que probaba una probabilidad fuera de rango
+sobre la columna que ya no existe («probabilidad fuera de rango» / «avisa de la probabilidad
+inválida»); la comprobación de *Dañar un bit al azar* se dejó igual. El banco baja de 55 a 51
+comprobaciones — número corregido en `docs/05-runbook.md`, única fuente. `docs/01-arquitectura.md`
+y el checklist de humo de `docs/05-runbook.md` se actualizaron para dejar de describir un
+interruptor que ya no está.
+
+**Por qué:** pedido del usuario. El simulador tiene dos clases de ruido: la ráfaga (se dispara y
+ocurre siempre, sin azar) y el ruido por probabilidad (cada tramo daña tramas con una probabilidad
+sobre un generador con semilla). Delante de un aula, el segundo no sirve para explicar: «no puedo
+fiarme de que pueda o no pasar» (cita textual del usuario). El botón *Dañar un bit al azar* no cae
+en esa objeción — se llama «al azar» pero no es probabilístico: se pulsa y el bit se voltea
+siempre, solo el bit concreto es aleatorio — así que se conserva intacto, igual que el modelo que
+usa ambos.
+
+**Qué NO se tocó, y por qué:** el modelo del protocolo (`applyChannelNoise` en `sim.js`,
+`errorProbData`/`errorProbAck` en `network.js`, `seededRandom` en `frame.js`) y todas sus pruebas
+siguen exactamente igual — el pedido era ocultar la funcionalidad de la interfaz, no borrarla. La
+calculadora (`calculadora.html`, `js/calc.js`) no se tocó: su columna de probabilidad de error es
+suya, no depende de `#noise-toggle` ni de `#seed`, y no estaba en el pedido.
+
+**Cómo revertir:** en `index.html`, devolver la fila `<div class="row">` de `#seed` y el
+`<label class="check">` de `#noise-toggle` (ver el commit que los quita para el texto exacto). En
+`js/ui.js`, devolver `dom.seed`/`dom.noiseToggle` al cacheo del DOM, al `forEach` de `rebuild`, el
+`addEventListener` del interruptor, la columna `errorProbData` en `CAMPOS_TRAMO` con su bloque de
+`disabled`, los campos `errorProbData`/`errorProbAck` en los objetos de `hops`, la llamada de
+validación previa a `createPath()` y `seed: Number(dom.seed.value)` en `createSimulation()` (y
+retirar entonces `SEMILLA_BIT_AL_AZAR`, que deja de tener uso). En `banco-interfaz.html`, devolver
+las cuatro comprobaciones citadas arriba. Revisar `docs/01-arquitectura.md` y
+`docs/05-runbook.md` (checklist de humo y conteo del banco, que volvería a 55).
+
+## 2026-09-08 (tarde) — La calculadora deja de redondear el tamaño de trama: el redondeo es de la trama real, no de la fórmula
+
+**Qué:** se revierte el arreglo «MEDIA 3» de la entrada de abajo, que se hizo esta misma mañana y
+que **no se reescribe**. `js/calc.js` ya no aplica `F.roundFrameBits`: calcula con el valor exacto
+que se escriba. En su lugar, `notaDeTramaReal()` deja una nota informativa cuando el tamaño no es
+construible («el simulador ajustaría estos 500 bits a 504»), con el tono apagado de las pistas,
+bajo los datos y lejos del resultado: no es un aviso de validación y no cambia ningún número de
+esa página. El `min` del campo de `calculadora.html` vuelve a `1` con `step="1"`. El redondeo del
+**simulador** no se toca: ahí es correcto.
+
+**Por qué:** el redondeo es una restricción de la trama *real* —la que construye `createFrame`,
+con la carga en bytes enteros más los 16 bits del CRC—, no de la fórmula. El simulador construye
+tramas y no tiene más remedio que aplicarlo; la calculadora no construye ninguna, solo calcula
+tiempos, y `Tt = L / R` funciona igual con L = 500 que con 504. Imponérselo rompía el ejemplo de
+LAN del libro (10 Mbps, 1 km, 500 bits): pasaba de a = 0,1 y U = 83,33 % a 0,0992 y 83,44 %, y
+ese es uno de los números publicados contra los que está probado el proyecto. Por la misma razón,
+el `min` del modelo (`F.MIN_FRAME_BITS = 24`) es del simulador y no de la calculadora, donde la
+única restricción de la fórmula es L > 0.
+
+- **Prueba que protege el número por el camino que se rompió** (`tests/steps.test.js`): «El
+  ejemplo de LAN llega al desarrollo del libro: a = 0,1 y U = 83,33 %» recorre la misma cadena
+  que la calculadora —`Steps.build` sobre un enlace con `frameBits: 500`— y lee los campos por su
+  identificador (`porId(s, "a")`, `porId(s, "u")`, el titular y la entrada), no buscando en
+  texto. La de `tests/network.test.js` pasaba llamando al modelo directamente y se saltó el fallo
+  sin enterarse. Comprobada por mutación: metiendo un `roundFrameBits` en `createPath` se pone
+  roja con `0,0992`.
+- **Banco de interfaz:** vuelve la comprobación de que L = 0 da error, y se añade una nueva de que
+  con L = 500 la calculadora calcula los 500 y solo deja la nota. 55 comprobaciones, 0 problemas.
+- **La razón queda escrita** en el bloque de comentario de `notaDeTramaReal()` en `js/calc.js`,
+  que es donde alguien intentará «arreglar» la inconsistencia dentro de seis meses, y en
+  `01-arquitectura.md` § «Un solo tamaño de trama».
+
+**Cómo revertir:** `git revert` de este commit devuelve el redondeo a la calculadora y, con él,
+el preset de LAN a a = 0,0992 y U = 83,44 %; hay que quitar en el mismo movimiento la prueba «El
+ejemplo de LAN llega al desarrollo del libro», que quedaría en rojo, y las dos comprobaciones del
+banco que la acompañan. No afecta al simulador.
+
+---
+
+## 2026-09-08 — Revisión final de la rama de la ráfaga: los bits que se cuentan son los que se enseñan
+
+**Qué:** los siete hallazgos de la revisión final de `feat/rafaga-de-ruido`. La entrada del
+2026-09-07 no se reescribe: describe lo que era cierto ese día.
+
+- **La ráfaga arruinaba un número que dependía de la velocidad** (`0d983f9`): `burstBitsFromMs`
+  trunca a bits enteros y `applyBurst` la llamaba una vez por tramo de reloj, así que cada tramo
+  tiraba una fracción. A 9600 bps —la tasa de módem del capítulo 3— una ráfaga de 5 ms son 48
+  bits en la calculadora, y el simulador arruinaba 45 con tramos de 1 ms y 40 con tramos de
+  0,25 ms. Ahora el presupuesto se calcula **una sola vez** en `startBurst`, con la tasa del
+  primer tramo (la misma que usa la calculadora), y se gasta a medida que corre el reloj: el
+  total es el mismo se trocee como se trocee. De los dos caminos posibles se eligió este y no el
+  acumulador de fracciones porque el número que hay que defender en clase aparece escrito una
+  vez, en el sitio donde se dispara la ráfaga, en vez de emerger de una suma.
+- **El contador sumaba por paquete y mordía ACKs de duración nula** (`0d983f9`): dos paquetes en
+  vuelo marcaban 1000 bits donde la cuenta dice 500, y un ACK con `ackBits = 0` —el valor por
+  defecto— perdía 99 bits y se descartaba por CRC. La ventana es **una**: son los mismos
+  milisegundos de medio sucio, así que el contador suma una vez y cada paquete recibe la misma
+  tirada; un paquete que no ocupa bits en el cable no lo alcanza.
+- **La prueba que debía proteger eso pasaba trivialmente** (`0d983f9`): comparaba dos corridas
+  con el mismo paso. Tres pruebas nuevas en `tests/sim.test.js` corren la misma ráfaga con
+  tramos de 1 ms, de 0,1 ms y de una sola llamada, exigen el número de `N.burstBitsFromMs`, y
+  atan el caso de dos paquetes y el del ACK sin duración. Contra el código anterior fallan con
+  45, 90 y 100 bits donde ahora hay 48, 48 y 0.
+- **Un comentario decía un número falso** (`34f005d`): la cabecera de la prueba de la ráfaga de
+  17 bits agrupaba `G(x)` como `1 0000 0001 0010 0001`, que es `0x10121`. La agrupación buena
+  estaba tres líneas más abajo. El array de bits siempre fue el correcto.
+- **La calculadora no redondeaba el tamaño de trama** (`fb0b868`): un L de 1005 se calculaba tal
+  cual mientras el simulador lo reescribía a 1008. Ahora `recalcular()` hace lo mismo que
+  `rebuild()`: ajusta con `F.roundFrameBits` y lo avisa. `calculadora.html` carga `frame.js` para
+  eso. **Efecto colateral asumido:** el preset de LAN trae L = 500, que no es representable, así
+  que ahora se ajusta a 504 y da a = 0,0992 y U = 83,44 % en vez de 0,1 y 83,33 %. Está anotado
+  en `05-runbook.md` con la alternativa (L = 1000 y d = 2 km dan a = 0,1 exacto y sí es
+  representable) por si en clase hace falta el número redondo.
+- **Leyenda, mínimo del formulario y bloque vacío** (`6bbfc86`, `fb0b868`): la banda de la ráfaga
+  ya tiene su entrada en la leyenda, con la variable de color con la que se pinta; el campo del
+  tamaño de trama anuncia `min="24"` en vez de `min="8"` y lo toma de `F.MIN_FRAME_BITS`, que era
+  la única exportación de la rama sin lector; y el bloque de transferencia se oculta hasta que
+  hay tamaño, como el de la ráfaga.
+- **`buildTransfer` calculaba** (`f34ba1f`): `cycleMs = totalMs / frames` tres líneas después de
+  declarar que ahí no se calcula nada. `N.transferAnalysis` lo devuelve y `steps.js` lo lee.
+- **El banco de interfaz mentía** (`9f1a4c7`): la comprobación del CRC paso a paso esperaba 8
+  filas (el `payloadBytes` fijo que desapareció al unificar el tamaño de trama; con L = 1000 son
+  123 bytes) y llevaba en rojo desde entonces sin que nadie lo viera. Corregida, más la del
+  tamaño de trama de la calculadora: **54 comprobaciones, 0 problemas**, sin errores de consola.
+
+**Por qué:** la ráfaga es determinista como algoritmo, pero lo que enseñaba la pantalla no
+coincidía con lo que enseña la cuenta y se movía con el control de velocidad. Eso anula el
+propósito de la funcionalidad delante de un aula: la primera pregunta la tumba.
+
+**Cómo revertir:** `git revert` de los commits citados, en orden inverso. Se pueden revertir por
+separado; el único acoplamiento es que revertir `fb0b868` (redondeo en la calculadora) deja sin
+lector a `F.MIN_FRAME_BITS` en esa página y sin sentido el `<script src="js/frame.js">` de
+`calculadora.html`, y que revertir `0d983f9` **deja en rojo** las tres pruebas nuevas de
+`tests/sim.test.js`, que hay que quitar en el mismo movimiento. Revertir la corrección del banco
+(`9f1a4c7`) devuelve una comprobación a rojo permanente.
+
+---
+
+## 2026-09-07 — Cierre de la ráfaga de ruido: trama única, tira agrupada, calculadora y advertencia de reversión
+
+**Qué:** las siete tareas del plan `2026-09-07-rafaga-de-ruido-y-transferencia` que rodean a la
+ventana de reloj de la entrada de abajo («La ráfaga de ruido entra en el reloj del simulador»),
+que **no se reescribe** (`04-convenciones.md` §A.3 regla 4). Esta entrada la complementa y le
+añade lo único que le faltaba: la advertencia de reversión.
+
+- **El tramo contiguo de bits** (`15ca30b`): `F.flipRun(frame, startBit, count)` en `frame.js`,
+  que voltea un tramo y dice cuántos bits llegó a tocar si se sale del final de la trama. Sin
+  generador: nada que sortear. Contra el libro (Tanenbaum, códigos polinomiales): ninguna ráfaga
+  de longitud ≤ 16 sobrevive al CRC-16, y la de 17 bits igual a `G(x) = 0x11021` sí se cuela —dos
+  pruebas nuevas en `tests/frame.test.js`.
+- **La conversión declarada** (`c1e35e4`): `N.burstBitsFromMs` (`bits = R · t`, análisis
+  dimensional, no una cita) y `N.burstDamage` (reparte esos bits sobre tramas de L bits) en
+  `network.js`.
+- **Un solo tamaño de trama** (`7e5bf9b`, `d68d5cd`): hasta entonces `frameBits` (lo que
+  alimentaba `Tt`/`Tp`/`a`) y la trama real de `createFrame` (`payloadBytes` fijo a 8, 80 bits
+  siempre) eran dos hechos distintos con el mismo nombre. Ahora `frameBits` manda: la interfaz
+  deriva la carga con `F.payloadBytesFor(frameBits)` en vez de pasar `payloadBytes` a mano, tanto
+  en `js/ui.js` como en `js/sim.js`. Un valor no representable se ajusta con
+  `F.roundFrameBits(frameBits)` y la interfaz **avisa** del ajuste.
+- **La tira se agrupa por bytes** (`243de6b`, `563b540`): por encima de 128 bits
+  (`BITS_MAX_INDIVIDUALES` en `js/ui.js`) cada casilla pasa a ser un byte en hexadecimal, y el
+  rótulo dice la verdad en los dos modos —incluido cuántos bytes son el CRC en modo agrupado.
+- **Controles, banda y contador** (`74b55b0`, `b1353f1`): el botón *Ráfaga de ruido* y su campo en
+  milisegundos en `index.html`; la banda horizontal en el diagrama y el contador *Bits arruinados
+  por ráfaga* en `js/ui.js`. El segundo commit corrigió que la ventana viajara como suceso
+  `"BURST"` del propio modelo —igual que `TURN` y `TIMEOUT`— en vez de que la interfaz llevara su
+  propia cuenta, y que el control ya no dependiera de tener una trama en vuelo seleccionada: la
+  ráfaga es del canal, no de una trama.
+- **Bloque de ráfaga en la calculadora** (`328aae3`): en `calculadora.html`, con el mismo patrón
+  de desarrollo plegable que los demás bloques (`js/steps.js` produce, `js/calc.js` pinta).
+- **Bloque de transferencia** (`4a8aad3`, `5fe835c`): `N.transferAnalysis` (tramas =
+  `⌈total / L⌉`, tiempo = tramas × ciclo, sin reenvíos) y `N.bitsFromSize` (bits, KB y MB
+  decimales) en `network.js`, con su prueba de tamaños fraccionarios.
+
+**Por qué:** el ruido por probabilidad no sirve para explicar nada delante de un aula —puede
+pasar o no pasar—; hacía falta un daño que ocurra siempre, medible en milisegundos, y el ejercicio
+de "cuántos bits arruina una ráfaga de t ms sobre un canal de R bps, y cuántas tramas" que hoy no
+se podía contestar ni en el simulador ni en la calculadora. El detalle de motivos y alternativas
+descartadas está en el [spec](superpowers/specs/2026-09-07-rafaga-de-ruido-y-transferencia-design.md).
+
+**Cómo revertir — la advertencia que le faltaba a la entrada de abajo.** `git revert` normal
+sirve para las siete tareas de esta entrada: son independientes entre sí y ninguna toca el reloj.
+**La excepción es `ba18b6a`** (la entrada siguiente, «La ráfaga de ruido entra en el reloj del
+simulador»): ese commit mete el cierre de la ventana de la ráfaga dentro de
+`proximoSucesoMs` (`js/sim.js`), que es el cálculo que decide **cuánto avanza el reloj en cada
+paso de la simulación entera**, no solo durante una ráfaga. Revertir ese commit entero con
+`git revert` es seguro. Lo que **no** es seguro es tocar `proximoSucesoMs` a mano para quitar
+solo la parte de la ráfaga sin entender el resto de la función: un error ahí no rompe el ruido,
+dado que el ruido es solo una de las ramas que compiten por el mínimo — deja el simulador **sin
+avanzar en absoluto**, porque ese mínimo es el que gobierna cada paso de `advance()`, ráfaga o no.
+
+**Verificación:** los cinco archivos de `tests/` → fuente única del conteo en
+[05-runbook.md](05-runbook.md). `node tools/lint-docs.js` limpio. `node --check` de los seis
+módulos del v2 limpio. **Dos comprobaciones visuales quedan pendientes** (ningún agente de esta
+sesión tiene navegador): que la ráfaga se ve y se entiende en pantalla (banda, contador, trama
+descartada por CRC) y que dos dígitos hexadecimales se leen bien en la tira agrupada con una
+trama de 1000 bits. Quedan en el checklist de humo de [05-runbook.md](05-runbook.md) marcadas
+como pendientes, para que alguien con navegador las tache.
+
+---
+
+## 2026-09-07 — La ráfaga de ruido entra en el reloj del simulador
+
+**Qué:** `sim.js` gana `startBurst(sim, durationMs)`: abre una ventana `sim.burst = { endsAtMs,
+cursorPorPaquete }` que, mientras dura, muerde bits contiguos de cada paquete en vuelo según la
+tasa de su enlace (`N.burstBitsFromMs` + `F.flipRun`), acumulando en el contador nuevo
+`sim.stats.burstBitsRuined`. El cierre de la ventana entra en `proximoSucesoMs` junto al
+temporizador, así que el reloj nunca se salta el instante en que la ráfaga termina. No usa
+ningún generador: es determinista por construcción.
+
+- `applyBurst(sim, dtMs)` se llama en `avanzarTramo`, justo después de `sim.clockMs += dtMs`:
+  es el único punto donde ya se sabe cuánto avanzó el reloj en este tramo exacto (los tramos
+  están recortados por `proximoSucesoMs`, así que un tramo nunca cruza el cierre de la ventana).
+- `reset()` también limpia `sim.burst`, para que una simulación reiniciada no arrastre una
+  ventana con un `endsAtMs` relativo al reloj anterior.
+- Export nuevo: `proximoSucesoMs` (ya existía, pero no se exportaba) y `startBurst`.
+
+**Por qué:** tarea 5 del plan `2026-09-07-rafaga-de-ruido-y-transferencia`. El ruido por
+probabilidad ya existente se aplica una sola vez al entrar en un tramo; la ráfaga necesita
+persistir en el tiempo, así que su cierre tenía que volverse un suceso más del reloj.
+
+**Desvío sobre el brief:** las pruebas del brief creaban el paquete en vuelo con
+`S.sendFrame(sim)` a secas. Con eso `sim.running` queda en `false` (`sendFrame` no lo toca) y
+`advance()` no mueve el reloj —es el mismo guardián que usa "Pausar detiene el reloj"—, así que
+la ráfaga nunca llegaba a morder nada por una razón ajena a este cambio. Se cambiaron esas tres
+llamadas a `S.start(sim)` (que sí deja `running = true` y de paso ya pone la trama en el cable);
+la cuarta prueba, que solo mira `proximoSucesoMs` sin avanzar el reloj, no necesitaba el cambio y
+se dejó tal cual venía.
+
+**Cómo revertir:** `git revert` del commit. Toca `simulador_stop_and_wait_v2/js/sim.js`,
+`simulador_stop_and_wait_v2/tests/sim.test.js` y el conteo en `docs/05-runbook.md`.
+
+**Verificación:** `node --test` con los cinco archivos de `tests/` → 102 pruebas verdes, 0
+fallas (antes 98; el brief preveía 102). `node tools/lint-docs.js` limpio. Comprobación explícita
+de que una simulación sin ráfaga no cambió: se comparó `createSimulation` + `S.start` +
+`advance` en bucle, con y sin el cambio (via `git stash`), para el mismo camino y 5 tramas —
+mismo `state` (`FINISHED`), mismo `clockMs` (150 ms), mismo número de eventos (10), mismo
+`rxDelivered` (5) y mismas estadísticas de protocolo. No se comprobó en navegador (fuera de
+alcance de este entorno): queda para quien revise.
+
+---
+
 ## 2026-09-07 — La tira de paquetes ya se ve entera: el escenario cabe en la ventana
 
 **Qué:** el `.stage` medía 924 px dentro de un `.work` de 848 y la tira de paquetes se salía

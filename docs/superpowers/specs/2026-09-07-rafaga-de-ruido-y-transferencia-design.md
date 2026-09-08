@@ -162,3 +162,44 @@ Además, dos pruebas de comportamiento sin libro de por medio:
 | La tira de bits se vuelve ilegible | Tramas de 1000 bits en vez de 80 | Por encima de un umbral se pinta agrupada por bytes, con el tramo dañado marcado en bloque. Para enseñar una ráfaga es **más** legible que 1000 casillas |
 | No aparece número publicado para alguna fórmula | La búsqueda en el libro falla | La fórmula no llega a la interfaz. Está en la definición de terminado |
 | No entra antes del 2026-09-09 | Cinco piezas y dos días | Orden de corte declarado: lo primero que se retira es el bloque de transferencia de la calculadora, que es el único del que no depende nada más |
+
+---
+
+## Actualización del 2026-09-07 · la ráfaga se mide en bits
+
+Nada de lo anterior se reescribe: `04` §A.3 regla 4. Esto es lo que cambió y por qué.
+
+**Qué se buscó.** El texto de arriba daba por hecho que `R · t` era «la fórmula del libro». Se
+comprobó contra Tanenbaum, *Redes de computadoras*, 5.ª edición, las 819 páginas. **No está.** El
+libro mide las ráfagas **en bits**, nunca en milisegundos: los problemas del capítulo 3 hablan de
+ráfagas de 24 y de 35 bits. No hay ningún ejercicio que dé una duración y una tasa.
+
+**Qué sí está, y es mejor.** En la sección de códigos polinomiales, dos afirmaciones exactas:
+
+1. Un código polinomial con **r** bits de verificación detecta **todos** los errores en ráfaga de
+   longitud ≤ r.
+2. Una ráfaga de longitud **r + 1** solo pasa desapercibida si es **idéntica a G(x)**.
+
+Este proyecto usa CRC-16/CCITT, así que **r = 16** y `G(x) = 0x1021`. De ahí salen dos hechos
+verificables sobre el código que ya existe en `frame.js`:
+
+- Toda ráfaga de **hasta 16 bits** la detecta el CRC. Sin excepciones.
+- De todas las ráfagas de **17 bits** que empiezan en una posición dada, **exactamente una** se
+  cuela: la que reproduce el polinomio. Es un caso concreto, no una probabilidad.
+
+**Decisión.** La unidad de la ráfaga pasa a ser el **bit**. Los milisegundos siguen en la
+interfaz, porque es como se explica en clase (petición del usuario, 2026-09-07: «mi profe lo
+explicó con R y t»), pero como **conversión declarada**, no como fórmula atribuida al libro:
+`bits = R · t` se justifica por análisis dimensional —bits/s × s = bits—, y así se escribe en el
+código y en el desarrollo de la calculadora.
+
+**Lo que esto resuelve.** La Tarea 0 del plan pedía elegir entre citar a Tanenbaum sin haberlo
+encontrado, citar a Forouzan, o justificar por forma cerrada. Con esta decisión ya no hace falta
+prestar ninguna fuente: la afirmación fuerte que llega a la interfaz —el límite de los 16 bits—
+es del libro de la asignatura, y la conversión desde milisegundos no necesita libro porque no
+afirma nada más que su propio análisis dimensional.
+
+**Lo que añade al alcance.** Dos pruebas sobre `frame.js` que antes no existían: que ninguna
+ráfaga de longitud ≤ 16 sobrevive al CRC, y que la ráfaga de 17 bits igual a `0x11021` sí lo hace.
+La segunda es el mejor material de explicación que ha salido de todo este diseño: enseña de un
+golpe hasta dónde protege un CRC y dónde deja de hacerlo.

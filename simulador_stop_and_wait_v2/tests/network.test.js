@@ -236,3 +236,98 @@ test("Los parámetros inválidos se rechazan con un mensaje, no en silencio", ()
   assert.throws(() => N.createPath({ frameBits: 1000, links: [] }), RangeError);
   assert.throws(() => N.createPath({ frameBits: 0, links: [N.createLink({ rateBps: 1e6, distanceKm: 1, velocityKmS: 200000 })] }), RangeError);
 });
+
+test("Conversión de milisegundos a bits: bits/s × s = bits", () => {
+  // No es una fórmula del libro, es análisis dimensional, y así está declarado
+  // en el spec. 10 ms sobre un canal de 100 kbps son 1000 bits.
+  assert.equal(N.burstBitsFromMs({ rateBps: 100000, burstMs: 10 }), 1000);
+  assert.equal(N.burstBitsFromMs({ rateBps: 1500, burstMs: 2 }), 3);
+  assert.equal(N.burstBitsFromMs({ rateBps: 100000, burstMs: 0 }), 0);
+});
+
+test("Una ráfaga se reparte sobre tramas de L bits", () => {
+  assert.equal(N.burstDamage({ bits: 1000, frameBits: 500 }).frames, 2);
+  assert.equal(N.burstDamage({ bits: 1000, frameBits: 1000 }).frames, 1);
+  // Una ráfaga que no llena una trama sigue arruinando esa trama.
+  assert.equal(N.burstDamage({ bits: 100, frameBits: 1000 }).frames, 1);
+  assert.equal(N.burstDamage({ bits: 0, frameBits: 1000 }).frames, 0);
+});
+
+test("Ráfaga con parámetros imposibles se rechaza", () => {
+  assert.throws(() => N.burstBitsFromMs({ rateBps: 0, burstMs: 10 }), RangeError);
+  assert.throws(() => N.burstBitsFromMs({ rateBps: 1000, burstMs: -1 }), RangeError);
+  assert.throws(() => N.burstDamage({ bits: 10, frameBits: 0 }), RangeError);
+  assert.throws(() => N.burstDamage({ bits: -1, frameBits: 1000 }), RangeError);
+});
+
+test("Transferencia: un fichero se parte en tramas y el tiempo es N ciclos", () => {
+  // Mismo enlace satelital de la primera prueba: Tt = 20 ms, ciclo = 520 ms.
+  const path = N.createPath({
+    frameBits: 1000,
+    ackBits: 0,
+    links: [
+      N.createLink({
+        name: "Enlace satelital",
+        rateBps: 50000,
+        distanceKm: 50000,
+        velocityKmS: 200000,
+      }),
+    ],
+  });
+
+  const r = N.transferAnalysis(path, 10000); // 10 000 bits
+
+  assert.equal(r.frames, 10, "10 000 / 1000");
+  closeTo(r.totalMs, 5200, 1e-9, "10 ciclos de 520 ms");
+  closeTo(r.goodputBps, 10000 / 5.2, 1e-6, "caudal conseguido");
+});
+
+test("Transferencia: el ciclo lo publica el modelo, no lo reconstruye la vista", () => {
+  const path = N.createPath({
+    frameBits: 1000,
+    ackBits: 0,
+    links: [
+      N.createLink({ name: "Enlace satelital", rateBps: 50000, distanceKm: 50000, velocityKmS: 200000 }),
+    ],
+  });
+
+  const r = N.transferAnalysis(path, 10000);
+  assert.equal(r.cycleMs, N.analyze(path).cycleMs, "es el mismo ciclo del análisis");
+  closeTo(r.totalMs, r.frames * r.cycleMs, 1e-9, "y el total sigue siendo tramas x ciclo");
+});
+
+test("Transferencia: la última trama cuenta entera aunque vaya a medias", () => {
+  const path = N.createPath({
+    frameBits: 1000,
+    ackBits: 0,
+    links: [
+      N.createLink({ name: "Enlace", rateBps: 50000, distanceKm: 50000, velocityKmS: 200000 }),
+    ],
+  });
+
+  assert.equal(N.transferAnalysis(path, 10001).frames, 11);
+});
+
+test("Conversión de tamaño con unidad a bits: KB y MB son decimales, no 1024", () => {
+  assert.equal(N.bitsFromSize(1, "bits"), 1);
+  assert.equal(N.bitsFromSize(1, "kb"), 8000, "1 KB = 1000 bytes = 8000 bits");
+  assert.equal(N.bitsFromSize(2, "mb"), 16000000, "2 MB = 2 000 000 bytes = 16 000 000 bits");
+});
+
+test("Conversión de tamaño fraccionario: el número exacto de bits, sin aproximar", () => {
+  // 1,5 MB es el caso normal en un ejercicio ("fichero de 1,5 MB"), no un
+  // entero. El aserto exige el bit exacto: si algún día se cuela un
+  // redondeo en bitsFromSize, esta prueba lo tiene que cazar.
+  assert.equal(N.bitsFromSize(1.5, "mb"), 12000000, "1,5 MB = 1 500 000 bytes = 12 000 000 bits");
+  assert.equal(N.bitsFromSize(0.5, "kb"), 4000, "0,5 KB = 500 bytes = 4000 bits");
+  assert.equal(N.bitsFromSize(0.125, "bits"), 0.125, "en bits no hay conversión que redondear");
+});
+
+test("Tamaño de transferencia con parámetros imposibles se rechaza", () => {
+  assert.throws(() => N.transferAnalysis(N.createPath({
+    frameBits: 1000,
+    links: [N.createLink({ rateBps: 1e6, distanceKm: 1, velocityKmS: 200000 })],
+  }), 0), RangeError);
+  assert.throws(() => N.bitsFromSize(0, "kb"), RangeError);
+  assert.throws(() => N.bitsFromSize(1, "gb"), RangeError);
+});

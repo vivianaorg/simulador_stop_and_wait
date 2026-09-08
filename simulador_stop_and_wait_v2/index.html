@@ -55,6 +55,14 @@
       </div>
 
       <p class="hint">Con la simulación en pausa puedes alterar la trama que va por el canal.</p>
+
+      <div class="row" style="margin-top:10px">
+        <label for="burst-ms">Ráfaga (ms)</label>
+        <input type="number" id="burst-ms" min="1" step="1" value="5">
+      </div>
+      <button class="btn btn-danger btn-wide" id="btn-burst" style="margin-top:6px">Ráfaga de ruido</button>
+      <p class="hint">Ensucia el canal entero durante esos milisegundos, haya o no una trama en
+      vuelo ahora mismo: es del canal, no de una trama concreta.</p>
     </section>
 
     <!-- ---------------- Inspector ---------------- -->
@@ -72,7 +80,7 @@
           </dl>
 
           <div class="bits" id="bits" role="group" aria-label="Bits de la trama; pulsa uno para voltearlo"></div>
-          <p class="hint">
+          <p class="hint" id="bits-hint">
             <strong>Pulsa cualquier bit para voltearlo</strong> — eso es meter un error a mano.
             Los 16 últimos, en azul, son el CRC. El receptor lo recalcula al llegar: no hay ninguna
             marca de «esta venía dañada».
@@ -97,19 +105,11 @@
       <h2>Protocolo</h2>
       <div class="rows">
         <div class="row"><label for="total-frames">Tramas a enviar</label><input type="number" id="total-frames" min="1" max="30" value="4"></div>
-        <div class="row"><label for="frame-bits">Tamaño de trama (bits)</label><input type="number" id="frame-bits" min="8" step="8" value="1000"></div>
+        <div class="row"><label for="frame-bits">Tamaño de trama (bits)</label><input type="number" id="frame-bits" min="24" step="8" value="1000"></div>
         <div class="row"><label for="ack-bits">Tamaño del ACK (bits)</label><input type="number" id="ack-bits" min="0" step="8" value="0"></div>
         <div class="row"><label for="timeout-ms">Timeout (ms simulados)</label><input type="number" id="timeout-ms" min="1" step="1" value="60"></div>
         <div class="row"><label for="duplex-mode">Canal</label><select id="duplex-mode"><option value="full" selected>Full duplex</option><option value="half">Half duplex</option></select></div>
-        <div class="row"><label for="seed">Semilla del ruido</label><input type="number" id="seed" min="1" step="1" value="1"></div>
       </div>
-
-      <label class="check" style="margin-top:10px">
-        <input type="checkbox" id="noise-toggle">
-        <span><strong>Ruido del canal.</strong> Apagado, los errores solo los metes tú desde el
-        inspector. Encendido, cada tramo daña tramas con la probabilidad que le pongas — con la
-        semilla de abajo, así que el mismo escenario se repite igual.</span>
-      </label>
 
       <label class="check" style="margin-top:10px">
         <input type="checkbox" id="nak-toggle">
@@ -142,6 +142,7 @@
         <dt>Duplicadas descartadas</dt><dd class="num" id="tel-dups">0</dd>
         <dt>ACK fuera de tiempo</dt><dd class="num" id="tel-late">0</dd>
         <dt>Destruidas a mano</dt><dd class="num" id="tel-destroyed">0</dd>
+        <dt>Bits arruinados por ráfaga</dt><dd class="num" id="tel-burst">0</dd>
         <dt>Utilización teórica</dt><dd class="num" id="tel-u">—</dd>
         <dt>RTT del camino</dt><dd class="num" id="tel-rtt">—</dd>
       </dl>
@@ -162,6 +163,7 @@
         <span><i style="border-color: var(--fault)"></i> Destruida en el canal</span>
         <span><i style="border-color: var(--wait); border-top-style: dotted"></i> Expiró el temporizador</span>
         <span><i style="border-color: var(--wait)"></i> Inversión del medio (half duplex)</span>
+        <span><i class="band" style="background: var(--fault)"></i> Ráfaga de ruido: el canal entero sucio</span>
       </div>
       <p class="hint">El tiempo baja. Cada línea vertical es un punto del camino. Rueda del ratón sobre el diagrama para mirar hacia atrás, <strong>Ctrl + rueda</strong> para acercar la escala de tiempo, doble clic para volver al presente. Si todo el recorrido cabe en pantalla no hay nada hacia atrás que mirar: acerca primero.</p>
     </section>

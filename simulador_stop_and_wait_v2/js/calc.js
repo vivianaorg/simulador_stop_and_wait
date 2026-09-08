@@ -12,6 +12,7 @@
   "use strict";
 
   const N = window.NetworkModel;
+  const F = window.FrameModel;
   const Steps = window.StepsModel;
 
   const PRESETS = {
@@ -45,6 +46,8 @@
   const dom = {};
   let filas = [];
   let solucion = null;
+  let ultimoAnalisis = null;
+  let ultimoPath = null;
   let pasosVisibles = 0;
   let detalleAbierto = null; // solo uno a la vez, como en Wolfram|Alpha
 
@@ -64,9 +67,15 @@
     const id = (x) => document.getElementById(x);
     Object.assign(dom, {
       frameBits: id("frame-bits"),
+      frameBitsHint: id("frame-bits-hint"),
       ackBits: id("ack-bits"),
       duplexMode: id("duplex-mode"),
       processingMs: id("processing-ms"),
+      burstMs: id("burst-ms"),
+      transferPod: id("transfer-pod"),
+      transferSize: id("transfer-size"),
+      transferUnit: id("transfer-unit"),
+      transferStepsList: id("transfer-steps-list"),
       linksContainer: id("links-container"),
       btnAddLink: id("btn-add-link"),
       errorBox: id("error-box"),
@@ -79,6 +88,8 @@
       cycleCaption: id("cycle-caption"),
 
       stepsList: id("steps-list"),
+      burstPod: id("burst-pod"),
+      burstStepsList: id("burst-steps-list"),
       btnNextStep: id("btn-next-step"),
       btnAllSteps: id("btn-all-steps"),
       btnHideSteps: id("btn-hide-steps"),
@@ -93,6 +104,9 @@
   function bindEvents() {
     [dom.frameBits, dom.ackBits, dom.processingMs].forEach((el) => el.addEventListener("input", recalcular));
     dom.duplexMode.addEventListener("change", recalcular);
+    dom.burstMs.addEventListener("change", recalcular);
+    dom.transferSize.addEventListener("input", pintarDesarrollo);
+    dom.transferUnit.addEventListener("change", pintarDesarrollo);
     dom.btnAddLink.addEventListener("click", anadirTramo);
 
     document.querySelectorAll("[data-preset]").forEach((b) =>
@@ -110,7 +124,7 @@
     dom.btnHideSteps.addEventListener("click", () => {
       pasosVisibles = 0;
       detalleAbierto = null;
-      pintarPasos();
+      pintarDesarrollo();
     });
 
     dom.themeSwitch.addEventListener("change", () => {
@@ -230,29 +244,68 @@
           turnaroundMs: v.turnaroundMs,
         })
       );
-      analisis = N.analyze(
-        N.createPath({
-          frameBits: Number(dom.frameBits.value),
-          ackBits: Number(dom.ackBits.value),
-          duplexMode: dom.duplexMode.value,
-          processingMsPerHop: Number(dom.processingMs.value),
-          links: enlaces,
-        })
-      );
+      const camino = N.createPath({
+        frameBits: Number(dom.frameBits.value),
+        ackBits: Number(dom.ackBits.value),
+        duplexMode: dom.duplexMode.value,
+        processingMsPerHop: Number(dom.processingMs.value),
+        links: enlaces,
+      });
+      analisis = N.analyze(camino);
+      ultimoPath = camino;
     } catch (err) {
       mostrarError(err.message);
+      // Sin resultado no hay nada de lo que dejar nota: una nota sobre un
+      // tamaño que no se está calculando confunde más que ayuda.
+      dom.frameBitsHint.hidden = true;
       return;
     }
 
     dom.errorBox.hidden = true;
+    notaDeTramaReal(analisis.frameBits);
     solucion = Steps.build(analisis);
+    ultimoAnalisis = analisis;
     pasosVisibles = Math.min(pasosVisibles, solucion.pasos.length);
     pintarInterpretacion();
     pintarTitular();
-    pintarPasos();
+    pintarDesarrollo();
     dibujarCiclo();
     dibujarCurva();
     pintarTablaCurva();
+  }
+
+  /**
+   * La calculadora **no redondea el tamaño de trama, y es a propósito.**
+   *
+   * El redondeo de `F.roundFrameBits` es una restricción de la trama *real*: la
+   * que construye `createFrame`, con la carga en bytes enteros más los 16 bits
+   * del CRC. El simulador no tiene más remedio que aplicarlo, porque construye
+   * tramas. Aquí no se construye ninguna: solo se calculan tiempos, y
+   * `Tt = L / R` funciona igual de bien con L = 500 que con L = 504.
+   *
+   * Importa porque el ejemplo de LAN del libro es exactamente ese: 10 Mbps,
+   * 1 km, tramas de 500 bits, a = 0,1 y U = 83,33 %. Redondear a 504 lo
+   * convierte en a = 0,0992 y U = 83,44 %, y deja de ser el número publicado
+   * contra el que está probado el proyecto. La prueba «El ejemplo de LAN llega
+   * al desarrollo del libro: a = 0,1 y U = 83,33 %» (`tests/steps.test.js`) se
+   * pone roja si alguien vuelve a meter un redondeo por encima del modelo.
+   *
+   * Lo que sí se hace es **decirlo**: una nota de que el simulador usaría otro
+   * tamaño. No es un error del formulario y no cambia ningún resultado de esta
+   * página, así que no se pinta como los avisos de validación.
+   */
+  function notaDeTramaReal(frameBits) {
+    const real = F.roundFrameBits(frameBits);
+    if (real === frameBits) {
+      dom.frameBitsHint.hidden = true;
+      dom.frameBitsHint.textContent = "";
+      return;
+    }
+    dom.frameBitsHint.hidden = false;
+    dom.frameBitsHint.textContent =
+      `Nota: los tiempos de aquí son los de una trama de ${frameBits} bits, exactos. ` +
+      `Una trama construible lleva la carga en bytes enteros más 16 de CRC, así que el ` +
+      `simulador ajustaría estos ${frameBits} bits a ${real}.`;
   }
 
   // ---------- Bloques ----------
@@ -286,12 +339,20 @@
     });
   }
 
+  // `detalleAbierto` es global a los dos bloques (el desarrollo principal y la
+  // ráfaga), así que abrir un detalle en uno tiene que poder repintar el otro.
+  function pintarDesarrollo() {
+    pintarPasos();
+    pintarRafaga();
+    pintarTransferencia();
+  }
+
   function pintarPasos() {
     dom.stepsList.innerHTML = "";
     const total = solucion.pasos.length;
 
     solucion.pasos.slice(0, pasosVisibles).forEach((paso, i) => {
-      dom.stepsList.appendChild(bloquePaso(paso, i));
+      dom.stepsList.appendChild(bloquePaso(paso, i, pintarDesarrollo));
     });
 
     dom.btnNextStep.hidden = pasosVisibles >= total;
@@ -305,7 +366,53 @@
         : `Paso ${pasosVisibles} de ${total}.`;
   }
 
-  function bloquePaso(paso, indice) {
+  // La ráfaga usa la tasa del primer tramo, igual que hace el paso "caudal"
+  // del desarrollo principal para hablar de "lo que da el primer tramo".
+  function pintarRafaga() {
+    const burstMs = Number(dom.burstMs.value);
+    if (!ultimoAnalisis || !(burstMs > 0)) {
+      dom.burstPod.hidden = true;
+      dom.burstStepsList.innerHTML = "";
+      return;
+    }
+
+    const pasos = Steps.buildBurst({
+      rateBps: ultimoAnalisis.perLink[0].rateBps,
+      burstMs,
+      frameBits: ultimoAnalisis.frameBits,
+    });
+
+    dom.burstPod.hidden = false;
+    dom.burstStepsList.innerHTML = "";
+    pasos.forEach((paso, i) => dom.burstStepsList.appendChild(bloquePaso(paso, i, pintarDesarrollo)));
+  }
+
+  // Transferencia de un fichero completo: la unidad se convierte a bits en
+  // network.js (bitsFromSize), nunca aquí.
+  function pintarTransferencia() {
+    const tamano = Number(dom.transferSize.value);
+    dom.transferStepsList.innerHTML = "";
+    // Mismo guardián que `pintarRafaga`: sin tamaño no hay nada que enseñar, y
+    // un bloque con una sección vacía solo estorba.
+    if (!ultimoPath || !(tamano > 0)) {
+      dom.transferPod.hidden = true;
+      return;
+    }
+    dom.transferPod.hidden = false;
+
+    let totalBits;
+    try {
+      totalBits = N.bitsFromSize(tamano, dom.transferUnit.value);
+    } catch (err) {
+      dom.transferPod.hidden = true;
+      return; // unidad inválida: no debería pasar con el <select>, pero no se pinta nada roto
+    }
+
+    const pasos = Steps.buildTransfer({ path: ultimoPath, totalBits });
+    pasos.forEach((paso, i) => dom.transferStepsList.appendChild(bloquePaso(paso, i, pintarDesarrollo)));
+  }
+
+  function bloquePaso(paso, indice, repintar) {
     const li = document.createElement("li");
     li.className = "step";
 
@@ -339,7 +446,7 @@
       boton.addEventListener("click", () => {
         // Solo un detalle abierto a la vez: abrir otro cierra el anterior.
         detalleAbierto = detalleAbierto === paso.id ? null : paso.id;
-        pintarPasos();
+        repintar();
       });
       li.appendChild(boton);
 

@@ -13,6 +13,14 @@
   // Un ciclo completo del protocolo dura esto en pantalla a velocidad 1×.
   const SEGUNDOS_POR_CICLO = 6;
 
+  // El campo de semilla desapareció del formulario: el ruido por probabilidad
+  // ya no se enciende desde la interfaz (ver docs/07-historial.md). Pero
+  // "Dañar un bit al azar" sigue usando el generador con semilla de F, así
+  // que necesita una para existir. Es una constante fija y no un `1` suelto
+  // porque el número en sí no importa — solo que el generador tenga con qué
+  // arrancar.
+  const SEMILLA_BIT_AL_AZAR = 1;
+
   const dom = {};
   let sim = null;
   let hops = [];
@@ -34,8 +42,11 @@
   function init() {
     cacheDom();
     initTheme();
+    // El mínimo del formulario lo declara el modelo, no el HTML: así el campo
+    // y `roundFrameBits` no pueden decir cosas distintas.
+    dom.frameBits.min = String(F.MIN_FRAME_BITS);
     hops = [
-      { name: "Casa A → Nodo", rateBps: 100000, distanceKm: 2000, velocityKmS: 200000, errorProbData: 0, errorProbAck: 0, turnaroundMs: 5 },
+      { name: "Casa A → Nodo", rateBps: 100000, distanceKm: 2000, velocityKmS: 200000, turnaroundMs: 5 },
     ];
     renderHops();
     bindEvents();
@@ -67,18 +78,19 @@
       inspHop: id("insp-hop"),
       inspCrc: id("insp-crc"),
       bits: id("bits"),
+      bitsHint: id("bits-hint"),
       btnDestroy: id("btn-destroy"),
       btnDelay: id("btn-delay"),
       btnSeq0: id("btn-seq0"),
       btnSeq1: id("btn-seq1"),
+      burstMs: id("burst-ms"),
+      btnBurst: id("btn-burst"),
 
       totalFrames: id("total-frames"),
       frameBits: id("frame-bits"),
       ackBits: id("ack-bits"),
       timeoutMs: id("timeout-ms"),
-      seed: id("seed"),
       nakToggle: id("nak-toggle"),
-      noiseToggle: id("noise-toggle"),
       duplexMode: id("duplex-mode"),
       btnNoiseBit: id("btn-noise-bit"),
       btnCrcSteps: id("btn-crc-steps"),
@@ -99,6 +111,7 @@
         dups: id("tel-dups"),
         late: id("tel-late"),
         destroyed: id("tel-destroyed"),
+        burst: id("tel-burst"),
         u: id("tel-u"),
         rtt: id("tel-rtt"),
       },
@@ -116,7 +129,7 @@
       dom.speedLabel.textContent = `${Number(dom.speed.value).toFixed(1).replace(".", ",")}×`;
     });
 
-    [dom.totalFrames, dom.frameBits, dom.ackBits, dom.seed].forEach((el) =>
+    [dom.totalFrames, dom.frameBits, dom.ackBits].forEach((el) =>
       el.addEventListener("change", rebuild)
     );
     dom.timeoutMs.addEventListener("change", () => {
@@ -124,10 +137,6 @@
       rebuild();
     });
     dom.nakToggle.addEventListener("change", rebuild);
-    dom.noiseToggle.addEventListener("change", () => {
-      renderHops();
-      rebuild();
-    });
     dom.duplexMode.addEventListener("change", rebuild);
 
     dom.btnNoiseBit.addEventListener("click", () =>
@@ -184,6 +193,20 @@
     dom.btnSeq0.addEventListener("click", () => actOnSelected((p) => S.setSeqOf(sim, p, 0)));
     dom.btnSeq1.addEventListener("click", () => actOnSelected((p) => S.setSeqOf(sim, p, 1)));
 
+    // La ráfaga ensucia el canal, no una trama: a diferencia de los botones de
+    // arriba, no pasa por actOnSelected ni exige nada seleccionado ni trama en
+    // vuelo — por eso vive fuera de #inspector-body.
+    dom.btnBurst.addEventListener("click", () => {
+      if (!sim) return;
+      try {
+        S.startBurst(sim, Number(dom.burstMs.value));
+      } catch (err) {
+        dom.timeoutHint.textContent = err.message;
+        return;
+      }
+      renderAll();
+    });
+
     dom.themeSwitch.addEventListener("change", () =>
       setTheme(dom.themeSwitch.checked ? "dark" : "light", true)
     );
@@ -200,8 +223,6 @@
       rateBps: ultimo.rateBps,
       distanceKm: ultimo.distanceKm,
       velocityKmS: ultimo.velocityKmS,
-      errorProbData: 0,
-      errorProbAck: 0,
       turnaroundMs: ultimo.turnaroundMs,
     });
     renderHops();
@@ -219,7 +240,6 @@
     { key: "distanceKm", label: "Distancia (km)", step: "1", min: "0" },
     { key: "rateBps", label: "Tasa (bits/s)", step: "1000", min: "1" },
     { key: "velocityKmS", label: "Velocidad (km/s)", step: "1000", min: "1" },
-    { key: "errorProbData", label: "P error trama", step: "0.05", min: "0", max: "1" },
     { key: "turnaroundMs", label: "Vuelta del medio (ms)", step: "1", min: "0" },
   ];
 
@@ -261,11 +281,6 @@
           rebuild();
         });
 
-        if (campo.key === "errorProbData" && !dom.noiseToggle.checked) {
-          input.disabled = true;
-          label.title = "Enciende el ruido del canal para usar esta probabilidad";
-        }
-
         label.appendChild(input);
         grid.appendChild(label);
       }
@@ -285,22 +300,26 @@
 
   function rebuild() {
     let path;
-    try {
-      // Los valores del formulario se validan siempre, aunque el ruido esté
-      // apagado: si no, una probabilidad imposible se aceptaba en silencio y
-      // solo reventaba al encender el ruido.
-      hops.forEach((h, i) =>
-        N.createLink({
-          name: `${nombreNodo(i)} → ${nombreNodo(i + 1)}`,
-          rateBps: h.rateBps,
-          distanceKm: h.distanceKm,
-          velocityKmS: h.velocityKmS,
-          errorProbData: h.errorProbData,
-          errorProbAck: h.errorProbAck,
-          turnaroundMs: h.turnaroundMs,
-        })
-      );
 
+    // El tamaño de trama tiene que caber en bytes enteros de carga más el CRC.
+    // Se ajusta y se dice: pelearse con el formulario no ayuda a nadie, pero
+    // mentir sobre qué se calculó, menos. Se guarda en vez de escribirlo ya:
+    // avisoDeTimeout() reescribe dom.timeoutHint más abajo en la misma
+    // ejecución de rebuild(), y sin esto el aviso de ajuste desaparecía sin
+    // que el usuario llegara a verlo.
+    let avisoDeAjuste = "";
+    const pedidos = Number(dom.frameBits.value);
+    const validos = F.roundFrameBits(pedidos);
+    if (validos !== pedidos) {
+      dom.frameBits.value = String(validos);
+      avisoDeAjuste = `Tamaño de trama ajustado a ${validos} bits: la carga va en bytes enteros más 16 de CRC. `;
+    }
+
+    try {
+      // La interfaz ya no ofrece forma de dañar tramas por probabilidad (ver
+      // docs/07-historial.md): errorProbData/errorProbAck no se pasan, y
+      // createLink() los da por 0. El modelo (network.js) conserva el
+      // parámetro intacto para quien lo use fuera de esta interfaz.
       path = N.createPath({
         frameBits: Number(dom.frameBits.value),
         ackBits: Number(dom.ackBits.value),
@@ -311,14 +330,12 @@
             rateBps: h.rateBps,
             distanceKm: h.distanceKm,
             velocityKmS: h.velocityKmS,
-            errorProbData: dom.noiseToggle.checked ? h.errorProbData : 0,
-            errorProbAck: dom.noiseToggle.checked ? h.errorProbAck : 0,
             turnaroundMs: h.turnaroundMs,
           })
         ),
       });
     } catch (err) {
-      dom.timeoutHint.textContent = err.message;
+      dom.timeoutHint.textContent = avisoDeAjuste + err.message;
       return;
     }
 
@@ -333,8 +350,8 @@
       totalFrames: Number(dom.totalFrames.value),
       timeoutMs: Number(dom.timeoutMs.value),
       nakOnError: dom.nakToggle.checked,
-      seed: Number(dom.seed.value),
-      payloadBytes: 8,
+      seed: SEMILLA_BIT_AL_AZAR,
+      payloadBytes: F.payloadBytesFor(Number(dom.frameBits.value)),
     });
 
     selectedIndex = 0;
@@ -343,19 +360,21 @@
     zoom = 1;
     dom.btnRun.textContent = "Iniciar";
     resizeCanvases();
-    avisoDeTimeout();
+    avisoDeTimeout(avisoDeAjuste);
     renderAll();
   }
 
-  function avisoDeTimeout() {
+  function avisoDeTimeout(avisoDeAjuste) {
     const rtt = sim.analysis.rttMs;
+    let mensaje;
     if (sim.timeoutMs <= rtt) {
-      dom.timeoutHint.textContent = `El timeout (${fmt(sim.timeoutMs)} ms) no supera el RTT del camino (${fmt(rtt)} ms): el emisor retransmitirá tramas cuyo ACK todavía viene en camino, y el receptor las verá como duplicadas.`;
+      mensaje = `El timeout (${fmt(sim.timeoutMs)} ms) no supera el RTT del camino (${fmt(rtt)} ms): el emisor retransmitirá tramas cuyo ACK todavía viene en camino, y el receptor las verá como duplicadas.`;
     } else if (timeoutManual) {
-      dom.timeoutHint.textContent = `RTT del camino: ${fmt(rtt)} ms. Tu timeout le deja ${fmt(sim.timeoutMs - rtt)} ms de margen.`;
+      mensaje = `RTT del camino: ${fmt(rtt)} ms. Tu timeout le deja ${fmt(sim.timeoutMs - rtt)} ms de margen.`;
     } else {
-      dom.timeoutHint.textContent = `Timeout ajustado al camino: RTT ${fmt(rtt)} ms más un 50 % de margen. Escribe otro valor para fijarlo tú.`;
+      mensaje = `Timeout ajustado al camino: RTT ${fmt(rtt)} ms más un 50 % de margen. Escribe otro valor para fijarlo tú.`;
     }
+    dom.timeoutHint.textContent = (avisoDeAjuste || "") + mensaje;
   }
 
   // ---------- Bucle ----------
@@ -437,6 +456,7 @@
   }
 
   function colorPorEvento(e) {
+    if (e.kind === "BURST") return css("--fault");
     if (e.kind === "TIMEOUT" || e.kind === "TURN") return css("--wait");
     if (e.status === S.STATUS.DESTROYED || e.status === S.STATUS.CRC_FAIL || e.status === S.STATUS.DUPLICATE) {
       return css("--fault");
@@ -503,6 +523,21 @@
     for (const e of sim.events) {
       if (e.tEnd < t0 || e.tStart > tFin) continue;
       const color = colorPorEvento(e);
+
+      if (e.kind === "BURST") {
+        // La ráfaga no recorre distancia como una trama: es del canal entero,
+        // así que se pinta como una banda del ancho del escenario en vez de
+        // una flecha. Transparente para no tapar lo que caiga encima.
+        const ALPHA_BANDA_RUIDO = 0.18;
+        const yInicio = yDe(Math.max(e.tStart, t0));
+        const yFin = yDe(Math.min(e.tEnd, tFin));
+        ctx.save();
+        ctx.globalAlpha = ALPHA_BANDA_RUIDO;
+        ctx.fillStyle = color;
+        ctx.fillRect(margenX - 40, yInicio, w - 10 - (margenX - 40), yFin - yInicio);
+        ctx.restore();
+        continue;
+      }
 
       if (e.kind === "TURN") {
         // La inversión del medio ocupa tiempo pero no recorre distancia: se
@@ -772,12 +807,22 @@
     const inicioCrc = bits.length - F.CRC_BITS;
     dom.bits.innerHTML = "";
 
+    dom.bits.setAttribute("aria-label", "Bits de la trama; pulsa uno para voltearlo");
+    dom.bitsHint.innerHTML =
+      `<strong>Pulsa cualquier bit para voltearlo</strong> — eso es meter un error a mano. ` +
+      `Los últimos ${F.CRC_BITS} bits, en azul, son el CRC. El receptor lo recalcula al ` +
+      `llegar: no hay ninguna marca de «esta venía dañada».`;
+
     for (let i = 0; i < bits.length; i++) {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "bit";
       b.textContent = bits[i];
       b.dataset.part = i >= inicioCrc ? "crc" : "payload";
+      // Marca el inicio de cada byte para que la tira se lea en bloques de
+      // ocho, no como mil casillas sueltas: la carga y el CRC se cuentan en
+      // bytes y el trazo tiene que dejarlo ver.
+      b.dataset.byteStart = String(i % 8 === 0);
       b.dataset.flipped = String(p.frame.flippedBits.includes(i));
       b.title = `Bit ${i}${i >= inicioCrc ? " (CRC)" : ""}`;
       b.addEventListener("click", () => {
@@ -893,6 +938,7 @@
     dom.tel.dups.textContent = String(s.duplicatesDiscarded);
     dom.tel.late.textContent = String(s.lateAcks);
     dom.tel.destroyed.textContent = String(s.framesDestroyed + s.acksDestroyed);
+    dom.tel.burst.textContent = String(s.burstBitsRuined);
     dom.tel.u.textContent = `${(sim.analysis.utilization * 100).toFixed(2)} %`;
     dom.tel.rtt.textContent = `${fmt(sim.analysis.rttMs)} ms`;
   }

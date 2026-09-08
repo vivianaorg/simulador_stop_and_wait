@@ -128,6 +128,21 @@
     return frame.payload.length * 8 + CRC_BITS;
   }
 
+  // El tamaño de trama del formulario manda, y la carga sale de restarle el
+  // CRC. No todo valor es representable: hacen falta bytes enteros de carga,
+  // así que L válido es 16 + 8k con k >= 1.
+  const MIN_FRAME_BITS = CRC_BITS + 8;
+
+  function payloadBytesFor(frameBits) {
+    return (roundFrameBits(frameBits) - CRC_BITS) / 8;
+  }
+
+  function roundFrameBits(frameBits) {
+    if (!Number.isFinite(frameBits) || frameBits <= MIN_FRAME_BITS) return MIN_FRAME_BITS;
+    const bytes = Math.round((frameBits - CRC_BITS) / 8);
+    return CRC_BITS + Math.max(1, bytes) * 8;
+  }
+
   /**
    * Voltea un bit de la trama, como haría el ruido del canal. Índices
    * [0, payload*8) son de la carga; los 16 siguientes, del CRC.
@@ -152,6 +167,33 @@
     frame.corrupted = true;
     frame.flippedBits.push(bitIndex);
     return bitIndex;
+  }
+
+  /**
+   * Voltea `count` bits contiguos a partir de `startBit`, como hace una ráfaga
+   * de ruido: ensucia un intervalo de tiempo, y en el cable el tiempo es
+   * posición. No recibe generador porque no hay nada que sortear.
+   *
+   * Si el tramo se sale del final de la trama se corta ahí. Devuelve cuántos
+   * bits llegó a tocar, que es lo que el simulador necesita para saber si a la
+   * ráfaga le sobró alcance para la trama siguiente.
+   */
+  function flipRun(frame, startBit, count) {
+    const total = totalBits(frame);
+    if (!Number.isInteger(startBit) || startBit < 0) {
+      throw new RangeError(`Índice de bit fuera de rango: ${startBit}`);
+    }
+    if (!Number.isInteger(count) || count < 0) {
+      throw new RangeError(`Número de bits inválido: ${count}`);
+    }
+
+    const hasta = Math.min(startBit + count, total);
+    let tocados = 0;
+    for (let i = startBit; i < hasta; i++) {
+      flipBit(frame, i);
+      tocados++;
+    }
+    return tocados;
   }
 
   // Voltea un bit "al azar" con un generador propio: la simulación tiene que
@@ -214,7 +256,11 @@
     cloneFrame,
     label,
     totalBits,
+    payloadBytesFor,
+    roundFrameBits,
+    MIN_FRAME_BITS,
     flipBit,
+    flipRun,
     flipRandomBit,
     isIntact,
     seededRandom,

@@ -30,6 +30,37 @@ function porId(solucion, id) {
   return p;
 }
 
+// El ejemplo de LAN del libro (Tanenbaum, cap. 3: 10 Mbps, 1 km, V = 2·10^8 m/s,
+// tramas de 500 bits) por el mismo camino que recorre la calculadora, que es
+// donde se rompió: `tests/network.test.js` lo comprueba llamando al modelo
+// directamente, así que no se enteraría de un redondeo metido por encima.
+//
+// L = 500 NO es una trama construible —la real lleva la carga en bytes enteros
+// más 16 de CRC, así que roundFrameBits(500) = 504—, y aun así el desarrollo
+// tiene que dar los números del libro: la calculadora calcula tiempos, no
+// construye tramas. Si alguien vuelve a aplicar roundFrameBits aquí, esto se
+// pone rojo con a = 0,0992 y U = 83,44 %.
+function lanDelLibro() {
+  return N.analyze(
+    N.createPath({
+      frameBits: 500,
+      ackBits: 0,
+      links: [
+        N.createLink({ name: "LAN", rateBps: 10e6, distanceKm: 1, velocityKmS: 200000 }),
+      ],
+    })
+  );
+}
+
+test("El ejemplo de LAN llega al desarrollo del libro: a = 0,1 y U = 83,33 %", () => {
+  const s = Steps.build(lanDelLibro());
+
+  assert.equal(porId(s, "a").resultado, "0,1");
+  assert.equal(porId(s, "u").resultado, "83,33 %");
+  assert.equal(s.titular[0].valor, "83,33 %", "el titular dice lo mismo que el paso");
+  assert.equal(s.entrada[0].valor, "500 bits", "y con los 500 bits que se pidieron");
+});
+
 test("El satélite del libro produce los pasos con sus números", () => {
   const s = Steps.build(satelite());
 
@@ -141,6 +172,34 @@ test("La curva de la gráfica pasa por el punto que se está calculando", () => 
   for (const p of curva.puntos) {
     assert.ok(Math.abs(p.u - 1 / (1 + 2 * p.a)) < 1e-12);
   }
+});
+
+test("El desarrollo de la ráfaga trae sus números, no solo el rótulo", () => {
+  const pasos = Steps.buildBurst({ rateBps: 100000, burstMs: 10, frameBits: 500 });
+
+  assert.equal(porId({ pasos }, "burst-bits").resultado, "1000 bits");
+  assert.equal(porId({ pasos }, "burst-frames").resultado, "2 tramas");
+});
+
+test("Una ráfaga que no llena una trama entera sigue arruinando esa trama", () => {
+  const pasos = Steps.buildBurst({ rateBps: 100000, burstMs: 1, frameBits: 1000 });
+
+  // 100 bits arruinados, muy por debajo de los 1000 de la trama: sigue siendo 1.
+  assert.equal(porId({ pasos }, "burst-bits").resultado, "100 bits");
+  assert.equal(porId({ pasos }, "burst-frames").resultado, "1 trama");
+});
+
+test("El desarrollo de la transferencia trae sus números, no solo el rótulo", () => {
+  const path = N.createPath({
+    frameBits: 1000,
+    ackBits: 0,
+    links: [N.createLink({ name: "Enlace satelital", rateBps: 50000, distanceKm: 50000, velocityKmS: 200000 })],
+  });
+  const pasos = Steps.buildTransfer({ path, totalBits: 10000 });
+
+  assert.equal(porId({ pasos }, "transfer-frames").resultado, "10 tramas");
+  assert.equal(porId({ pasos }, "transfer-time").resultado, "5,2 s");
+  assert.match(porId({ pasos }, "transfer-time").detalle.join(" "), /no cuenta reenvíos/);
 });
 
 test("Los segmentos del ciclo suman el ciclo completo", () => {

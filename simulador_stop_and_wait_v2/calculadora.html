@@ -40,7 +40,15 @@
 
       <label for="processing-ms">Procesamiento por nodo intermedio (ms)</label>
       <input type="number" id="processing-ms" class="num" min="0" step="0.1" value="0">
+
+      <label for="burst-ms">Ráfaga de ruido (ms, 0 = sin ráfaga)</label>
+      <input type="number" id="burst-ms" class="num" min="0" step="0.1" value="0">
     </div>
+    <!-- Nota informativa sobre la otra página, no un aviso de validación: va con
+         el tono apagado de las pistas, fuera de la rejilla de dos columnas (dentro
+         ocuparía una celda y descolocaría las etiquetas siguientes) y arriba, en el
+         bloque de datos, donde no compite con el resultado. -->
+    <p class="hint" id="frame-bits-hint" hidden></p>
 
     <div class="pod-head" style="margin-top:18px">
       <h2>Camino</h2>
@@ -90,6 +98,29 @@
     <p class="hint" id="steps-progress"></p>
   </section>
 
+  <!-- ---------------- Ráfaga de ruido ---------------- -->
+  <section class="pod" id="burst-pod" hidden>
+    <div class="pod-head"><h2>Ráfaga de ruido</h2></div>
+    <ol class="steps-list" id="burst-steps-list"></ol>
+  </section>
+
+  <!-- ---------------- Transferencia ---------------- -->
+  <section class="pod" id="transfer-pod" hidden>
+    <div class="pod-head"><h2>Transferencia de un fichero completo</h2></div>
+    <div class="field-grid">
+      <label for="transfer-size">Tamaño total</label>
+      <input type="number" id="transfer-size" class="num" min="0" step="1" value="0">
+
+      <label for="transfer-unit">Unidad</label>
+      <select id="transfer-unit">
+        <option value="bits">bits</option>
+        <option value="kb" selected>KB (1000 bytes)</option>
+        <option value="mb">MB (1000 KB)</option>
+      </select>
+    </div>
+    <ol class="steps-list" id="transfer-steps-list"></ol>
+  </section>
+
   <!-- ---------------- Curva ---------------- -->
   <section class="pod">
     <div class="pod-head"><h2>Dónde cae este enlace</h2></div>
@@ -117,6 +148,9 @@
   </p>
 </footer>
 
+<!-- frame.js solo para poder decir qué tamaño usaría el simulador (roundFrameBits).
+     La calculadora no redondea, y es a propósito: ver notaDeTramaReal() en js/calc.js. -->
+<script src="js/frame.js"></script>
 <script src="js/network.js"></script>
 <script src="js/steps.js"></script>
 <script src="js/calc.js"></script>

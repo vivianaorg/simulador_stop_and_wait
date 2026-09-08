@@ -14,7 +14,7 @@ python -m http.server 8000 --directory simulador_stop_and_wait_v2
 Pruebas, con el runner nativo de Node (**no instala nada**):
 
 ```bash
-node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js simulador_stop_and_wait_v2/tests/steps.test.js simulador_stop_and_wait_v2/tests/bordes.test.js
+node --test simulador_stop_and_wait_v2/tests/frame.test.js simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js simulador_stop_and_wait_v2/tests/steps.test.js simulador_stop_and_wait_v2/tests/bordes.test.js
 ```
 
 **Nombrar los archivos, no la carpeta:** `node --test tests/` falla en este equipo con
@@ -46,7 +46,7 @@ ver [04-convenciones.md](04-convenciones.md) § B.1.
 ## Verificación (pipeline)
 
 ```bash
-node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js simulador_stop_and_wait_v2/tests/steps.test.js simulador_stop_and_wait_v2/tests/bordes.test.js
+node --test simulador_stop_and_wait_v2/tests/frame.test.js simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_wait_v2/tests/sim.test.js simulador_stop_and_wait_v2/tests/steps.test.js simulador_stop_and_wait_v2/tests/bordes.test.js
 node tools/lint-docs.js
 for f in simulador_stop_and_wait_v2/js/*.js; do node --check "$f"; done
 node --check simulador_stop_and_wait_web/js/protocol.js
@@ -54,8 +54,8 @@ node --check simulador_stop_and_wait_web/js/app.js
 python -m py_compile simulador_stop_and_wait_python/*.py
 ```
 
-Baseline 2026-09-07, Node v24.11.1 y Python 3.13.14: **86 pruebas verdes, 0 fallas**; el banco de
-interfaz con 54 comprobaciones sin problemas; el lint de documentación limpio; el resto, sin
+Baseline 2026-09-08, Node v24.11.1 y Python 3.13.14: **116 pruebas verdes, 0 fallas**; el banco de
+interfaz con 55 comprobaciones sin problemas; el lint de documentación limpio; el resto, sin
 avisos.
 
 > **Este archivo es la fuente única del conteo de pruebas.** Ningún otro documento lo repite: lo
@@ -95,8 +95,30 @@ python -m http.server 8000 --directory simulador_stop_and_wait_v2
 # abrir http://localhost:8000/banco-interfaz.html
 ```
 
-El resumen sale arriba del todo. Al 2026-09-07: **54 comprobaciones, 0 problemas**, y repetible:
-espera a que cada iframe termine de montarse en vez de dormir un rato fijo.
+El resumen sale arriba del todo. Al 2026-09-08: **55 comprobaciones, 0 problemas**, corrido con
+el Chromium sin cabeza de la receta de abajo, y repetible: espera a que cada iframe termine de
+montarse en vez de dormir un rato fijo.
+
+> Una comprobación se corrigió el 2026-09-08 porque afirmaba lo que ya no es cierto: la del CRC
+> paso a paso esperaba 8 filas (el `payloadBytes` fijo que desapareció al unificar el tamaño de
+> trama; con L = 1000 son 123 bytes). Llevaba en rojo desde entonces sin que nadie lo viera: en
+> esa sesión ningún agente tenía navegador. Ese mismo día se añadió una comprobación de que la
+> calculadora **no** redondea el tamaño de trama: con 500 calcula los 500 y solo deja la nota de
+> lo que haría el simulador.
+>
+> El mismo día, más tarde, el conteo bajó de 55 a 51: se ocultó de `index.html` el ruido del
+> canal por probabilidad (interruptor, semilla y las columnas de probabilidad por tramo), y con
+> él se fueron las tres comprobaciones que encendían y apagaban esa casilla más la que probaba
+> una probabilidad fuera de rango en una columna que ya no existe. El modelo y sus pruebas
+> siguen intactos; ver `docs/07-historial.md`.
+>
+> El mismo día, aún más tarde, el conteo subió de 51 a 55: la tira de bits volvió a pintar bits
+> de verdad en vez de bytes en hexadecimal (ver `docs/01-arquitectura.md` § *La tira de bits
+> siempre pinta bits, agrupados visualmente por byte*), y se añadieron cuatro comprobaciones —
+> que la tira de 1000 bits tiene 1000 casillas de un carácter cada una, que el CRC son 16
+> casillas azules, y que una ráfaga de ruido deja un solo bloque de bits contiguos, no bits
+> salteados. Corrido con Chrome real por CDP (sin Playwright), no con el Chromium sin cabeza de
+> la receta de abajo.
 
 **No sustituye a probarlo a mano.** Ve si el comportamiento es el esperado, no si algo se ve mal:
 el selector de canal cortado o una etiqueta encima de otra solo se ven mirando.
@@ -141,21 +163,45 @@ gotcha más habitual de este proyecto y no da error visible.
 6. *Forzar seq* hace que el receptor la trate como duplicada y repita el ACK.
 7. El timeout se ajusta solo al cambiar el camino; si se escribe uno a mano, se respeta y el
    aviso dice cuánto margen queda sobre el RTT.
-8. La misma semilla con la misma configuración da la misma simulación.
-9. Con el canal en **half duplex** y tiempo de vuelta > 0, aparecen barras verticales ámbar
+8. Con el canal en **half duplex** y tiempo de vuelta > 0, aparecen barras verticales ámbar
    antes de cada ACK y de cada trama siguiente, y el ciclo se alarga sin que cambie el RTT.
-10. La rueda del ratón sobre el diagrama muestra el aviso «histórico» y deja ver lo anterior;
-    el doble clic vuelve al presente.
-11. Con el **ruido apagado** (por defecto), la probabilidad de cada tramo aparece deshabilitada y
-    no ocurre ningún error solo; al encenderlo, se habilita y empiezan a aparecer.
-12. *Dañar un bit al azar* deja el CRC en «no cuadra», igual que pulsar un bit a mano.
-13. *Ver el CRC paso a paso* muestra el polinomio, una fila por byte y el veredicto; al desplegar
+9. La rueda del ratón sobre el diagrama muestra el aviso «histórico» y deja ver lo anterior;
+   el doble clic vuelve al presente.
+10. *Dañar un bit al azar* deja el CRC en «no cuadra», igual que pulsar un bit a mano. No hay
+    campo de semilla en el formulario (se quitó el 2026-09-08): el botón usa una semilla fija
+    declarada en `ui.js` y el resultado es igual de repetible que antes.
+11. *Ver el CRC paso a paso* muestra el polinomio, una fila por byte y el veredicto; al desplegar
     una fila salen sus ocho desplazamientos, y abrir otra cierra la anterior.
+12. **`Ráfaga de ruido`** ⚠️ **pendiente de comprobación manual** (ningún agente de esta sesión
+    tiene navegador): al dispararla debería verse una banda horizontal en el diagrama durante los
+    milisegundos indicados, el contador *Bits arruinados por ráfaga* subiendo, y una trama que
+    viajaba dentro de la ventana llegando dañada y descartándose por CRC. El contador tiene que
+    marcar lo mismo que la calculadora para esa duración y esa tasa, **y no cambiar al mover el
+    control de velocidad**: eso es lo que se arregló el 2026-09-08. La banda tiene ya su entrada
+    en la leyenda.
+13. **Trama de 1000 bits, tira de bits** comprobado el 2026-09-08 con Chrome real (CDP) sin
+    cabeza: las 1000 casillas son bits de verdad («0»/«1», no hex), caben sin desbordar la
+    ventana en horizontal, y la rejilla de 16 columnas deja ver la carga y el CRC en bloques de
+    dos bytes por fila. Con una ráfaga de ruido, los bits dañados salen como un solo bloque rojo
+    contiguo (500 de 500 bits seguidos en la prueba). Con tramas pequeñas (24 y 64 bits) se ve
+    igual de bien, sin desbordar.
+
+El ruido del canal por probabilidad (el que se tira, no el que se dispara a mano) ya no tiene
+control en el formulario: se quitó de `index.html` el 2026-09-08 porque en un aula no se puede
+explicar «puede que pase». El modelo lo conserva intacto —ver `docs/01-arquitectura.md` § *El
+ruido por probabilidad existe en el modelo, pero la interfaz no lo enciende*— así que no hay nada
+que comprobar de él desde esta checklist.
 
 ## Checklist de humo del v2 (calculadora)
 
 1. Los tres presets cargan y dan: **satélite** U = 3,846 % y BDP 26 tramas · **LAN** a = 0,1 y
-   U = 83,33 % · **casa → satélite → casa** RTT = 482,15 ms, a = 79,52 y U = 0,207 % con 2 saltos.
+   U = 83,33 % · **casa → satélite → casa** RTT = 482,15 ms, a = 79,52 y U = 0,207 % con 2
+   saltos.
+   > El preset de LAN trae L = 500, que **no es una trama construible** (la real lleva la carga
+   > en bytes enteros más 16 de CRC, así que el simulador usaría 504). La calculadora **no
+   > redondea, a propósito**: calcula tiempos, no construye tramas, y así conserva el número del
+   > libro. Bajo los datos aparece una nota diciendo qué tamaño usaría el simulador; no es un
+   > error y no cambia el resultado.
 2. "Añadir salto" y "Quitar" funcionan; con un solo salto, "Quitar" avisa y no borra.
 3. Un valor inválido (R = 0, V = 0, P = 1,5) muestra el mensaje de error, no un `NaN`.
 4. Cambiar a half duplex con tiempo de vuelta > 0 sube el ciclo y baja U, **sin mover el RTT**.
@@ -168,6 +214,14 @@ gotcha más habitual de este proyecto y no da error visible.
    resaltada; al pasar el ratón sale la lectura `a → U`.
 9. Con el tabulador se llega a la tabla de la curva y se ve el foco; el lector de pantalla
    anuncia los números de cada gráfica, no solo su título.
+10. El bloque **Transferencia** da tramas = `⌈total / L⌉` y tiempo = tramas × ciclo, para un
+    tamaño en bits, en KB y en MB.
+11. El bloque **Ráfaga** da los bits de `R · t` y las tramas que abarca; con duración 0 el bloque
+    se oculta. El de **Transferencia** se oculta igual con tamaño 0.
+12. Un tamaño de trama no construible (500 o 1005) **se calcula tal cual** —el campo no se
+    reescribe— y aparece bajo los datos la nota de qué usaría el simulador (504, 1008). Con uno
+    construible (1000) la nota desaparece; con uno inválido (0) sale el error de siempre y la
+    nota se esconde.
 
 ## Checklist de humo del v1 (simulador animado)
 

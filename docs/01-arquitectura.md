@@ -181,21 +181,65 @@ Dos comportamientos, con interruptor:
 | Apagado | El receptor descarta en silencio; el emisor se entera al expirar el temporizador | Protocolo 3 de Tanenbaum |
 | Encendido | El receptor manda NAK y el emisor retransmite sin esperar | Variante ARQ con NAK |
 
-## El ruido es opcional, y el error se puede meter a mano
+## Un solo tamaño de trama
 
-Dos formas de dañar una trama, y conviene no confundirlas:
+Hasta el 2026-09-07 había dos tamaños de trama que no se hablaban: `frameBits` (el que escribe
+el usuario, que solo alimentaba los tiempos `Tt`/`Tp`/`a`) y la trama real que construye
+`createFrame` en `frame.js`, con `payloadBytes` fijo a 8 (80 bits siempre, viniera lo que
+viniera en el formulario). Ahora **`frameBits` manda**: la interfaz deriva la carga con
+`payloadBytesFor(frameBits)` y ya no pasa `payloadBytes` a mano (`js/ui.js`, `js/sim.js`).
+
+Como el CRC son 16 bits fijos (`CRC_BITS`), no todo valor de `frameBits` es representable: hace
+falta que la carga quede en bytes enteros. `roundFrameBits(frameBits)` ajusta al múltiplo válido
+más cercano y la interfaz **avisa** del ajuste en vez de rechazar el valor o mentir sobre qué
+calculó.
+
+**El redondeo es del simulador, no de la calculadora, y esa asimetría es deliberada.** El
+redondeo es una restricción de la trama *real*: la que construye `createFrame`, con la carga en
+bytes enteros más los 16 bits del CRC. El simulador no tiene más remedio que aplicarlo porque
+construye tramas y las dibuja. La calculadora **no construye ninguna**: solo calcula tiempos, y
+`Tt = L / R` funciona igual de bien con L = 500 que con L = 504. Imponerle ahí el redondeo
+rompía el ejemplo de LAN del libro —10 Mbps, 1 km, tramas de 500 bits, a = 0,1 y U = 83,33 %—,
+que es un número publicado contra el que está probado el proyecto: con 504 sale 0,0992 y
+83,44 %.
+
+Lo que sí hace la calculadora es **decirlo**: cuando el tamaño no es construible, una nota bajo
+los datos (`notaDeTramaReal` en `js/calc.js`) avisa de qué tamaño usaría el simulador. Es una
+nota sobre la otra página, no un aviso de validación: no cambia ningún resultado y no se pinta
+como los errores. La prueba «El ejemplo de LAN llega al desarrollo del libro» en
+`tests/steps.test.js` recorre la misma cadena que la calculadora (`Steps.build` sobre un enlace
+con `frameBits: 500`) y se pone roja si alguien vuelve a meter un redondeo por encima del modelo.
+
+Por lo mismo, el `min` del campo difiere entre las dos páginas y no es un descuido: en
+`index.html` es `24` (`F.MIN_FRAME_BITS`, que `js/ui.js` reescribe desde el modelo) porque el
+simulador necesita una trama construible; en `calculadora.html` es `1`, porque la única
+restricción de la fórmula es L > 0.
+
+Consecuencia visible: la tira de bits de la trama en vuelo ahora refleja de verdad el tamaño que
+se pidió (hasta miles de bits, no 80 fijos), lo que hace falta para que una ráfaga medida en
+milisegundos tenga trama real donde morder.
+
+## El ruido por probabilidad existe en el modelo, pero la interfaz no lo enciende
+
+Dos formas de dañar una trama en el modelo, y conviene no confundirlas:
 
 | | Cómo | Para qué |
 |---|---|---|
 | **A mano** | Pulsar cualquier bit del inspector, o el botón *Dañar un bit al azar* | Enseñar el caso exacto que quieres, cuando quieres |
-| **Ruido del canal** | Interruptor *Ruido del canal* + la probabilidad de cada tramo | Ver el comportamiento a lo largo de muchos ciclos |
+| **Ruido del canal** | `errorProbData`/`errorProbAck` de cada tramo, en `network.js` | Ver el comportamiento a lo largo de muchos ciclos |
 
-El ruido **viene apagado** y, mientras lo esté, las probabilidades de los tramos se ignoran y sus
-campos aparecen deshabilitados: el único error posible es el que metes tú. Encendido, usa el
-generador con semilla, así que el mismo escenario se repite igual.
+El interruptor *Ruido del canal*, el campo de semilla y las columnas de probabilidad por tramo se
+quitaron de `index.html` (2026-09-08): en un aula, «puede que pase» no sirve para explicar. El
+modelo no se tocó —`applyChannelNoise` en `sim.js`, `errorProbData`/`errorProbAck` en
+`network.js` y `seededRandom` en `frame.js` siguen intactos, con sus pruebas— pero `ui.js` ya no
+tiene forma de ponerlos por encima de 0: `rebuild()` construye cada tramo sin pasar esos
+parámetros, así que `createLink()` los da por 0 igual que antes hacía el interruptor apagado.
+Quien quiera esa probabilidad tiene que llamar al modelo directamente, no desde el formulario.
+Cómo revertirlo, en `docs/07-historial.md` (entrada del 2026-09-08).
 
-Los valores del formulario se validan **siempre**, aunque el ruido esté apagado: si no, una
-probabilidad imposible se aceptaba en silencio y solo reventaba al encender el interruptor.
+El botón *Dañar un bit al azar* no depende de esto: **no es probabilístico** —el bit se voltea
+siempre, solo el índice es aleatorio— y sigue usando el generador con semilla de `frame.js`. Sin
+campo de formulario que la fije, `ui.js` le pasa una semilla constante (`SEMILLA_BIT_AL_AZAR`).
 
 ## El CRC, paso a paso
 
@@ -234,6 +278,72 @@ punto. La primera trama no la paga: el medio ya está en su sentido.
 
 Consecuencia que conviene enseñar: **el RTT no cambia** por ser half duplex; lo que crece es el
 ciclo. Hay una prueba que lo fija.
+
+## La ráfaga de ruido, determinista
+
+Distinta del ruido por probabilidad: no se tira, ocurre siempre igual. Se dispara a mano
+(*Ráfaga de ruido*, con su campo en milisegundos) y no necesita trama seleccionada —es del
+canal, no de una trama concreta. Mientras dura, cada paquete en vuelo pierde un tramo **contiguo**
+de bits (`F.flipRun` voltea el tramo).
+
+Los bits que arruina se calculan **una sola vez**, al dispararla (`startBurst` en `js/sim.js`,
+con `N.burstBitsFromMs` y la tasa del primer tramo), y se gastan a medida que corre el reloj.
+Convertir a bits el `dt` de cada tramo parecía equivalente y no lo era: `burstBitsFromMs` trunca
+a bits enteros, así que trocear el reloj tiraba una fracción en cada tramo y el total se movía
+con el control de velocidad —48 bits en la calculadora, 45 con tramos de 1 ms y 40 con tramos de
+0,25 ms a 9600 bps—. Con el presupuesto fijado de entrada, el total es siempre el que publica la
+calculadora, se trocee como se trocee.
+
+La ventana es **una sola** aunque haya varios paquetes en el cable: son los mismos milisegundos
+de medio sucio, así que el contador suma una vez y cada paquete recibe la misma tirada de bits,
+en vez de repartirse el presupuesto o multiplicarlo. Un paquete que no ocupa bits en el cable
+—el ACK de duración despreciable, `ackBits = 0`— no lo alcanza: una ventana de tiempo no puede
+morder algo que no está en el medio. No usa ningún generador: la conversión `bits = R · t` es
+análisis dimensional, no una fórmula del libro (Tanenbaum mide las ráfagas en bits, no en tiempo).
+
+Lo que sí es del libro, y es lo que hace demostrable el límite del CRC: un código con `r` bits de
+verificación detecta **todas** las ráfagas de longitud ≤ r; una ráfaga de `r + 1` solo pasa
+desapercibida si reproduce exactamente `G(x)`. Con CRC-16/CCITT eso es `r = 16` y, en forma
+completa (los 17 bits, con el término x¹⁶ explícito), `G(x) = 0x11021`. `frame.js` usa la forma
+**truncada** `0x1021` (`POLYNOMIAL`, 16 bits) porque el algoritmo ya deja ese término implícito;
+son el mismo polinomio, escrito de dos formas, y solo la completa tiene los 17 bits de la
+ráfaga que se cuela. Hay pruebas contra ambos hechos en `tests/frame.test.js`.
+
+La ventana viaja como un suceso más del reloj de la simulación (`kind: "BURST"`, igual que
+`TURN` y `TIMEOUT`) y se dibuja en el diagrama como una banda horizontal; el contador *Bits
+arruinados por ráfaga* sube mientras dura. El mecanismo por el que la ventana se cierra en el
+instante correcto —y el riesgo de tocarlo mal— está descrito en `docs/07-historial.md` (entrada
+del 2026-09-07, «La ráfaga de ruido entra en el reloj del simulador»): no se repite aquí para no
+duplicar la misma explicación en dos archivos.
+
+## La tira de bits siempre pinta bits, agrupados visualmente por byte
+
+`renderInspector` en `js/ui.js` pinta un cuadradito por bit, siempre — con 24 o con 1000. Se
+probó agrupar por byte en hexadecimal por encima de un umbral (`BITS_MAX_INDIVIDUALES`) para que
+mil cuadraditos no fueran ilegibles, pero eso convertía la tira de bits en una tira de bytes: la
+vista existe para señalar bits volteados y seguir el CRC bit a bit, y el hexadecimal escondía
+justo eso. El umbral se quitó (2026-09-08): la tira de bits `.bits` es una rejilla CSS de 16
+columnas fija (`grid-template-columns: repeat(16, 1fr)` en `style.css`), así que cada fila son
+exactamente dos bytes y la trama por defecto de 1000 bits cae en 63 filas dentro de un panel que
+ya scrollea verticalmente. Cada casilla marca si abre un byte (`data-byte-start`) y `style.css`
+le pone un borde izquierdo más grueso: la carga y el CRC se leen en bloques de ocho sin dejar de
+ser bits. El CRC se sigue marcando igual que antes: los últimos `CRC_BITS` bits, en azul — con
+`CRC_BITS = 16`, la última fila entera.
+
+## Transferencia y ráfaga en la calculadora
+
+Dos bloques nuevos en `calculadora.html`, con el mismo patrón que los demás: `steps.js` produce
+la estructura, `calc.js` solo pinta.
+
+- **Transferencia** (`N.transferAnalysis`): a partir de un tamaño total (bits, KB o MB
+  decimales, vía `N.bitsFromSize`) y el tamaño de trama del camino, da el número de tramas
+  (`⌈total / L⌉`) y el tiempo total (`N × ciclo`), sin contar reenvíos.
+- **Ráfaga** (`N.burstDamage`): a partir de una duración en milisegundos da los bits arruinados
+  (`N.burstBitsFromMs`) y cuántas tramas abarca.
+
+El ciclo que enseña el bloque de transferencia lo devuelve `N.transferAnalysis` (`cycleMs`), no
+se reconstruye dividiendo el total entre las tramas: `steps.js` no calcula. Los dos bloques se
+ocultan mientras su campo esté vacío o en cero, para no enseñar una sección vacía.
 
 ## Mirar hacia atrás en el diagrama
 

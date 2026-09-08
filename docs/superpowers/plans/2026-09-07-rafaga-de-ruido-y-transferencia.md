@@ -59,35 +59,25 @@ node --test simulador_stop_and_wait_v2/tests/network.test.js simulador_stop_and_
 
 ---
 
-## Tarea 0 · Decidir la fuente publicada (bloquea las tareas 2, 8 y 9)
+## Tarea 0 · Fuente publicada — **RESUELTA el 2026-09-07, no hay nada que hacer**
 
-**No se escribe código en esta tarea.** Es una decisión del usuario y hay que resolverla antes de
-que ninguna fórmula llegue a la interfaz.
+Se buscó en Tanenbaum, *Redes de computadoras*, 5.ª edición, las 819 páginas. **`R · t` no está en
+el libro**: Tanenbaum mide las ráfagas en bits, nunca en milisegundos.
 
-`04` §B.1 exige un número publicado por fórmula visible. La búsqueda del 2026-09-07 **no encontró
-el ejercicio en Tanenbaum**. Lo que sí hay publicado es la misma fórmula resuelta en Forouzan,
-*Data Communications and Networking*, cap. 10: una ráfaga de 2 ms a 1500 bps afecta a 3 bits, y a
-100 kbps afecta a 200 bits.
+Lo que sí está, en la sección de códigos polinomiales del capítulo 3, y es más fuerte:
 
-- [ ] **Paso 1: Preguntar al usuario cuál de las tres fuentes se usa**
+1. Un código polinomial con **r** bits de verificación detecta **todos** los errores en ráfaga de
+   longitud ≤ r.
+2. Una ráfaga de longitud **r + 1** solo pasa desapercibida si es **idéntica a G(x)**.
 
-| Opción | Qué se escribe en la prueba |
-|---|---|
-| **A** — el usuario aporta el pasaje de Tanenbaum | Capítulo y enunciado textual, como ya hace `tests/network.test.js` con el ejemplo del satélite |
-| **B** — se cita Forouzan | «Forouzan, *Data Communications and Networking*, cap. 10» y sus números. Es un libro publicado, pero **no** el de la asignatura, y así hay que decirlo |
-| **C** — forma cerrada | `R · t` se justifica por análisis dimensional: bits/s × s = bits. No hace falta libro. **Solo vale para `burstDamage`**, no para el bloque de transferencia |
+Este proyecto usa CRC-16/CCITT: **r = 16**, `G(x) = 0x1021`. Las dos afirmaciones se comprueban
+sobre el `frame.js` que ya existe, y son las pruebas del libro que exige `04` §B.1.
 
-- [ ] **Paso 2: Anotar la decisión en el spec, en una línea nueva de la tabla de decisiones**
+**Decisión, ya tomada y escrita en el spec:** la unidad de la ráfaga es el **bit**. Los
+milisegundos siguen en la interfaz porque es como se explica en clase, pero como **conversión
+declarada** —`bits = R · t`, bits/s × s = bits—, no como fórmula atribuida al libro.
 
-No se reescribe ninguna línea existente: `04` §A.3 regla 4 prohíbe reescribir un documento
-fechado.
-
-- [ ] **Paso 3: Commit**
-
-```bash
-git add docs/superpowers/specs/2026-09-07-rafaga-de-ruido-y-transferencia-design.md
-git commit -m "docs: fuente publicada para las formulas de rafaga y transferencia"
-```
+Nada de esto bloquea ninguna tarea. Se pasa directo a la Tarea 1.
 
 ---
 
@@ -151,6 +141,46 @@ test("flipRun de cero bits no toca nada y deja la trama intacta", () => {
   assert.equal(F.flipRun(f, 0, 0), 0);
   assert.equal(F.isIntact(f), true);
 });
+
+// Tanenbaum, Redes de computadoras, 5.ª ed., cap. 3, códigos polinomiales:
+// un código con r bits de verificación detecta TODAS las ráfagas de longitud
+// <= r. Aquí r = 16.
+//
+// Esta prueba comprueba el caso que el simulador produce de verdad: el tramo
+// contiguo de bits volteados que hace flipRun. El enunciado del libro es más
+// amplio (cubre cualquier patrón interior), y la razón de fondo es la misma:
+// un polinomio de error de grado < 16 no puede ser múltiplo de G(x).
+test("Ningún tramo volteado de longitud <= 16 sobrevive al CRC (Tanenbaum, cap. 3)", () => {
+  const payloadBytes = 4; // 4*8 + 16 = 48 bits: barrido exhaustivo asequible
+  const total = 48;
+
+  for (let largo = 1; largo <= 16; largo++) {
+    for (let desde = 0; desde + largo <= total; desde++) {
+      const f = trama(payloadBytes);
+      F.flipRun(f, desde, largo);
+      assert.equal(
+        F.isIntact(f),
+        false,
+        `ráfaga de ${largo} bits en ${desde} debería detectarse`
+      );
+    }
+  }
+});
+
+// El mismo pasaje: una ráfaga de r+1 bits pasa desapercibida si, y solo si,
+// es idéntica a G(x). Con CRC-16/CCITT eso es 0x11021, o sea 17 bits:
+// 1 0000 0001 0010 0001. Es el único patrón de 17 que se cuela por posición.
+test("La ráfaga de 17 bits igual a G(x) sí se cuela (Tanenbaum, cap. 3)", () => {
+  // 0x11021 = 1 0001 0000 0010 0001, los 17 bits de G(x) = x^16+x^12+x^5+1.
+  const PATRON = [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+  const f = trama(4);
+
+  PATRON.forEach((bit, i) => {
+    if (bit === 1) F.flipBit(f, 8 + i);
+  });
+
+  assert.equal(F.isIntact(f), true, "el CRC no puede distinguir esta ráfaga de una trama limpia");
+});
 ```
 
 - [ ] **Paso 2: Ejecutar y ver que falla**
@@ -202,13 +232,13 @@ Y añadir `flipRun` al objeto que devuelve el módulo, junto a `flipBit`.
 node --test simulador_stop_and_wait_v2/tests/frame.test.js
 ```
 
-Esperado: 4 pruebas, todas verdes.
+Esperado: 6 pruebas, todas verdes.
 
 - [ ] **Paso 5: Añadir el archivo nuevo al comando de pruebas del runbook**
 
 En `docs/05-runbook.md`, las dos apariciones del comando pasan a incluir
 `simulador_stop_and_wait_v2/tests/frame.test.js`. Y el conteo de pruebas de su fuente única sube
-de 86 a 90.
+de 86 a 92.
 
 - [ ] **Paso 6: Suite completa verde**
 
@@ -217,7 +247,7 @@ node --test simulador_stop_and_wait_v2/tests/frame.test.js simulador_stop_and_wa
 node tools/lint-docs.js
 ```
 
-Esperado: 90 pruebas verdes y el lint sin problemas.
+Esperado: 92 pruebas verdes y el lint sin problemas.
 
 - [ ] **Paso 7: Commit**
 
@@ -228,55 +258,46 @@ git commit -m "feat(v2): volteo de un tramo contiguo de bits, sin azar"
 
 ---
 
-## Tarea 2 · La fórmula de la ráfaga
+## Tarea 2 · La ráfaga en bits, y la conversión desde milisegundos
 
 **Archivos:**
 - Modificar: `simulador_stop_and_wait_v2/js/network.js`
 - Modificar: `simulador_stop_and_wait_v2/tests/network.test.js`
 
 **Interfaces:**
-- Produce: `burstDamage({ rateBps, burstMs, frameBits })` → `{ bits, frames }`. Lo usan las
-  tareas 5, 6 y 8.
+- Produce: `burstBitsFromMs({ rateBps, burstMs })` → bits, y
+  `burstDamage({ bits, frameBits })` → `{ bits, frames }`. Los usan las tareas 5, 6 y 8.
 
-**Depende de la tarea 0:** el comentario de la prueba cita la fuente que se haya decidido allí.
-Abajo va redactado para la opción **B**; si salió **A**, se sustituye por el pasaje de Tanenbaum,
-y si salió **C**, por la justificación dimensional.
+La unidad de la ráfaga es el **bit** (decisión de la Tarea 0). Los milisegundos son una
+conversión declarada, no una fórmula del libro, y por eso van en una función aparte con ese
+nombre: quien lea el código ve de un vistazo cuál es cuál.
 
 - [ ] **Paso 1: Escribir la prueba que falla**
 
 Al final de `tests/network.test.js`:
 
 ```js
-test("Ráfaga de ruido: los bits arruinados son R · t (Forouzan, cap. 10)", () => {
-  // Forouzan, Data Communications and Networking, cap. 10: una ráfaga de 2 ms
-  // sobre un canal de 1500 bps afecta a 3 bits; sobre uno de 100 kbps, a 200.
-  assert.equal(N.burstDamage({ rateBps: 1500, burstMs: 2, frameBits: 1000 }).bits, 3);
-  assert.equal(N.burstDamage({ rateBps: 100000, burstMs: 2, frameBits: 1000 }).bits, 200);
+test("Conversión de milisegundos a bits: bits/s × s = bits", () => {
+  // No es una fórmula del libro, es análisis dimensional, y así está declarado
+  // en el spec. 10 ms sobre un canal de 100 kbps son 1000 bits.
+  assert.equal(N.burstBitsFromMs({ rateBps: 100000, burstMs: 10 }), 1000);
+  assert.equal(N.burstBitsFromMs({ rateBps: 1500, burstMs: 2 }), 3);
+  assert.equal(N.burstBitsFromMs({ rateBps: 100000, burstMs: 0 }), 0);
 });
 
-test("Ráfaga de ruido: las tramas abarcadas salen de repartir los bits sobre L", () => {
-  // 10 ms a 100 kbps son 1000 bits. Con tramas de 500 bits, dos tramas.
-  const r = N.burstDamage({ rateBps: 100000, burstMs: 10, frameBits: 500 });
-  assert.equal(r.bits, 1000);
-  assert.equal(r.frames, 2);
-
-  // Con tramas de 1000 bits, una sola.
-  assert.equal(N.burstDamage({ rateBps: 100000, burstMs: 10, frameBits: 1000 }).frames, 1);
-
-  // Una ráfaga que no llega a una trama entera sigue arruinando esa trama.
-  assert.equal(N.burstDamage({ rateBps: 100000, burstMs: 1, frameBits: 1000 }).frames, 1);
-});
-
-test("Ráfaga de duración cero no arruina nada", () => {
-  const r = N.burstDamage({ rateBps: 100000, burstMs: 0, frameBits: 1000 });
-  assert.equal(r.bits, 0);
-  assert.equal(r.frames, 0);
+test("Una ráfaga se reparte sobre tramas de L bits", () => {
+  assert.equal(N.burstDamage({ bits: 1000, frameBits: 500 }).frames, 2);
+  assert.equal(N.burstDamage({ bits: 1000, frameBits: 1000 }).frames, 1);
+  // Una ráfaga que no llena una trama sigue arruinando esa trama.
+  assert.equal(N.burstDamage({ bits: 100, frameBits: 1000 }).frames, 1);
+  assert.equal(N.burstDamage({ bits: 0, frameBits: 1000 }).frames, 0);
 });
 
 test("Ráfaga con parámetros imposibles se rechaza", () => {
-  assert.throws(() => N.burstDamage({ rateBps: 0, burstMs: 10, frameBits: 1000 }), RangeError);
-  assert.throws(() => N.burstDamage({ rateBps: 1000, burstMs: -1, frameBits: 1000 }), RangeError);
-  assert.throws(() => N.burstDamage({ rateBps: 1000, burstMs: 10, frameBits: 0 }), RangeError);
+  assert.throws(() => N.burstBitsFromMs({ rateBps: 0, burstMs: 10 }), RangeError);
+  assert.throws(() => N.burstBitsFromMs({ rateBps: 1000, burstMs: -1 }), RangeError);
+  assert.throws(() => N.burstDamage({ bits: 10, frameBits: 0 }), RangeError);
+  assert.throws(() => N.burstDamage({ bits: -1, frameBits: 1000 }), RangeError);
 });
 ```
 
@@ -286,7 +307,7 @@ test("Ráfaga con parámetros imposibles se rechaza", () => {
 node --test simulador_stop_and_wait_v2/tests/network.test.js
 ```
 
-Esperado: FALLA con `N.burstDamage is not a function`.
+Esperado: FALLA con `N.burstBitsFromMs is not a function`.
 
 - [ ] **Paso 3: Implementar lo mínimo**
 
@@ -294,26 +315,40 @@ En `js/network.js`, junto a las demás fórmulas:
 
 ```js
   /**
-   * Daño de una ráfaga de ruido, la cuenta del libro: un intervalo sucio de t
-   * segundos sobre un canal de R bits/s arruina R·t bits.
-   *
-   * `frames` reparte esos bits sobre tramas de L bits. Supone que la ráfaga
-   * empieza justo donde empieza una trama: una ráfaga a caballo entre dos
-   * puede tocar una más. Es la misma suposición que hace el enunciado.
+   * Cuántos bits arruina una ráfaga que dura `burstMs` sobre un canal de
+   * `rateBps`. No es una fórmula del libro —Tanenbaum mide las ráfagas en
+   * bits— sino análisis dimensional: bits/s × s = bits. Está aquí porque es
+   * como se explica en clase, y declarado como conversión para que nadie la
+   * confunda con una cita.
    */
-  function burstDamage(spec) {
+  function burstBitsFromMs(spec) {
     if (!isPositive(spec.rateBps)) throw new RangeError("la tasa R debe ser > 0 bits/s");
     if (!Number.isFinite(spec.burstMs) || spec.burstMs < 0) {
       throw new RangeError("la duración de la ráfaga no puede ser negativa");
     }
+    return Math.floor((spec.rateBps * spec.burstMs) / MS_PER_S);
+  }
+
+  /**
+   * Reparte una ráfaga de `bits` sobre tramas de L bits. Supone que empieza
+   * donde empieza una trama: una ráfaga a caballo entre dos puede tocar una
+   * más.
+   */
+  function burstDamage(spec) {
+    if (!Number.isFinite(spec.bits) || spec.bits < 0) {
+      throw new RangeError("los bits de la ráfaga no pueden ser negativos");
+    }
     if (!isPositive(spec.frameBits)) throw new RangeError("el tamaño de trama L debe ser > 0 bits");
 
-    const bits = Math.floor((spec.rateBps * spec.burstMs) / MS_PER_S);
-    return { bits, frames: Math.ceil(bits / spec.frameBits) };
+    return { bits: spec.bits, frames: Math.ceil(spec.bits / spec.frameBits) };
   }
 ```
 
-Y exportarla junto a las demás.
+Exportar `burstBitsFromMs` y `burstDamage`.
+
+**El umbral de 16 bits no se declara aquí.** Ya existe como `CRC_BITS` en `frame.js`, que es su
+dueño; quien lo necesite en la interfaz lo lee de allí. Un mismo número en dos módulos es
+exactamente lo que `04` prohíbe.
 
 - [ ] **Paso 4: Ejecutar y ver que pasa**
 
@@ -321,9 +356,9 @@ Y exportarla junto a las demás.
 node --test simulador_stop_and_wait_v2/tests/network.test.js
 ```
 
-Esperado: verde, 4 pruebas más que antes.
+Esperado: verde, 3 pruebas más que antes.
 
-- [ ] **Paso 5: Actualizar el conteo de pruebas en su fuente única** (`docs/05-runbook.md`): 94.
+- [ ] **Paso 5: Actualizar el conteo de pruebas en su fuente única** (`docs/05-runbook.md`): 95.
 
 - [ ] **Paso 6: Suite completa y lint verdes**
 
@@ -336,7 +371,7 @@ node tools/lint-docs.js
 
 ```bash
 git add simulador_stop_and_wait_v2/js/network.js simulador_stop_and_wait_v2/tests/network.test.js docs/05-runbook.md
-git commit -m "feat(v2): formula de la rafaga de ruido, R por t"
+git commit -m "feat(v2): rafaga en bits y conversion declarada desde milisegundos"
 ```
 
 ---
@@ -460,7 +495,7 @@ casillas.
 
 **Esta comprobación se anota con lo que se vio, no se da por hecha.**
 
-- [ ] **Paso 7: Suite completa y lint verdes; anotar el conteo nuevo** (97) en `docs/05-runbook.md`.
+- [ ] **Paso 7: Suite completa y lint verdes; anotar el conteo nuevo** (98) en `docs/05-runbook.md`.
 
 - [ ] **Paso 8: Commit**
 
@@ -616,11 +651,7 @@ En `js/sim.js`:
 
     for (const packet of sim.wire) {
       const link = linkFor(sim, packet);
-      const { bits } = N.burstDamage({
-        rateBps: link.rateBps,
-        burstMs: dtMs,
-        frameBits: F.totalBits(packet.frame),
-      });
+      const bits = N.burstBitsFromMs({ rateBps: link.rateBps, burstMs: dtMs });
       if (bits <= 0) continue;
 
       const desde = sim.burst.cursorPorPaquete.get(packet) || 0;
@@ -664,7 +695,7 @@ node --test simulador_stop_and_wait_v2/tests/sim.test.js
 Suite entera verde **y** el navegador: arrancar una simulación sin tocar la ráfaga y ver que
 termina como antes. Es lo que caza que `proximoSucesoMs` se haya roto.
 
-- [ ] **Paso 6: Conteo nuevo en `docs/05-runbook.md`** (101) y lint verde.
+- [ ] **Paso 6: Conteo nuevo en `docs/05-runbook.md`** (102) y lint verde.
 
 - [ ] **Paso 7: Commit**
 
@@ -795,7 +826,7 @@ que los demás. `calc.js` no calcula nada.
 `http://localhost:8000/calculadora.html`, 100 kbps y 10 ms → 1000 bits, 2 tramas con L = 500.
 Anotar lo que se vio.
 
-- [ ] **Paso 7: Conteo nuevo en `docs/05-runbook.md`** (102) y lint verde.
+- [ ] **Paso 7: Conteo nuevo en `docs/05-runbook.md`** (105) y lint verde.
 
 - [ ] **Paso 8: Commit**
 
@@ -820,8 +851,9 @@ git commit -m "feat(v2): bloque de rafaga en la calculadora"
 **Interfaces:**
 - Produce: `transferAnalysis(path, totalBits)` → `{ frames, totalMs, goodputBps }`.
 
-**Depende de la tarea 0:** necesita número publicado, y la opción C (forma cerrada) **no le
-sirve**. Si en la tarea 0 salió C, esta tarea no se hace hasta acordar una fuente.
+**Sobre la fuente:** el tiempo total sale de `N × ciclo`, y el ciclo ya está probado contra el
+ejemplo del satélite del libro que `tests/network.test.js` usa desde el principio. No hace falta
+ninguna cita nueva.
 
 - [ ] **Paso 1: Escribir la prueba que falla**
 
@@ -896,7 +928,7 @@ gráfica lleva tabla, si este bloque añade alguna, lleva la suya.
 
 - [ ] **Paso 6: Comprobar en el navegador y anotar lo que se vio**
 
-- [ ] **Paso 7: Conteo nuevo en `docs/05-runbook.md`** (104) y lint verde.
+- [ ] **Paso 7: Conteo nuevo en `docs/05-runbook.md`** (103) y lint verde.
 
 - [ ] **Paso 8: Commit**
 

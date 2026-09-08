@@ -365,6 +365,10 @@ input[type="range"] { width: 100%; }
 .bit[data-part="crc"] { color: var(--ack); }
 .bit[data-flipped="true"] { background: var(--fault); color: #fff; }
 
+/* Marca el primer bit de cada byte (grupos de 8) para que la tira de mil
+   bits se lea en bloques en vez de como una masa uniforme de casillas. */
+.bit[data-byte-start="true"] { border-left: 2px solid var(--rule-strong); }
+
 .crc-state { font-weight: 600; }
 .crc-state[data-ok="true"] { color: var(--data); }
 .crc-state[data-ok="false"] { color: var(--fault); }
@@ -452,6 +456,12 @@ input[type="range"] { width: 100%; }
   border-top-style: solid;
   display: inline-block;
 }
+
+/* La ráfaga no es una flecha: se pinta como una franja translúcida que cruza
+   el escenario (ALPHA_BANDA_RUIDO en ui.js), así que su muestra tampoco puede
+   ser una línea. Se ve más apagada en el diagrama porque allí cubre mucha
+   superficie; en 18 px con ese alfa haría falta una lupa. */
+.legend i.band { height: 10px; border-top-width: 0; opacity: 0.35; }
 
 /* ---------- Página de la calculadora ---------- */
 

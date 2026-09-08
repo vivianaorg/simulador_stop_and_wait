@@ -277,7 +277,11 @@ test("Voltear un bit fuera de rango se rechaza sin tocar la trama", () => {
   correr(sim, 3, 0.5);
   const paquete = S.selected(sim);
 
-  assert.throws(() => S.flipBitOf(sim, paquete, 999), RangeError);
+  // Fuera de rango de verdad, no un número mágico: desde la Tarea 3 el
+  // tamaño de la trama real lo decide frameBits, así que "fuera de rango"
+  // hay que calcularlo, no suponerlo.
+  const fueraDeRango = F.totalBits(paquete.frame);
+  assert.throws(() => S.flipBitOf(sim, paquete, fueraDeRango), RangeError);
   assert.equal(F.isIntact(paquete.frame), true, "la trama sigue sana");
 });
 

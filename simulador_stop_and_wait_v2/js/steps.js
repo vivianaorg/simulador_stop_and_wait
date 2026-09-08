@@ -7,10 +7,10 @@
 // las pruebas pueden comprobar cada número por separado.
 
 (function (root, factory) {
-  const api = factory();
+  const api = factory(typeof module === "object" && module.exports ? require("./network.js") : root.NetworkModel);
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.StepsModel = api;
-})(typeof self !== "undefined" ? self : this, function () {
+})(typeof self !== "undefined" ? self : this, function (N) {
   "use strict";
 
   // ---------- Formato ----------
@@ -321,6 +321,86 @@
     return { entrada, titular, pasos, graficas: graficas(r) };
   }
 
+  /**
+   * Desarrollo de la ráfaga de ruido: cuántos bits arruina y sobre cuántas
+   * tramas se reparten. No calcula nada aquí: llama a network.js.
+   * @param {{rateBps: number, burstMs: number, frameBits: number}} spec
+   * @returns {Array} pasos, con el mismo `paso(spec)` que usa `build`
+   */
+  function buildBurst(spec) {
+    const bits = N.burstBitsFromMs({ rateBps: spec.rateBps, burstMs: spec.burstMs });
+    const dano = N.burstDamage({ bits, frameBits: spec.frameBits });
+
+    return [
+      paso({
+        id: "burst-bits",
+        titulo: "Bits que arruina la ráfaga",
+        formula: "bits = R · t",
+        sustitucion: `${crudo(spec.rateBps)} · ${redondear(spec.burstMs / 1000)} s`,
+        resultado: `${entero(bits)} bits`,
+        detalle: [
+          `${bps(spec.rateBps)} sostenidos durante ${ms(spec.burstMs)} arruinan ${entero(bits)} bits seguidos.`,
+          "Esta conversión de milisegundos a bits es análisis dimensional (bit/s por s da bits), no una fórmula del libro: Tanenbaum mide las ráfagas directamente en bits.",
+        ],
+      }),
+      paso({
+        id: "burst-frames",
+        titulo: "Tramas que abarca la ráfaga",
+        formula: "tramas = ⌈bits / L⌉",
+        sustitucion: `${crudo(bits)} / ${crudo(spec.frameBits)}`,
+        resultado: `${entero(dano.frames)} ${dano.frames === 1 ? "trama" : "tramas"}`,
+        detalle: [
+          "Se redondea hacia arriba: aunque la ráfaga no llene entera la última trama que toca, esa trama queda arruinada igual.",
+          "El libro sí trae este otro resultado: un CRC con r bits de verificación detecta cualquier ráfaga de longitud ≤ r.",
+        ],
+      }),
+    ];
+  }
+
+  /**
+   * Desarrollo de la transferencia de un fichero completo: cuántas tramas
+   * hacen falta y cuánto tarda. No calcula nada aquí: llama a network.js.
+   * @param {{path: object, totalBits: number}} spec
+   * @returns {Array} pasos, con el mismo `paso(spec)` que usa `build`
+   */
+  function buildTransfer(spec) {
+    const r = N.transferAnalysis(spec.path, spec.totalBits);
+
+    return [
+      paso({
+        id: "transfer-frames",
+        titulo: "Tramas que hacen falta",
+        formula: "tramas = ⌈bits / L⌉",
+        sustitucion: `${crudo(spec.totalBits)} / ${crudo(spec.path.frameBits)}`,
+        resultado: `${entero(r.frames)} ${r.frames === 1 ? "trama" : "tramas"}`,
+        detalle: [
+          "Se redondea hacia arriba: la última trama cuenta entera aunque el fichero no la llene del todo.",
+        ],
+      }),
+      paso({
+        id: "transfer-time",
+        titulo: "Tiempo total de la transferencia",
+        formula: "tiempo = tramas · ciclo",
+        sustitucion: `${entero(r.frames)} · ${ms(r.cycleMs)}`,
+        resultado: ms(r.totalMs),
+        detalle: [
+          "Con Stop & Wait el emisor no puede adelantar trabajo: cada trama paga el ciclo completo, una detrás de otra.",
+          "Esto supone canal limpio: no cuenta reenvíos. Con ruido el tiempo real es mayor, porque cada retransmisión repite el ciclo entero.",
+        ],
+      }),
+      paso({
+        id: "transfer-goodput",
+        titulo: "Caudal conseguido en la transferencia",
+        formula: "goodput = bits / tiempo",
+        sustitucion: `${crudo(spec.totalBits)} / ${redondear(r.totalMs / 1000)} s`,
+        resultado: bps(r.goodputBps),
+        detalle: [
+          "Es el fichero completo entre el tiempo total: al no haber reenvíos, coincide con el caudal útil de un solo ciclo.",
+        ],
+      }),
+    ];
+  }
+
   // ---------- Datos para las gráficas ----------
 
   function graficas(r) {
@@ -347,5 +427,5 @@
     };
   }
 
-  return { build, formato: { ms, bps, pct, entero, crudo, redondear } };
+  return { build, buildBurst, buildTransfer, formato: { ms, bps, pct, entero, crudo, redondear } };
 });
