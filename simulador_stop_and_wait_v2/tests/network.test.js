@@ -406,3 +406,31 @@ test("bandwidthDelayFrames es el cociente de BD entre el tamaño de trama", () =
   closeTo(r.bandwidthDelayFrames, 12.5, 1e-9, "BD en tramas");
   closeTo(r.bandwidthDelayFrames, r.bandwidthDelayBits / r.frameBits, 1e-12, "consistencia");
 });
+
+function caminoSimple(extra) {
+  return N.createPath({
+    frameBits: 4000,
+    ackBits: 0,
+    links: [N.createLink({ rateBps: 1000000, distanceKm: 100, velocityKmS: 200000 })],
+    ...(extra || {}),
+  });
+}
+
+test("sin cabecera los numeros no cambian", () => {
+  const t = N.transferAnalysis(caminoSimple(), 40000);
+  assert.equal(t.payloadBitsPerFrame, 4000);
+  assert.equal(t.frames, 10);
+});
+
+// Libro, cap. 3, ejercicio 33: tramas de 40 bits de cabecera y 3960 de datos.
+test("con cabecera de 40 bits caben 3960 de datos por trama", () => {
+  const t = N.transferAnalysis(caminoSimple({ headerBits: 40 }), 39960);
+  assert.equal(t.payloadBitsPerFrame, 3960);
+  assert.equal(t.frames, 11);
+  assert.ok(t.goodputBps < N.transferAnalysis(caminoSimple(), 39960).goodputBps);
+});
+
+test("una cabecera que se come la trama entera se rechaza", () => {
+  assert.throws(() => caminoSimple({ headerBits: 4000 }), RangeError);
+  assert.throws(() => caminoSimple({ headerBits: -1 }), RangeError);
+});

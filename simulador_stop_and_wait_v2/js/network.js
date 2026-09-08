@@ -107,6 +107,7 @@
       links: spec.links || [],
       duplexMode: spec.duplexMode === DUPLEX.HALF ? DUPLEX.HALF : DUPLEX.FULL,
       processingMsPerHop: spec.processingMsPerHop === undefined ? 0 : spec.processingMsPerHop,
+      headerBits: spec.headerBits === undefined ? 0 : spec.headerBits,
     };
     const problems = validatePath(path);
     if (problems.length > 0) {
@@ -121,6 +122,12 @@
     if (!Number.isFinite(path.ackBits) || path.ackBits < 0) problems.push("el tamaño del ACK no puede ser negativo");
     if (!Array.isArray(path.links) || path.links.length === 0) problems.push("hace falta al menos un enlace");
     if (!Number.isFinite(path.processingMsPerHop) || path.processingMsPerHop < 0) problems.push("el retardo de procesamiento no puede ser negativo");
+    if (!Number.isFinite(path.headerBits) || path.headerBits < 0) {
+      problems.push("la cabecera no puede ser negativa");
+    }
+    if (path.headerBits >= path.frameBits) {
+      problems.push("la cabecera tiene que caber en la trama: no puede llegar a L");
+    }
     return problems;
   }
 
@@ -303,12 +310,14 @@
     if (!isPositive(totalBits)) throw new RangeError("el tamaño a transferir debe ser > 0 bits");
 
     const r = analyze(path);
-    const frames = Math.ceil(totalBits / path.frameBits);
+    // De cada trama de L bits, la cabecera no lleva datos del fichero. Con
+    // headerBits = 0 esto es exactamente lo de antes.
+    const payloadBitsPerFrame = path.frameBits - path.headerBits;
+    const frames = Math.ceil(totalBits / payloadBitsPerFrame);
     const totalMs = frames * r.cycleMs;
-    // El ciclo sale de aquí, no de dividir el total entre las tramas en la
-    // vista: es el mismo número que usa el cálculo, no una reconstrucción.
     return {
       frames,
+      payloadBitsPerFrame,
       cycleMs: r.cycleMs,
       totalMs,
       goodputBps: totalBits / (totalMs / MS_PER_S),
