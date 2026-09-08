@@ -67,6 +67,7 @@
       inspHop: id("insp-hop"),
       inspCrc: id("insp-crc"),
       bits: id("bits"),
+      bitsHint: id("bits-hint"),
       btnDestroy: id("btn-destroy"),
       btnDelay: id("btn-delay"),
       btnSeq0: id("btn-seq0"),
@@ -796,6 +797,27 @@
     const agrupar = F.totalBits(p.frame) > BITS_MAX_INDIVIDUALES;
     const paso = agrupar ? 8 : 1;
 
+    // El rótulo tiene que decir la verdad en los dos modos: agrupada, cada
+    // casilla es un byte en hex, no un bit, y el CRC ya no son 16 casillas
+    // sino F.CRC_BITS / 8 de ellas.
+    if (agrupar) {
+      dom.bits.setAttribute(
+        "aria-label",
+        "Bytes de la trama en hexadecimal; pulsa uno para voltear su primer bit",
+      );
+      dom.bitsHint.innerHTML =
+        `<strong>Cada casilla es un byte en hexadecimal, no un bit</strong> — pulsa una ` +
+        `para voltear el primer bit de ese byte; eso es meter un error a mano. Los últimos ` +
+        `${F.CRC_BITS / 8} bytes, en azul, son el CRC. El receptor lo recalcula al llegar: ` +
+        `no hay ninguna marca de «esta venía dañada».`;
+    } else {
+      dom.bits.setAttribute("aria-label", "Bits de la trama; pulsa uno para voltearlo");
+      dom.bitsHint.innerHTML =
+        `<strong>Pulsa cualquier bit para voltearlo</strong> — eso es meter un error a mano. ` +
+        `Los últimos ${F.CRC_BITS} bits, en azul, son el CRC. El receptor lo recalcula al ` +
+        `llegar: no hay ninguna marca de «esta venía dañada».`;
+    }
+
     for (let i = 0; i < bits.length; i += paso) {
       const finGrupo = Math.min(i + paso, bits.length);
       const grupo = bits.slice(i, finGrupo);
@@ -817,7 +839,7 @@
       }
       b.dataset.flipped = String(volteado);
       b.title = agrupar
-        ? `Bits ${i}-${finGrupo - 1}${i >= inicioCrc ? " (CRC)" : ""}`
+        ? `Byte de los bits ${i}-${finGrupo - 1} en hex${i >= inicioCrc ? " (CRC)" : ""}`
         : `Bit ${i}${i >= inicioCrc ? " (CRC)" : ""}`;
       // Agrupado o no, el clic siempre voltea un solo bit: el daño de un bit
       // y el daño en ráfaga son dos modos distintos que no deben mezclarse.
