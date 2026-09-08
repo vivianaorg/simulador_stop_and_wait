@@ -8,6 +8,47 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-07 — La ráfaga de ruido entra en el reloj del simulador
+
+**Qué:** `sim.js` gana `startBurst(sim, durationMs)`: abre una ventana `sim.burst = { endsAtMs,
+cursorPorPaquete }` que, mientras dura, muerde bits contiguos de cada paquete en vuelo según la
+tasa de su enlace (`N.burstBitsFromMs` + `F.flipRun`), acumulando en el contador nuevo
+`sim.stats.burstBitsRuined`. El cierre de la ventana entra en `proximoSucesoMs` junto al
+temporizador, así que el reloj nunca se salta el instante en que la ráfaga termina. No usa
+ningún generador: es determinista por construcción.
+
+- `applyBurst(sim, dtMs)` se llama en `avanzarTramo`, justo después de `sim.clockMs += dtMs`:
+  es el único punto donde ya se sabe cuánto avanzó el reloj en este tramo exacto (los tramos
+  están recortados por `proximoSucesoMs`, así que un tramo nunca cruza el cierre de la ventana).
+- `reset()` también limpia `sim.burst`, para que una simulación reiniciada no arrastre una
+  ventana con un `endsAtMs` relativo al reloj anterior.
+- Export nuevo: `proximoSucesoMs` (ya existía, pero no se exportaba) y `startBurst`.
+
+**Por qué:** tarea 5 del plan `2026-09-07-rafaga-de-ruido-y-transferencia`. El ruido por
+probabilidad ya existente se aplica una sola vez al entrar en un tramo; la ráfaga necesita
+persistir en el tiempo, así que su cierre tenía que volverse un suceso más del reloj.
+
+**Desvío sobre el brief:** las pruebas del brief creaban el paquete en vuelo con
+`S.sendFrame(sim)` a secas. Con eso `sim.running` queda en `false` (`sendFrame` no lo toca) y
+`advance()` no mueve el reloj —es el mismo guardián que usa "Pausar detiene el reloj"—, así que
+la ráfaga nunca llegaba a morder nada por una razón ajena a este cambio. Se cambiaron esas tres
+llamadas a `S.start(sim)` (que sí deja `running = true` y de paso ya pone la trama en el cable);
+la cuarta prueba, que solo mira `proximoSucesoMs` sin avanzar el reloj, no necesitaba el cambio y
+se dejó tal cual venía.
+
+**Cómo revertir:** `git revert` del commit. Toca `simulador_stop_and_wait_v2/js/sim.js`,
+`simulador_stop_and_wait_v2/tests/sim.test.js` y el conteo en `docs/05-runbook.md`.
+
+**Verificación:** `node --test` con los cinco archivos de `tests/` → 102 pruebas verdes, 0
+fallas (antes 98; el brief preveía 102). `node tools/lint-docs.js` limpio. Comprobación explícita
+de que una simulación sin ráfaga no cambió: se comparó `createSimulation` + `S.start` +
+`advance` en bucle, con y sin el cambio (via `git stash`), para el mismo camino y 5 tramas —
+mismo `state` (`FINISHED`), mismo `clockMs` (150 ms), mismo número de eventos (10), mismo
+`rxDelivered` (5) y mismas estadísticas de protocolo. No se comprobó en navegador (fuera de
+alcance de este entorno): queda para quien revise.
+
+---
+
 ## 2026-09-07 — La tira de paquetes ya se ve entera: el escenario cabe en la ventana
 
 **Qué:** el `.stage` medía 924 px dentro de un `.work` de 848 y la tira de paquetes se salía

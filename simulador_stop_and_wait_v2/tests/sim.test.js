@@ -406,3 +406,45 @@ test("La primera trama no espera inversión: el medio ya está en su sentido", (
   assert.ok(trama, "la trama ya está en el canal");
   assert.equal(trama.turnRemainingMs, 0);
 });
+
+// ---------- Ráfaga de ruido ----------
+
+test("La ráfaga arruina bits de lo que esté viajando, sin generador", () => {
+  const sim = S.createSimulation({ path: caminoSimple(), totalFrames: 3 });
+  S.start(sim); // que haya algo en el cable y el reloj corriendo
+  S.startBurst(sim, 5);
+  correr(sim, 20, 1);
+
+  assert.ok(sim.stats.burstBitsRuined > 0, "la ráfaga tiene que haber mordido algo");
+});
+
+test("La ráfaga es determinista: dos corridas iguales arruinan lo mismo", () => {
+  function corrida() {
+    const sim = S.createSimulation({ path: caminoSimple(), totalFrames: 3 });
+    S.start(sim);
+    S.startBurst(sim, 5);
+    correr(sim, 20, 1);
+    return sim.stats.burstBitsRuined;
+  }
+  assert.equal(corrida(), corrida());
+});
+
+test("La ventana de la ráfaga se cierra sola y deja de morder", () => {
+  const sim = S.createSimulation({ path: caminoSimple(), totalFrames: 3 });
+  S.start(sim);
+  S.startBurst(sim, 5);
+  correr(sim, 20, 1);
+  const trasCerrarse = sim.stats.burstBitsRuined;
+
+  correr(sim, 50, 1);
+  assert.equal(sim.stats.burstBitsRuined, trasCerrarse, "ya no debería morder nada");
+  assert.equal(sim.burst, null, "la ventana quedó cerrada");
+});
+
+test("El cierre de la ráfaga entra en el próximo suceso", () => {
+  const sim = S.createSimulation({ path: caminoSimple(), totalFrames: 3 });
+  S.sendFrame(sim);
+  S.startBurst(sim, 1);
+  // El reloj no puede saltarse el final de la ventana.
+  assert.ok(S.proximoSucesoMs(sim) <= 1);
+});

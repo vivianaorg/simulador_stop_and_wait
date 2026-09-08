@@ -70,6 +70,7 @@
       clockMs: 0,
       state: STATE.IDLE,
       running: false,
+      burst: null,
 
       // Emisor
       seqNum: 0,
@@ -95,6 +96,7 @@
         duplicatesDiscarded: 0,
         retransmissions: 0,
         lateAcks: 0,
+        burstBitsRuined: 0,
       },
     };
 
@@ -384,11 +386,44 @@
     }
   }
 
+  /**
+   * Ensucia el canal durante `durationMs` de reloj simulado. A diferencia del
+   * ruido por probabilidad, esto no se tira: ocurre. Cada paquete que viaje
+   * dentro de la ventana pierde los bits que le corresponden por su tasa.
+   */
+  function startBurst(sim, durationMs) {
+    if (!Number.isFinite(durationMs) || durationMs <= 0) {
+      throw new RangeError("la ráfaga tiene que durar más de 0 ms");
+    }
+    sim.burst = { endsAtMs: sim.clockMs + durationMs, cursorPorPaquete: new Map() };
+    note(sim, "ERROR", `Ráfaga de ruido: el canal queda sucio ${durationMs} ms`);
+    return sim;
+  }
+
+  // Muerde lo que haya en el cable durante los `dtMs` que acaban de pasar. El
+  // cursor por paquete hace que los bits arruinados sean contiguos: una ráfaga
+  // ensucia un intervalo, no bits sueltos repartidos.
+  function applyBurst(sim, dtMs) {
+    if (!sim.burst || dtMs <= 0) return;
+
+    for (const packet of sim.wire) {
+      const link = linkFor(sim, packet);
+      const bits = N.burstBitsFromMs({ rateBps: link.rateBps, burstMs: dtMs });
+      if (bits <= 0) continue;
+
+      const desde = sim.burst.cursorPorPaquete.get(packet) || 0;
+      const tocados = F.flipRun(packet.frame, desde, bits);
+      sim.burst.cursorPorPaquete.set(packet, desde + tocados);
+      sim.stats.burstBitsRuined += tocados;
+    }
+  }
+
   // Cuánto falta para el próximo suceso: que expire el temporizador, o que un
   // paquete termine la fase en la que está.
   function proximoSucesoMs(sim) {
     let minimo = Infinity;
     if (sim.timerActive) minimo = Math.min(minimo, sim.timerRemainingMs);
+    if (sim.burst) minimo = Math.min(minimo, sim.burst.endsAtMs - sim.clockMs);
 
     for (const p of sim.wire) {
       if (p.turnRemainingMs > 0) minimo = Math.min(minimo, p.turnRemainingMs);
@@ -428,6 +463,12 @@
 
   function avanzarTramo(sim, dtMs) {
     sim.clockMs += dtMs;
+
+    applyBurst(sim, dtMs);
+    if (sim.burst && sim.clockMs >= sim.burst.endsAtMs) {
+      sim.burst = null;
+      note(sim, "INFO", "La ráfaga terminó: el canal vuelve a estar limpio");
+    }
 
     // Temporizador de retransmisión.
     if (sim.timerActive) {
@@ -525,6 +566,7 @@
     sim.rxExpectedSeq = 0;
     sim.rxDelivered = 0;
     stopTimer(sim);
+    sim.burst = null;
     sim.wire = [];
     sim.events = [];
     sim.log = [];
@@ -593,6 +635,8 @@
     STATUS,
     createSimulation,
     advance,
+    proximoSucesoMs,
+    startBurst,
     start,
     pause,
     reset,
