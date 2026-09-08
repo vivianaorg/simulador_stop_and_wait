@@ -236,6 +236,35 @@
     };
   }
 
+  /**
+   * Cuántos bits arruina una ráfaga que dura `burstMs` sobre un canal de
+   * `rateBps`. No es una fórmula del libro —Tanenbaum mide las ráfagas en
+   * bits— sino análisis dimensional: bits/s × s = bits. Está aquí porque es
+   * como se explica en clase, y declarado como conversión para que nadie la
+   * confunda con una cita.
+   */
+  function burstBitsFromMs(spec) {
+    if (!isPositive(spec.rateBps)) throw new RangeError("la tasa R debe ser > 0 bits/s");
+    if (!Number.isFinite(spec.burstMs) || spec.burstMs < 0) {
+      throw new RangeError("la duración de la ráfaga no puede ser negativa");
+    }
+    return Math.floor((spec.rateBps * spec.burstMs) / MS_PER_S);
+  }
+
+  /**
+   * Reparte una ráfaga de `bits` sobre tramas de L bits. Supone que empieza
+   * donde empieza una trama: una ráfaga a caballo entre dos puede tocar una
+   * más.
+   */
+  function burstDamage(spec) {
+    if (!Number.isFinite(spec.bits) || spec.bits < 0) {
+      throw new RangeError("los bits de la ráfaga no pueden ser negativos");
+    }
+    if (!isPositive(spec.frameBits)) throw new RangeError("el tamaño de trama L debe ser > 0 bits");
+
+    return { bits: spec.bits, frames: Math.ceil(spec.bits / spec.frameBits) };
+  }
+
   // Atajo para el caso de un solo enlace, que es el del libro.
   function singleLinkAnalysis(opts) {
     return analyze(
@@ -268,5 +297,7 @@
     propagationMs,
     analyze,
     singleLinkAnalysis,
+    burstBitsFromMs,
+    burstDamage,
   };
 });

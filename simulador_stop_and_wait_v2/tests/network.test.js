@@ -236,3 +236,26 @@ test("Los parámetros inválidos se rechazan con un mensaje, no en silencio", ()
   assert.throws(() => N.createPath({ frameBits: 1000, links: [] }), RangeError);
   assert.throws(() => N.createPath({ frameBits: 0, links: [N.createLink({ rateBps: 1e6, distanceKm: 1, velocityKmS: 200000 })] }), RangeError);
 });
+
+test("Conversión de milisegundos a bits: bits/s × s = bits", () => {
+  // No es una fórmula del libro, es análisis dimensional, y así está declarado
+  // en el spec. 10 ms sobre un canal de 100 kbps son 1000 bits.
+  assert.equal(N.burstBitsFromMs({ rateBps: 100000, burstMs: 10 }), 1000);
+  assert.equal(N.burstBitsFromMs({ rateBps: 1500, burstMs: 2 }), 3);
+  assert.equal(N.burstBitsFromMs({ rateBps: 100000, burstMs: 0 }), 0);
+});
+
+test("Una ráfaga se reparte sobre tramas de L bits", () => {
+  assert.equal(N.burstDamage({ bits: 1000, frameBits: 500 }).frames, 2);
+  assert.equal(N.burstDamage({ bits: 1000, frameBits: 1000 }).frames, 1);
+  // Una ráfaga que no llena una trama sigue arruinando esa trama.
+  assert.equal(N.burstDamage({ bits: 100, frameBits: 1000 }).frames, 1);
+  assert.equal(N.burstDamage({ bits: 0, frameBits: 1000 }).frames, 0);
+});
+
+test("Ráfaga con parámetros imposibles se rechaza", () => {
+  assert.throws(() => N.burstBitsFromMs({ rateBps: 0, burstMs: 10 }), RangeError);
+  assert.throws(() => N.burstBitsFromMs({ rateBps: 1000, burstMs: -1 }), RangeError);
+  assert.throws(() => N.burstDamage({ bits: 10, frameBits: 0 }), RangeError);
+  assert.throws(() => N.burstDamage({ bits: -1, frameBits: 1000 }), RangeError);
+});
