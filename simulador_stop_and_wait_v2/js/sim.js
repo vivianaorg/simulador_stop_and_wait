@@ -396,7 +396,33 @@
       throw new RangeError("la ráfaga tiene que durar más de 0 ms");
     }
     const endsAtMs = sim.clockMs + durationMs;
-    sim.burst = { endsAtMs, cursorPorPaquete: new Map() };
+
+    // Los bits que arruina la ráfaga se calculan UNA sola vez, aquí, y se
+    // gastan a medida que corre el reloj. Sorprende al leerlo —parecería más
+    // natural convertir a bits el `dt` de cada tramo—, y por eso queda escrito:
+    // `burstBitsFromMs` trunca a bits enteros, así que convertir tramo a tramo
+    // tira una fracción en cada uno y el total acaba dependiendo de en cuántos
+    // trozos parta el reloj la animación. A 9600 bps una ráfaga de 5 ms son 48
+    // bits; troceada de milisegundo en milisegundo daba 45, y de 0,25 ms en
+    // 0,25 ms, 40. Con el presupuesto calculado de entrada, el total es
+    // siempre el mismo número que publica la calculadora.
+    //
+    // La tasa es la del primer tramo, el del emisor: es la que usa la
+    // calculadora para presentar la ráfaga (`pintarRafaga` en `calc.js`) y la
+    // misma que usa `bandwidthDelayProductBits` en `network.js`.
+    const bitsTotal = N.burstBitsFromMs({
+      rateBps: sim.path.links[0].rateBps,
+      burstMs: durationMs,
+    });
+
+    sim.burst = {
+      startedAtMs: sim.clockMs,
+      endsAtMs,
+      durationMs,
+      bitsTotal,
+      bitsGastados: 0,
+      cursorPorPaquete: new Map(),
+    };
     // La ventana viaja como suceso, igual que TURN y TIMEOUT: quien la dibuja
     // no necesita repetir esta cuenta ni guardar su propio estado.
     pushEvent(sim, {
@@ -418,16 +444,38 @@
   // ensucia un intervalo, no bits sueltos repartidos.
   function applyBurst(sim, dtMs) {
     if (!sim.burst || dtMs <= 0) return;
+    const rafaga = sim.burst;
+
+    // Del presupuesto que se fijó en startBurst, la parte proporcional al
+    // tiempo de ráfaga ya transcurrido. Al llegar al final se gasta lo que
+    // quede, así que el total no depende de cómo se trocee el reloj ni de los
+    // redondeos de coma flotante del camino.
+    const transcurrido = Math.min(rafaga.durationMs, Math.max(0, sim.clockMs - rafaga.startedAtMs));
+    const acumulado =
+      sim.clockMs >= rafaga.endsAtMs
+        ? rafaga.bitsTotal
+        : Math.floor((rafaga.bitsTotal * transcurrido) / rafaga.durationMs);
+    const bits = acumulado - rafaga.bitsGastados;
+    if (bits <= 0) return;
+    rafaga.bitsGastados = acumulado;
+
+    // La ventana es una sola aunque haya varios paquetes en el cable: son los
+    // mismos milisegundos de medio sucio, no uno por paquete. Por eso el
+    // contador suma una vez y cada paquete recibe la misma tirada de bits —a
+    // los dos les pasa por encima la misma ráfaga—, en vez de repartirse el
+    // presupuesto entre ellos. Y se cuenta haya o no algo en vuelo: lo que
+    // mide es el canal, igual que dice el aviso del formulario.
+    sim.stats.burstBitsRuined += bits;
 
     for (const packet of sim.wire) {
-      const link = linkFor(sim, packet);
-      const bits = N.burstBitsFromMs({ rateBps: link.rateBps, burstMs: dtMs });
-      if (bits <= 0) continue;
+      // Un paquete que no ocupa bits en el cable —el ACK de duración
+      // despreciable, ackBits = 0— no puede ser alcanzado por una ventana de
+      // tiempo: no está en el medio el tiempo suficiente para nada.
+      if (!(packet.txMs > 0)) continue;
 
-      const desde = sim.burst.cursorPorPaquete.get(packet) || 0;
+      const desde = rafaga.cursorPorPaquete.get(packet) || 0;
       const tocados = F.flipRun(packet.frame, desde, bits);
-      sim.burst.cursorPorPaquete.set(packet, desde + tocados);
-      sim.stats.burstBitsRuined += tocados;
+      rafaga.cursorPorPaquete.set(packet, desde + tocados);
     }
   }
 

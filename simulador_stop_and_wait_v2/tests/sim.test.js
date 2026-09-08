@@ -418,6 +418,69 @@ test("La ráfaga arruina bits de lo que esté viajando, sin generador", () => {
   assert.ok(sim.stats.burstBitsRuined > 0, "la ráfaga tiene que haber mordido algo");
 });
 
+// 9600 bps es la tasa de módem de los ejercicios del capítulo 3 y, aquí, la
+// que hace visible el fallo: son 9,6 bits por milisegundo, así que la
+// conversión a bits enteros no es exacta. Con tasas redondas el troceado del
+// reloj no se nota.
+function caminoModem() {
+  return N.createPath({
+    frameBits: 1000,
+    ackBits: 0,
+    links: [
+      N.createLink({ name: "Módem", rateBps: 9600, distanceKm: 2000, velocityKmS: 200000 }),
+    ],
+  });
+}
+
+test("El total de la ráfaga no depende del troceado del reloj y es el de la calculadora", () => {
+  const esperados = N.burstBitsFromMs({ rateBps: 9600, burstMs: 5 });
+  assert.equal(esperados, 48, "9600 bps · 5 ms = 48 bits");
+
+  function corrida(pasoMs) {
+    const sim = S.createSimulation({ path: caminoModem(), totalFrames: 3 });
+    S.start(sim);
+    S.startBurst(sim, 5);
+    correr(sim, 20, pasoMs);
+    return sim.stats.burstBitsRuined;
+  }
+
+  assert.equal(corrida(1), esperados, "tramos de 1 ms");
+  assert.equal(corrida(0.1), esperados, "tramos de 0,1 ms");
+  assert.equal(corrida(20), esperados, "una sola llamada que se traga la ventana entera");
+});
+
+test("La ventana de la ráfaga cuenta una vez, no una por paquete en vuelo", () => {
+  const sim = S.createSimulation({ path: caminoModem(), totalFrames: 3 });
+  S.start(sim);
+  S.sendFrame(sim); // dos tramas a la vez en el mismo cable
+  assert.equal(sim.wire.length, 2, "hacen falta dos paquetes en vuelo");
+
+  S.startBurst(sim, 5);
+  correr(sim, 20, 1);
+
+  assert.equal(
+    sim.stats.burstBitsRuined,
+    N.burstBitsFromMs({ rateBps: 9600, burstMs: 5 }),
+    "la ventana de tiempo es una, no una por paquete"
+  );
+});
+
+test("Un ACK de duración despreciable no lo alcanza la ráfaga", () => {
+  const sim = S.createSimulation({ path: caminoSimple(), totalFrames: 3 });
+  S.start(sim);
+  correr(sim, 25, 1); // Tt = 10 ms, Tp = 10 ms: a los 25 ms el ACK vuelve
+
+  const ack = sim.wire.find((p) => p.frame.kind === F.KIND.ACK);
+  assert.ok(ack, "hace falta un ACK en vuelo");
+  assert.equal(ack.txMs, 0, "con ackBits = 0 el ACK no ocupa bits en el cable");
+
+  S.startBurst(sim, 1);
+  correr(sim, 2, 0.25);
+
+  assert.equal(ack.frame.flippedBits.length, 0, "no se le puede voltear ningún bit");
+  assert.equal(F.isIntact(ack.frame), true, "y por tanto su CRC sigue cuadrando");
+});
+
 test("La ráfaga es determinista: dos corridas iguales arruinan lo mismo", () => {
   function corrida() {
     const sim = S.createSimulation({ path: caminoSimple(), totalFrames: 3 });
