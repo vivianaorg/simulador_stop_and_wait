@@ -285,6 +285,18 @@
 
   function rebuild() {
     let path;
+
+    // El tamaño de trama tiene que caber en bytes enteros de carga más el CRC.
+    // Se ajusta y se dice: pelearse con el formulario no ayuda a nadie, pero
+    // mentir sobre qué se calculó, menos.
+    const pedidos = Number(dom.frameBits.value);
+    const validos = F.roundFrameBits(pedidos);
+    if (validos !== pedidos) {
+      dom.frameBits.value = String(validos);
+      dom.timeoutHint.textContent =
+        `Tamaño de trama ajustado a ${validos} bits: la carga va en bytes enteros más 16 de CRC.`;
+    }
+
     try {
       // Los valores del formulario se validan siempre, aunque el ruido esté
       // apagado: si no, una probabilidad imposible se aceptaba en silencio y
@@ -334,7 +346,7 @@
       timeoutMs: Number(dom.timeoutMs.value),
       nakOnError: dom.nakToggle.checked,
       seed: Number(dom.seed.value),
-      payloadBytes: 8,
+      payloadBytes: F.payloadBytesFor(Number(dom.frameBits.value)),
     });
 
     selectedIndex = 0;

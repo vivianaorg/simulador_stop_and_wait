@@ -82,3 +82,28 @@ test("La ráfaga de 17 bits igual a G(x) sí se cuela (Tanenbaum, cap. 3)", () =
 
   assert.equal(F.isIntact(f), true, "el CRC no puede distinguir esta ráfaga de una trama limpia");
 });
+
+test("El tamaño de trama manda: la carga sale de frameBits menos el CRC", () => {
+  // 1000 bits de trama - 16 de CRC = 984 bits = 123 bytes de carga.
+  assert.equal(F.payloadBytesFor(1000), 123);
+  assert.equal(F.payloadBytesFor(24), 1, "el mínimo representable");
+});
+
+test("Un tamaño no representable se redondea al múltiplo válido más cercano", () => {
+  // Válidos: 24, 32, 40 ... es decir 16 + 8k con k >= 1.
+  assert.equal(F.roundFrameBits(1000), 1000, "ya era válido");
+  assert.equal(F.roundFrameBits(1001), 1000);
+  assert.equal(F.roundFrameBits(1005), 1008);
+  assert.equal(F.roundFrameBits(1), 24, "por debajo del mínimo, sube al mínimo");
+  assert.equal(F.roundFrameBits(0), 24);
+});
+
+test("Una trama construida con el tamaño derivado mide lo que dice frameBits", () => {
+  const f = F.createFrame({
+    kind: F.KIND.FRAME,
+    seq: 0,
+    frameIdx: 0,
+    payloadBytes: F.payloadBytesFor(1000),
+  });
+  assert.equal(F.totalBits(f), 1000);
+});

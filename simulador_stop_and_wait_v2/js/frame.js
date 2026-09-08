@@ -128,6 +128,21 @@
     return frame.payload.length * 8 + CRC_BITS;
   }
 
+  // El tamaño de trama del formulario manda, y la carga sale de restarle el
+  // CRC. No todo valor es representable: hacen falta bytes enteros de carga,
+  // así que L válido es 16 + 8k con k >= 1.
+  const MIN_FRAME_BITS = CRC_BITS + 8;
+
+  function payloadBytesFor(frameBits) {
+    return (roundFrameBits(frameBits) - CRC_BITS) / 8;
+  }
+
+  function roundFrameBits(frameBits) {
+    if (!Number.isFinite(frameBits) || frameBits <= MIN_FRAME_BITS) return MIN_FRAME_BITS;
+    const bytes = Math.round((frameBits - CRC_BITS) / 8);
+    return CRC_BITS + Math.max(1, bytes) * 8;
+  }
+
   /**
    * Voltea un bit de la trama, como haría el ruido del canal. Índices
    * [0, payload*8) son de la carga; los 16 siguientes, del CRC.
@@ -241,6 +256,9 @@
     cloneFrame,
     label,
     totalBits,
+    payloadBytesFor,
+    roundFrameBits,
+    MIN_FRAME_BITS,
     flipBit,
     flipRun,
     flipRandomBit,
