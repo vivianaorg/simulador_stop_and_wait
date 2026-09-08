@@ -263,8 +263,11 @@ análisis dimensional, no una fórmula del libro (Tanenbaum mide las ráfagas en
 
 Lo que sí es del libro, y es lo que hace demostrable el límite del CRC: un código con `r` bits de
 verificación detecta **todas** las ráfagas de longitud ≤ r; una ráfaga de `r + 1` solo pasa
-desapercibida si reproduce exactamente `G(x)`. Con CRC-16/CCITT eso es `r = 16` y
-`G(x) = 0x1021` (17 bits). Hay pruebas contra ambos hechos en `tests/frame.test.js`.
+desapercibida si reproduce exactamente `G(x)`. Con CRC-16/CCITT eso es `r = 16` y, en forma
+completa (los 17 bits, con el término x¹⁶ explícito), `G(x) = 0x11021`. `frame.js` usa la forma
+**truncada** `0x1021` (`POLYNOMIAL`, 16 bits) porque el algoritmo ya deja ese término implícito;
+son el mismo polinomio, escrito de dos formas, y solo la completa tiene los 17 bits de la
+ráfaga que se cuela. Hay pruebas contra ambos hechos en `tests/frame.test.js`.
 
 La ventana viaja como un suceso más del reloj de la simulación (`kind: "BURST"`, igual que
 `TURN` y `TIMEOUT`) y se dibuja en el diagrama como una banda horizontal; el contador *Bits
