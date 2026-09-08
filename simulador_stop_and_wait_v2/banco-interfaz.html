@@ -152,7 +152,10 @@ async function probarSimulador() {
   // --- CRC paso a paso ---
   intentar("sim · abrir el CRC paso a paso", () => d.getElementById("btn-crc-steps").click());
   comprobar("sim · el panel del CRC explica el polinomio", /x¹⁶/.test(d.getElementById("crc-steps").innerText), "sin polinomio");
-  comprobar("sim · hay una fila por byte de la carga", d.querySelectorAll(".crc-row").length === 8, d.querySelectorAll(".crc-row").length);
+  // Una fila por byte de carga, y la carga sale del tamaño de trama del
+  // formulario: 1000 bits menos 16 de CRC son 123 bytes. El 8 de antes era
+  // el payloadBytes fijo que ya no existe.
+  comprobar("sim · hay una fila por byte de la carga", d.querySelectorAll(".crc-row").length === 123, d.querySelectorAll(".crc-row").length);
   comprobar("sim · y un veredicto final", d.querySelector(".crc-verdict") !== null, "sin veredicto");
   comprobar("sim · que dice que no cuadra", d.querySelector(".crc-verdict").dataset.ok === "false", d.querySelector(".crc-verdict").dataset.ok);
 
@@ -259,8 +262,14 @@ async function probarCalculadora() {
   intentar("calc · tasa válida otra vez", () => fijar(campos[1], 50000));
   comprobar("calc · el aviso desaparece", d.getElementById("error-box").hidden, "el aviso se quedó");
 
+  // La calculadora ajusta el tamaño de trama igual que el simulador: 0 sube al
+  // mínimo representable (24 bits) y lo dice, en vez de dar un error.
   intentar("calc · trama de 0 bits", () => fijar(d.getElementById("frame-bits"), 0));
-  comprobar("calc · avisa de la trama inválida", !d.getElementById("error-box").hidden, "sin aviso");
+  comprobar(
+    "calc · la trama imposible se ajusta al mínimo y lo avisa",
+    d.getElementById("frame-bits").value === "24" && !d.getElementById("frame-bits-hint").hidden,
+    d.getElementById("frame-bits").value + " / aviso " + (d.getElementById("frame-bits-hint").hidden ? "oculto" : "visible")
+  );
   intentar("calc · trama válida", () => fijar(d.getElementById("frame-bits"), 1000));
 
   // --- quitar el único salto ---
