@@ -50,7 +50,13 @@
   }
 
   function cientifica(v) {
-    if (v === 0 || !Number.isFinite(v)) return { mantisa: 0, exponente: 0 };
+    // Solo cero devuelve cero. Un valor no finito (Infinity, -Infinity, NaN)
+    // preserva la información devolviendo { mantisa: v, exponente: 0 }, de modo que
+    // Number.isFinite(mantisa) sea falso. El consumidor (p. ej., formateador de
+    // pantalla) puede entonces decidir mostrar "—" en vez de dejar que Infinity se
+    // dibuje como un cero falso. Ver steps.js: ms(), bps(), pct() usan este patrón.
+    if (v === 0) return { mantisa: 0, exponente: 0 };
+    if (!Number.isFinite(v)) return { mantisa: v, exponente: 0 };
     const exponente = Math.floor(Math.log10(Math.abs(v)));
     return { mantisa: v / Math.pow(10, exponente), exponente };
   }

@@ -24,6 +24,8 @@ test("escalarBits usa la escalera decimal, no la de 1024", () => {
   assert.deepEqual(U.escalarBits(500), { valor: 500, unidad: "bits", factorDesdeBits: 1 });
   assert.deepEqual(U.escalarBits(8000), { valor: 8, unidad: "Kb", factorDesdeBits: 0.001 });
   assert.equal(U.escalarBits(1024).unidad, "Kb");
+  // Tolerancia defensiva: en algunos entornos JavaScript puede dar 1.0240000000000002.
+  // El brief lo anticipaba; usamos assert.ok en vez de assert.equal para máxima robustez.
   assert.ok(Math.abs(U.escalarBits(1024).valor - 1.024) < 1e-12);
   assert.equal(U.escalarBits(2500000).unidad, "Mb");
   assert.equal(U.escalarBits(7e9).unidad, "Gb");
@@ -44,4 +46,23 @@ test("cientifica se puede deshacer", () => {
     assert.ok(Math.abs(c.mantisa * Math.pow(10, c.exponente) - v) < 1e-9 * v, `${v} no se reconstruye`);
     assert.ok(Math.abs(c.mantisa) >= 1 && Math.abs(c.mantisa) < 10, `mantisa fuera de rango: ${c.mantisa}`);
   }
+});
+
+test("cientifica solo devuelve cero para cero; los no finitos se preservan", () => {
+  // Cero devuelve {0, 0}: es el caso especial correcto.
+  assert.deepEqual(U.cientifica(0), { mantisa: 0, exponente: 0 });
+
+  // Infinito, -Infinito y NaN preservan su valor en mantisa para que quien pinte
+  // pueda detectarlos con Number.isFinite(mantisa) y dibujar "—" en vez de un cero mentiroso.
+  const inf = U.cientifica(Infinity);
+  assert.equal(inf.exponente, 0);
+  assert.equal(inf.mantisa, Infinity);
+
+  const ninf = U.cientifica(-Infinity);
+  assert.equal(ninf.exponente, 0);
+  assert.equal(ninf.mantisa, -Infinity);
+
+  const nan = U.cientifica(NaN);
+  assert.equal(nan.exponente, 0);
+  assert.ok(Number.isNaN(nan.mantisa));
 });
