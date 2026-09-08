@@ -192,7 +192,16 @@ viniera en el formulario). Ahora **`frameBits` manda**: la interfaz deriva la ca
 Como el CRC son 16 bits fijos (`CRC_BITS`), no todo valor de `frameBits` es representable: hace
 falta que la carga quede en bytes enteros. `roundFrameBits(frameBits)` ajusta al múltiplo válido
 más cercano y la interfaz **avisa** del ajuste en vez de rechazar el valor o mentir sobre qué
-calculó.
+calculó. Lo hacen **las dos páginas**: `rebuild()` en `js/ui.js` y `recalcular()` en
+`js/calc.js`, con el mismo aviso. Si solo lo hiciera el simulador, la calculadora enseñaría los
+tiempos de una trama de 1005 bits que en pantalla mide 1008, que es justo la grieta que este
+cambio venía a cerrar. Consecuencia visible en la calculadora: el ejemplo de LAN, con L = 500,
+se ajusta a **504 bits** y lo dice (a = 0,0992 y U = 83,44 %, en vez de los 0,1 y 83,33 % de un
+L de 500 que ninguna trama con CRC-16 puede tener).
+
+El mínimo representable lo publica el modelo (`F.MIN_FRAME_BITS`) y las dos interfaces lo
+escriben en el `min` del campo al arrancar, para que el formulario no pueda anunciar un conjunto
+de valores distinto del que acepta `roundFrameBits`.
 
 Consecuencia visible: la tira de bits de la trama en vuelo ahora refleja de verdad el tamaño que
 se pidió (hasta miles de bits, no 80 fijos), lo que hace falta para que una ráfaga medida en
@@ -257,8 +266,21 @@ ciclo. Hay una prueba que lo fija.
 Distinta del ruido por probabilidad: no se tira, ocurre siempre igual. Se dispara a mano
 (*Ráfaga de ruido*, con su campo en milisegundos) y no necesita trama seleccionada —es del
 canal, no de una trama concreta. Mientras dura, cada paquete en vuelo pierde un tramo **contiguo**
-de bits según la tasa de su enlace (`N.burstBitsFromMs` para convertir milisegundos a bits,
-`F.flipRun` para voltear el tramo). No usa ningún generador: la conversión `bits = R · t` es
+de bits (`F.flipRun` voltea el tramo).
+
+Los bits que arruina se calculan **una sola vez**, al dispararla (`startBurst` en `js/sim.js`,
+con `N.burstBitsFromMs` y la tasa del primer tramo), y se gastan a medida que corre el reloj.
+Convertir a bits el `dt` de cada tramo parecía equivalente y no lo era: `burstBitsFromMs` trunca
+a bits enteros, así que trocear el reloj tiraba una fracción en cada tramo y el total se movía
+con el control de velocidad —48 bits en la calculadora, 45 con tramos de 1 ms y 40 con tramos de
+0,25 ms a 9600 bps—. Con el presupuesto fijado de entrada, el total es siempre el que publica la
+calculadora, se trocee como se trocee.
+
+La ventana es **una sola** aunque haya varios paquetes en el cable: son los mismos milisegundos
+de medio sucio, así que el contador suma una vez y cada paquete recibe la misma tirada de bits,
+en vez de repartirse el presupuesto o multiplicarlo. Un paquete que no ocupa bits en el cable
+—el ACK de duración despreciable, `ackBits = 0`— no lo alcanza: una ventana de tiempo no puede
+morder algo que no está en el medio. No usa ningún generador: la conversión `bits = R · t` es
 análisis dimensional, no una fórmula del libro (Tanenbaum mide las ráfagas en bits, no en tiempo).
 
 Lo que sí es del libro, y es lo que hace demostrable el límite del CRC: un código con `r` bits de
@@ -295,6 +317,10 @@ la estructura, `calc.js` solo pinta.
   (`⌈total / L⌉`) y el tiempo total (`N × ciclo`), sin contar reenvíos.
 - **Ráfaga** (`N.burstDamage`): a partir de una duración en milisegundos da los bits arruinados
   (`N.burstBitsFromMs`) y cuántas tramas abarca.
+
+El ciclo que enseña el bloque de transferencia lo devuelve `N.transferAnalysis` (`cycleMs`), no
+se reconstruye dividiendo el total entre las tramas: `steps.js` no calcula. Los dos bloques se
+ocultan mientras su campo esté vacío o en cero, para no enseñar una sección vacía.
 
 ## Mirar hacia atrás en el diagrama
 

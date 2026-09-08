@@ -54,7 +54,7 @@ node --check simulador_stop_and_wait_web/js/app.js
 python -m py_compile simulador_stop_and_wait_python/*.py
 ```
 
-Baseline 2026-09-07, Node v24.11.1 y Python 3.13.14: **111 pruebas verdes, 0 fallas**; el banco de
+Baseline 2026-09-08, Node v24.11.1 y Python 3.13.14: **115 pruebas verdes, 0 fallas**; el banco de
 interfaz con 54 comprobaciones sin problemas; el lint de documentación limpio; el resto, sin
 avisos.
 
@@ -95,8 +95,16 @@ python -m http.server 8000 --directory simulador_stop_and_wait_v2
 # abrir http://localhost:8000/banco-interfaz.html
 ```
 
-El resumen sale arriba del todo. Al 2026-09-07: **54 comprobaciones, 0 problemas**, y repetible:
-espera a que cada iframe termine de montarse en vez de dormir un rato fijo.
+El resumen sale arriba del todo. Al 2026-09-08: **54 comprobaciones, 0 problemas**, corrido con
+el Chromium sin cabeza de la receta de abajo, y repetible: espera a que cada iframe termine de
+montarse en vez de dormir un rato fijo.
+
+> Dos comprobaciones se corrigieron el 2026-09-08 porque afirmaban lo que ya no es cierto: la
+> del CRC paso a paso esperaba 8 filas (el `payloadBytes` fijo que desapareció al unificar el
+> tamaño de trama; con L = 1000 son 123 bytes), y la del tamaño de trama de la calculadora
+> esperaba un error donde ahora hay un ajuste avisado. La primera llevaba en rojo desde que se
+> unificó el tamaño de trama, sin que nadie lo viera: en esa sesión ningún agente tenía
+> navegador.
 
 **No sustituye a probarlo a mano.** Ve si el comportamiento es el esperado, no si algo se ve mal:
 el selector de canal cortado o una etiqueta encima de otra solo se ven mirando.
@@ -154,15 +162,23 @@ gotcha más habitual de este proyecto y no da error visible.
 14. **`Ráfaga de ruido`** ⚠️ **pendiente de comprobación manual** (ningún agente de esta sesión
     tiene navegador): al dispararla debería verse una banda horizontal en el diagrama durante los
     milisegundos indicados, el contador *Bits arruinados por ráfaga* subiendo, y una trama que
-    viajaba dentro de la ventana llegando dañada y descartándose por CRC.
+    viajaba dentro de la ventana llegando dañada y descartándose por CRC. El contador tiene que
+    marcar lo mismo que la calculadora para esa duración y esa tasa, **y no cambiar al mover el
+    control de velocidad**: eso es lo que se arregló el 2026-09-08. La banda tiene ya su entrada
+    en la leyenda.
 15. **Trama de 1000 bits, tira agrupada** ⚠️ **pendiente de comprobación manual**: con `frameBits`
     en 1000 la tira debería agruparse por bytes y cada casilla debería leerse como dos dígitos
     hexadecimales legibles, no como texto recortado o solapado.
 
 ## Checklist de humo del v2 (calculadora)
 
-1. Los tres presets cargan y dan: **satélite** U = 3,846 % y BDP 26 tramas · **LAN** a = 0,1 y
-   U = 83,33 % · **casa → satélite → casa** RTT = 482,15 ms, a = 79,52 y U = 0,207 % con 2 saltos.
+1. Los tres presets cargan y dan: **satélite** U = 3,846 % y BDP 26 tramas · **LAN** a = 0,0992
+   y U = 83,44 % · **casa → satélite → casa** RTT = 482,15 ms, a = 79,52 y U = 0,207 % con 2
+   saltos.
+   > El preset de LAN trae L = 500, que **no es representable** (la carga va en bytes enteros
+   > más 16 de CRC): la calculadora lo ajusta a 504 y lo avisa, igual que el simulador. Por eso
+   > ya no salen los 0,1 y 83,33 % de antes. Si en clase hace falta el a = 0,1 exacto, sirve
+   > L = 1000 bits con d = 2 km, que sí es representable.
 2. "Añadir salto" y "Quitar" funcionan; con un solo salto, "Quitar" avisa y no borra.
 3. Un valor inválido (R = 0, V = 0, P = 1,5) muestra el mensaje de error, no un `NaN`.
 4. Cambiar a half duplex con tiempo de vuelta > 0 sube el ciclo y baja U, **sin mover el RTT**.
@@ -178,7 +194,9 @@ gotcha más habitual de este proyecto y no da error visible.
 10. El bloque **Transferencia** da tramas = `⌈total / L⌉` y tiempo = tramas × ciclo, para un
     tamaño en bits, en KB y en MB.
 11. El bloque **Ráfaga** da los bits de `R · t` y las tramas que abarca; con duración 0 el bloque
-    se oculta.
+    se oculta. El de **Transferencia** se oculta igual con tamaño 0.
+12. Un tamaño de trama no representable (1005) se ajusta a 1008 y aparece el aviso bajo los
+    campos; con uno válido el aviso desaparece.
 
 ## Checklist de humo del v1 (simulador animado)
 

@@ -8,6 +8,65 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-08 — Revisión final de la rama de la ráfaga: los bits que se cuentan son los que se enseñan
+
+**Qué:** los siete hallazgos de la revisión final de `feat/rafaga-de-ruido`. La entrada del
+2026-09-07 no se reescribe: describe lo que era cierto ese día.
+
+- **La ráfaga arruinaba un número que dependía de la velocidad** (`0d983f9`): `burstBitsFromMs`
+  trunca a bits enteros y `applyBurst` la llamaba una vez por tramo de reloj, así que cada tramo
+  tiraba una fracción. A 9600 bps —la tasa de módem del capítulo 3— una ráfaga de 5 ms son 48
+  bits en la calculadora, y el simulador arruinaba 45 con tramos de 1 ms y 40 con tramos de
+  0,25 ms. Ahora el presupuesto se calcula **una sola vez** en `startBurst`, con la tasa del
+  primer tramo (la misma que usa la calculadora), y se gasta a medida que corre el reloj: el
+  total es el mismo se trocee como se trocee. De los dos caminos posibles se eligió este y no el
+  acumulador de fracciones porque el número que hay que defender en clase aparece escrito una
+  vez, en el sitio donde se dispara la ráfaga, en vez de emerger de una suma.
+- **El contador sumaba por paquete y mordía ACKs de duración nula** (`0d983f9`): dos paquetes en
+  vuelo marcaban 1000 bits donde la cuenta dice 500, y un ACK con `ackBits = 0` —el valor por
+  defecto— perdía 99 bits y se descartaba por CRC. La ventana es **una**: son los mismos
+  milisegundos de medio sucio, así que el contador suma una vez y cada paquete recibe la misma
+  tirada; un paquete que no ocupa bits en el cable no lo alcanza.
+- **La prueba que debía proteger eso pasaba trivialmente** (`0d983f9`): comparaba dos corridas
+  con el mismo paso. Tres pruebas nuevas en `tests/sim.test.js` corren la misma ráfaga con
+  tramos de 1 ms, de 0,1 ms y de una sola llamada, exigen el número de `N.burstBitsFromMs`, y
+  atan el caso de dos paquetes y el del ACK sin duración. Contra el código anterior fallan con
+  45, 90 y 100 bits donde ahora hay 48, 48 y 0.
+- **Un comentario decía un número falso** (`34f005d`): la cabecera de la prueba de la ráfaga de
+  17 bits agrupaba `G(x)` como `1 0000 0001 0010 0001`, que es `0x10121`. La agrupación buena
+  estaba tres líneas más abajo. El array de bits siempre fue el correcto.
+- **La calculadora no redondeaba el tamaño de trama** (`fb0b868`): un L de 1005 se calculaba tal
+  cual mientras el simulador lo reescribía a 1008. Ahora `recalcular()` hace lo mismo que
+  `rebuild()`: ajusta con `F.roundFrameBits` y lo avisa. `calculadora.html` carga `frame.js` para
+  eso. **Efecto colateral asumido:** el preset de LAN trae L = 500, que no es representable, así
+  que ahora se ajusta a 504 y da a = 0,0992 y U = 83,44 % en vez de 0,1 y 83,33 %. Está anotado
+  en `05-runbook.md` con la alternativa (L = 1000 y d = 2 km dan a = 0,1 exacto y sí es
+  representable) por si en clase hace falta el número redondo.
+- **Leyenda, mínimo del formulario y bloque vacío** (`6bbfc86`, `fb0b868`): la banda de la ráfaga
+  ya tiene su entrada en la leyenda, con la variable de color con la que se pinta; el campo del
+  tamaño de trama anuncia `min="24"` en vez de `min="8"` y lo toma de `F.MIN_FRAME_BITS`, que era
+  la única exportación de la rama sin lector; y el bloque de transferencia se oculta hasta que
+  hay tamaño, como el de la ráfaga.
+- **`buildTransfer` calculaba** (`f34ba1f`): `cycleMs = totalMs / frames` tres líneas después de
+  declarar que ahí no se calcula nada. `N.transferAnalysis` lo devuelve y `steps.js` lo lee.
+- **El banco de interfaz mentía** (`9f1a4c7`): la comprobación del CRC paso a paso esperaba 8
+  filas (el `payloadBytes` fijo que desapareció al unificar el tamaño de trama; con L = 1000 son
+  123 bytes) y llevaba en rojo desde entonces sin que nadie lo viera. Corregida, más la del
+  tamaño de trama de la calculadora: **54 comprobaciones, 0 problemas**, sin errores de consola.
+
+**Por qué:** la ráfaga es determinista como algoritmo, pero lo que enseñaba la pantalla no
+coincidía con lo que enseña la cuenta y se movía con el control de velocidad. Eso anula el
+propósito de la funcionalidad delante de un aula: la primera pregunta la tumba.
+
+**Cómo revertir:** `git revert` de los commits citados, en orden inverso. Se pueden revertir por
+separado; el único acoplamiento es que revertir `fb0b868` (redondeo en la calculadora) deja sin
+lector a `F.MIN_FRAME_BITS` en esa página y sin sentido el `<script src="js/frame.js">` de
+`calculadora.html`, y que revertir `0d983f9` **deja en rojo** las tres pruebas nuevas de
+`tests/sim.test.js`, que hay que quitar en el mismo movimiento. Revertir la corrección del banco
+(`9f1a4c7`) devuelve una comprobación a rojo permanente.
+
+---
+
 ## 2026-09-07 — Cierre de la ráfaga de ruido: trama única, tira agrupada, calculadora y advertencia de reversión
 
 **Qué:** las siete tareas del plan `2026-09-07-rafaga-de-ruido-y-transferencia` que rodean a la
