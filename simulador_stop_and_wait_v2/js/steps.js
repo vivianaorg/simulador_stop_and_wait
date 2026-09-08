@@ -7,10 +7,10 @@
 // las pruebas pueden comprobar cada número por separado.
 
 (function (root, factory) {
-  const api = factory();
+  const api = factory(typeof module === "object" && module.exports ? require("./network.js") : root.NetworkModel);
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.StepsModel = api;
-})(typeof self !== "undefined" ? self : this, function () {
+})(typeof self !== "undefined" ? self : this, function (N) {
   "use strict";
 
   // ---------- Formato ----------
@@ -321,6 +321,42 @@
     return { entrada, titular, pasos, graficas: graficas(r) };
   }
 
+  /**
+   * Desarrollo de la ráfaga de ruido: cuántos bits arruina y sobre cuántas
+   * tramas se reparten. No calcula nada aquí: llama a network.js.
+   * @param {{rateBps: number, burstMs: number, frameBits: number}} spec
+   * @returns {Array} pasos, con el mismo `paso(spec)` que usa `build`
+   */
+  function buildBurst(spec) {
+    const bits = N.burstBitsFromMs({ rateBps: spec.rateBps, burstMs: spec.burstMs });
+    const dano = N.burstDamage({ bits, frameBits: spec.frameBits });
+
+    return [
+      paso({
+        id: "burst-bits",
+        titulo: "Bits que arruina la ráfaga",
+        formula: "bits = R · t",
+        sustitucion: `${crudo(spec.rateBps)} · ${redondear(spec.burstMs / 1000)} s`,
+        resultado: `${entero(bits)} bits`,
+        detalle: [
+          `${bps(spec.rateBps)} sostenidos durante ${ms(spec.burstMs)} arruinan ${entero(bits)} bits seguidos.`,
+          "Esta conversión de milisegundos a bits es análisis dimensional (bit/s por s da bits), no una fórmula del libro: Tanenbaum mide las ráfagas directamente en bits.",
+        ],
+      }),
+      paso({
+        id: "burst-frames",
+        titulo: "Tramas que abarca la ráfaga",
+        formula: "tramas = ⌈bits / L⌉",
+        sustitucion: `${crudo(bits)} / ${crudo(spec.frameBits)}`,
+        resultado: `${entero(dano.frames)} ${dano.frames === 1 ? "trama" : "tramas"}`,
+        detalle: [
+          "Se redondea hacia arriba: aunque la ráfaga no llene entera la última trama que toca, esa trama queda arruinada igual.",
+          "El libro sí trae este otro resultado: un CRC con r bits de verificación detecta cualquier ráfaga de longitud ≤ r.",
+        ],
+      }),
+    ];
+  }
+
   // ---------- Datos para las gráficas ----------
 
   function graficas(r) {
@@ -347,5 +383,5 @@
     };
   }
 
-  return { build, formato: { ms, bps, pct, entero, crudo, redondear } };
+  return { build, buildBurst, formato: { ms, bps, pct, entero, crudo, redondear } };
 });

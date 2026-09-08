@@ -143,6 +143,21 @@ test("La curva de la gráfica pasa por el punto que se está calculando", () => 
   }
 });
 
+test("El desarrollo de la ráfaga trae sus números, no solo el rótulo", () => {
+  const pasos = Steps.buildBurst({ rateBps: 100000, burstMs: 10, frameBits: 500 });
+
+  assert.equal(porId({ pasos }, "burst-bits").resultado, "1000 bits");
+  assert.equal(porId({ pasos }, "burst-frames").resultado, "2 tramas");
+});
+
+test("Una ráfaga que no llena una trama entera sigue arruinando esa trama", () => {
+  const pasos = Steps.buildBurst({ rateBps: 100000, burstMs: 1, frameBits: 1000 });
+
+  // 100 bits arruinados, muy por debajo de los 1000 de la trama: sigue siendo 1.
+  assert.equal(porId({ pasos }, "burst-bits").resultado, "100 bits");
+  assert.equal(porId({ pasos }, "burst-frames").resultado, "1 trama");
+});
+
 test("Los segmentos del ciclo suman el ciclo completo", () => {
   const s = Steps.build(satelite());
   const { ciclo } = s.graficas;

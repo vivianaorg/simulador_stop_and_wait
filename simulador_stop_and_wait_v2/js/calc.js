@@ -45,6 +45,7 @@
   const dom = {};
   let filas = [];
   let solucion = null;
+  let ultimoAnalisis = null;
   let pasosVisibles = 0;
   let detalleAbierto = null; // solo uno a la vez, como en Wolfram|Alpha
 
@@ -67,6 +68,7 @@
       ackBits: id("ack-bits"),
       duplexMode: id("duplex-mode"),
       processingMs: id("processing-ms"),
+      burstMs: id("burst-ms"),
       linksContainer: id("links-container"),
       btnAddLink: id("btn-add-link"),
       errorBox: id("error-box"),
@@ -79,6 +81,8 @@
       cycleCaption: id("cycle-caption"),
 
       stepsList: id("steps-list"),
+      burstPod: id("burst-pod"),
+      burstStepsList: id("burst-steps-list"),
       btnNextStep: id("btn-next-step"),
       btnAllSteps: id("btn-all-steps"),
       btnHideSteps: id("btn-hide-steps"),
@@ -93,6 +97,7 @@
   function bindEvents() {
     [dom.frameBits, dom.ackBits, dom.processingMs].forEach((el) => el.addEventListener("input", recalcular));
     dom.duplexMode.addEventListener("change", recalcular);
+    dom.burstMs.addEventListener("change", recalcular);
     dom.btnAddLink.addEventListener("click", anadirTramo);
 
     document.querySelectorAll("[data-preset]").forEach((b) =>
@@ -110,7 +115,7 @@
     dom.btnHideSteps.addEventListener("click", () => {
       pasosVisibles = 0;
       detalleAbierto = null;
-      pintarPasos();
+      pintarDesarrollo();
     });
 
     dom.themeSwitch.addEventListener("change", () => {
@@ -246,10 +251,11 @@
 
     dom.errorBox.hidden = true;
     solucion = Steps.build(analisis);
+    ultimoAnalisis = analisis;
     pasosVisibles = Math.min(pasosVisibles, solucion.pasos.length);
     pintarInterpretacion();
     pintarTitular();
-    pintarPasos();
+    pintarDesarrollo();
     dibujarCiclo();
     dibujarCurva();
     pintarTablaCurva();
@@ -286,12 +292,19 @@
     });
   }
 
+  // `detalleAbierto` es global a los dos bloques (el desarrollo principal y la
+  // ráfaga), así que abrir un detalle en uno tiene que poder repintar el otro.
+  function pintarDesarrollo() {
+    pintarPasos();
+    pintarRafaga();
+  }
+
   function pintarPasos() {
     dom.stepsList.innerHTML = "";
     const total = solucion.pasos.length;
 
     solucion.pasos.slice(0, pasosVisibles).forEach((paso, i) => {
-      dom.stepsList.appendChild(bloquePaso(paso, i));
+      dom.stepsList.appendChild(bloquePaso(paso, i, pintarDesarrollo));
     });
 
     dom.btnNextStep.hidden = pasosVisibles >= total;
@@ -305,7 +318,28 @@
         : `Paso ${pasosVisibles} de ${total}.`;
   }
 
-  function bloquePaso(paso, indice) {
+  // La ráfaga usa la tasa del primer tramo, igual que hace el paso "caudal"
+  // del desarrollo principal para hablar de "lo que da el primer tramo".
+  function pintarRafaga() {
+    const burstMs = Number(dom.burstMs.value);
+    if (!ultimoAnalisis || !(burstMs > 0)) {
+      dom.burstPod.hidden = true;
+      dom.burstStepsList.innerHTML = "";
+      return;
+    }
+
+    const pasos = Steps.buildBurst({
+      rateBps: ultimoAnalisis.perLink[0].rateBps,
+      burstMs,
+      frameBits: ultimoAnalisis.frameBits,
+    });
+
+    dom.burstPod.hidden = false;
+    dom.burstStepsList.innerHTML = "";
+    pasos.forEach((paso, i) => dom.burstStepsList.appendChild(bloquePaso(paso, i, pintarDesarrollo)));
+  }
+
+  function bloquePaso(paso, indice, repintar) {
     const li = document.createElement("li");
     li.className = "step";
 
@@ -339,7 +373,7 @@
       boton.addEventListener("click", () => {
         // Solo un detalle abierto a la vez: abrir otro cierra el anterior.
         detalleAbierto = detalleAbierto === paso.id ? null : paso.id;
-        pintarPasos();
+        repintar();
       });
       li.appendChild(boton);
 
