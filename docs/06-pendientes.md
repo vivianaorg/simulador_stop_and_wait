@@ -35,7 +35,7 @@ Cerró `V2-02`, `V2-04` y `V2-05`. El detalle, en [07-historial.md](07-historial
 
 | ID | P | Tarea | Cómo se cierra |
 |---|---|---|---|
-| `V2-01` | P0 | Checklist de humo del v2 completo, con ratón y teclado | Cada punto anotado con lo que se vio. **El banco de interfaz ya cubre el comportamiento** (42 comprobaciones, ver [05-runbook.md](05-runbook.md)); falta lo que solo se ve mirando: encuadres, solapes, legibilidad |
+| `V2-01` | P0 | Checklist de humo del v2 completo, con ratón y teclado | Cada punto anotado con lo que se vio. **El banco de interfaz ya cubre el comportamiento y la estructura** (el conteo y cómo correrlo, en [05-runbook.md](05-runbook.md)); falta lo que solo se ve mirando: encuadres, solapes, legibilidad proyectada |
 | `V-03` | P3 | Probarlo en un segundo navegador | Diferencias anotadas |
 
 > **Hallazgos del 2026-09-07, ya corregidos:** el panel no llenaba la ventana (altura de la barra

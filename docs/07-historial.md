@@ -8,6 +8,22 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-08 (cierre) — El conteo del banco deja de estar tecleado en `06-pendientes.md`
+
+**Qué.** La ficha `V2-01` afirmaba «42 comprobaciones» del banco de interfaz. El número llevaba
+desactualizado desde antes de esta tanda de trabajo —el banco va por el que diga
+[05-runbook.md](05-runbook.md)— y nadie se enteró. Se quita el número y queda solo el enlace.
+
+**Por qué.** [04-convenciones.md](04-convenciones.md) §A.2 prohíbe duplicar un hecho entre
+archivos: se enlaza. Y el lint no vigila este conteo, así que un número tecleado ahí solo podía
+volver a pudrirse. Quitarlo lo arregla una vez en lugar de cada vez. De paso, la ficha decía que
+el banco cubre «el comportamiento»; desde que se le añadieron las comprobaciones de la tira de
+bits cubre también estructura, y lo que sigue faltando es lo que solo se ve mirando una pantalla.
+
+**Cómo revertir.** Restaurar el texto anterior de la fila `V2-01`. No hay código detrás.
+
+---
+
 ## 2026-09-08 (noche, más tarde) — La tira del inspector vuelve a mostrar bits, no bytes en hex
 
 **Qué:** `renderInspector` en `js/ui.js` deja de agrupar la tira por bytes en hexadecimal por
