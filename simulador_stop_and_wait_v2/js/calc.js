@@ -46,6 +46,7 @@
   let filas = [];
   let solucion = null;
   let ultimoAnalisis = null;
+  let ultimoPath = null;
   let pasosVisibles = 0;
   let detalleAbierto = null; // solo uno a la vez, como en Wolfram|Alpha
 
@@ -69,6 +70,9 @@
       duplexMode: id("duplex-mode"),
       processingMs: id("processing-ms"),
       burstMs: id("burst-ms"),
+      transferSize: id("transfer-size"),
+      transferUnit: id("transfer-unit"),
+      transferStepsList: id("transfer-steps-list"),
       linksContainer: id("links-container"),
       btnAddLink: id("btn-add-link"),
       errorBox: id("error-box"),
@@ -98,6 +102,8 @@
     [dom.frameBits, dom.ackBits, dom.processingMs].forEach((el) => el.addEventListener("input", recalcular));
     dom.duplexMode.addEventListener("change", recalcular);
     dom.burstMs.addEventListener("change", recalcular);
+    dom.transferSize.addEventListener("input", pintarDesarrollo);
+    dom.transferUnit.addEventListener("change", pintarDesarrollo);
     dom.btnAddLink.addEventListener("click", anadirTramo);
 
     document.querySelectorAll("[data-preset]").forEach((b) =>
@@ -235,15 +241,15 @@
           turnaroundMs: v.turnaroundMs,
         })
       );
-      analisis = N.analyze(
-        N.createPath({
-          frameBits: Number(dom.frameBits.value),
-          ackBits: Number(dom.ackBits.value),
-          duplexMode: dom.duplexMode.value,
-          processingMsPerHop: Number(dom.processingMs.value),
-          links: enlaces,
-        })
-      );
+      const camino = N.createPath({
+        frameBits: Number(dom.frameBits.value),
+        ackBits: Number(dom.ackBits.value),
+        duplexMode: dom.duplexMode.value,
+        processingMsPerHop: Number(dom.processingMs.value),
+        links: enlaces,
+      });
+      analisis = N.analyze(camino);
+      ultimoPath = camino;
     } catch (err) {
       mostrarError(err.message);
       return;
@@ -297,6 +303,7 @@
   function pintarDesarrollo() {
     pintarPasos();
     pintarRafaga();
+    pintarTransferencia();
   }
 
   function pintarPasos() {
@@ -337,6 +344,24 @@
     dom.burstPod.hidden = false;
     dom.burstStepsList.innerHTML = "";
     pasos.forEach((paso, i) => dom.burstStepsList.appendChild(bloquePaso(paso, i, pintarDesarrollo)));
+  }
+
+  // Transferencia de un fichero completo: la unidad se convierte a bits en
+  // network.js (bitsFromSize), nunca aquí.
+  function pintarTransferencia() {
+    const tamano = Number(dom.transferSize.value);
+    dom.transferStepsList.innerHTML = "";
+    if (!ultimoPath || !(tamano > 0)) return;
+
+    let totalBits;
+    try {
+      totalBits = N.bitsFromSize(tamano, dom.transferUnit.value);
+    } catch (err) {
+      return; // unidad inválida: no debería pasar con el <select>, pero no se pinta nada roto
+    }
+
+    const pasos = Steps.buildTransfer({ path: ultimoPath, totalBits });
+    pasos.forEach((paso, i) => dom.transferStepsList.appendChild(bloquePaso(paso, i, pintarDesarrollo)));
   }
 
   function bloquePaso(paso, indice, repintar) {

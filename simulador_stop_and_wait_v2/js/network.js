@@ -265,6 +265,44 @@
     return { bits: spec.bits, frames: Math.ceil(spec.bits / spec.frameBits) };
   }
 
+  /**
+   * Transferir un fichero entero con Stop & Wait: se parte en tramas de L bits
+   * y cada una cuesta un ciclo completo, porque el emisor no puede adelantar
+   * trabajo. La última cuenta entera aunque vaya a medias.
+   *
+   * No cuenta reenvíos: este bloque supone canal limpio. Meter 1/(1-p) es otra
+   * fórmula y está declarada fuera del alcance en el spec.
+   */
+  function transferAnalysis(path, totalBits) {
+    if (!isPositive(totalBits)) throw new RangeError("el tamaño a transferir debe ser > 0 bits");
+
+    const r = analyze(path);
+    const frames = Math.ceil(totalBits / path.frameBits);
+    const totalMs = frames * r.cycleMs;
+    return { frames, totalMs, goodputBps: totalBits / (totalMs / MS_PER_S) };
+  }
+
+  const BITS_PER_BYTE = 8;
+  // Decimal, no binario: igual que el resto de unidades de este simulador
+  // (bps() en steps.js corta en múltiplos de 1000, no 1024). 1 KB = 1000
+  // bytes, no los 1024 de un sistema de archivos.
+  const BYTES_PER_KB = 1000;
+  const BYTES_PER_MB = BYTES_PER_KB * BYTES_PER_KB;
+
+  /**
+   * Convierte un tamaño con unidad a bits. No es una fórmula del libro: es una
+   * conversión de unidades, declarada aquí para que la UI no calcule nada.
+   * @param {number} value  cantidad en la unidad dada
+   * @param {"bits"|"kb"|"mb"} unit
+   */
+  function bitsFromSize(value, unit) {
+    if (!isPositive(value)) throw new RangeError("el tamaño debe ser > 0");
+    if (unit === "bits") return value;
+    if (unit === "kb") return value * BYTES_PER_KB * BITS_PER_BYTE;
+    if (unit === "mb") return value * BYTES_PER_MB * BITS_PER_BYTE;
+    throw new RangeError(`unidad de tamaño desconocida: ${unit}`);
+  }
+
   // Atajo para el caso de un solo enlace, que es el del libro.
   function singleLinkAnalysis(opts) {
     return analyze(
@@ -299,5 +337,7 @@
     singleLinkAnalysis,
     burstBitsFromMs,
     burstDamage,
+    transferAnalysis,
+    bitsFromSize,
   };
 });

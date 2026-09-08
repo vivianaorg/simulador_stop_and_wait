@@ -259,3 +259,52 @@ test("Ráfaga con parámetros imposibles se rechaza", () => {
   assert.throws(() => N.burstDamage({ bits: 10, frameBits: 0 }), RangeError);
   assert.throws(() => N.burstDamage({ bits: -1, frameBits: 1000 }), RangeError);
 });
+
+test("Transferencia: un fichero se parte en tramas y el tiempo es N ciclos", () => {
+  // Mismo enlace satelital de la primera prueba: Tt = 20 ms, ciclo = 520 ms.
+  const path = N.createPath({
+    frameBits: 1000,
+    ackBits: 0,
+    links: [
+      N.createLink({
+        name: "Enlace satelital",
+        rateBps: 50000,
+        distanceKm: 50000,
+        velocityKmS: 200000,
+      }),
+    ],
+  });
+
+  const r = N.transferAnalysis(path, 10000); // 10 000 bits
+
+  assert.equal(r.frames, 10, "10 000 / 1000");
+  closeTo(r.totalMs, 5200, 1e-9, "10 ciclos de 520 ms");
+  closeTo(r.goodputBps, 10000 / 5.2, 1e-6, "caudal conseguido");
+});
+
+test("Transferencia: la última trama cuenta entera aunque vaya a medias", () => {
+  const path = N.createPath({
+    frameBits: 1000,
+    ackBits: 0,
+    links: [
+      N.createLink({ name: "Enlace", rateBps: 50000, distanceKm: 50000, velocityKmS: 200000 }),
+    ],
+  });
+
+  assert.equal(N.transferAnalysis(path, 10001).frames, 11);
+});
+
+test("Conversión de tamaño con unidad a bits: KB y MB son decimales, no 1024", () => {
+  assert.equal(N.bitsFromSize(1, "bits"), 1);
+  assert.equal(N.bitsFromSize(1, "kb"), 8000, "1 KB = 1000 bytes = 8000 bits");
+  assert.equal(N.bitsFromSize(2, "mb"), 16000000, "2 MB = 2 000 000 bytes = 16 000 000 bits");
+});
+
+test("Tamaño de transferencia con parámetros imposibles se rechaza", () => {
+  assert.throws(() => N.transferAnalysis(N.createPath({
+    frameBits: 1000,
+    links: [N.createLink({ rateBps: 1e6, distanceKm: 1, velocityKmS: 200000 })],
+  }), 0), RangeError);
+  assert.throws(() => N.bitsFromSize(0, "kb"), RangeError);
+  assert.throws(() => N.bitsFromSize(1, "gb"), RangeError);
+});

@@ -158,6 +158,19 @@ test("Una ráfaga que no llena una trama entera sigue arruinando esa trama", () 
   assert.equal(porId({ pasos }, "burst-frames").resultado, "1 trama");
 });
 
+test("El desarrollo de la transferencia trae sus números, no solo el rótulo", () => {
+  const path = N.createPath({
+    frameBits: 1000,
+    ackBits: 0,
+    links: [N.createLink({ name: "Enlace satelital", rateBps: 50000, distanceKm: 50000, velocityKmS: 200000 })],
+  });
+  const pasos = Steps.buildTransfer({ path, totalBits: 10000 });
+
+  assert.equal(porId({ pasos }, "transfer-frames").resultado, "10 tramas");
+  assert.equal(porId({ pasos }, "transfer-time").resultado, "5,2 s");
+  assert.match(porId({ pasos }, "transfer-time").detalle.join(" "), /no cuenta reenvíos/);
+});
+
 test("Los segmentos del ciclo suman el ciclo completo", () => {
   const s = Steps.build(satelite());
   const { ciclo } = s.graficas;

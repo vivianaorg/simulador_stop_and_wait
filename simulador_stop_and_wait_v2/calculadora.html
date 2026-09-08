@@ -99,6 +99,23 @@
     <ol class="steps-list" id="burst-steps-list"></ol>
   </section>
 
+  <!-- ---------------- Transferencia ---------------- -->
+  <section class="pod" id="transfer-pod">
+    <div class="pod-head"><h2>Transferencia de un fichero completo</h2></div>
+    <div class="field-grid">
+      <label for="transfer-size">Tamaño total</label>
+      <input type="number" id="transfer-size" class="num" min="0" step="1" value="0">
+
+      <label for="transfer-unit">Unidad</label>
+      <select id="transfer-unit">
+        <option value="bits">bits</option>
+        <option value="kb" selected>KB (1000 bytes)</option>
+        <option value="mb">MB (1000 KB)</option>
+      </select>
+    </div>
+    <ol class="steps-list" id="transfer-steps-list"></ol>
+  </section>
+
   <!-- ---------------- Curva ---------------- -->
   <section class="pod">
     <div class="pod-head"><h2>Dónde cae este enlace</h2></div>

@@ -357,6 +357,51 @@
     ];
   }
 
+  /**
+   * Desarrollo de la transferencia de un fichero completo: cuántas tramas
+   * hacen falta y cuánto tarda. No calcula nada aquí: llama a network.js.
+   * @param {{path: object, totalBits: number}} spec
+   * @returns {Array} pasos, con el mismo `paso(spec)` que usa `build`
+   */
+  function buildTransfer(spec) {
+    const r = N.transferAnalysis(spec.path, spec.totalBits);
+    const cycleMs = r.totalMs / r.frames;
+
+    return [
+      paso({
+        id: "transfer-frames",
+        titulo: "Tramas que hacen falta",
+        formula: "tramas = ⌈bits / L⌉",
+        sustitucion: `${crudo(spec.totalBits)} / ${crudo(spec.path.frameBits)}`,
+        resultado: `${entero(r.frames)} ${r.frames === 1 ? "trama" : "tramas"}`,
+        detalle: [
+          "Se redondea hacia arriba: la última trama cuenta entera aunque el fichero no la llene del todo.",
+        ],
+      }),
+      paso({
+        id: "transfer-time",
+        titulo: "Tiempo total de la transferencia",
+        formula: "tiempo = tramas · ciclo",
+        sustitucion: `${entero(r.frames)} · ${ms(cycleMs)}`,
+        resultado: ms(r.totalMs),
+        detalle: [
+          "Con Stop & Wait el emisor no puede adelantar trabajo: cada trama paga el ciclo completo, una detrás de otra.",
+          "Esto supone canal limpio: no cuenta reenvíos. Con ruido el tiempo real es mayor, porque cada retransmisión repite el ciclo entero.",
+        ],
+      }),
+      paso({
+        id: "transfer-goodput",
+        titulo: "Caudal conseguido en la transferencia",
+        formula: "goodput = bits / tiempo",
+        sustitucion: `${crudo(spec.totalBits)} / ${redondear(r.totalMs / 1000)} s`,
+        resultado: bps(r.goodputBps),
+        detalle: [
+          "Es el fichero completo entre el tiempo total: al no haber reenvíos, coincide con el caudal útil de un solo ciclo.",
+        ],
+      }),
+    ];
+  }
+
   // ---------- Datos para las gráficas ----------
 
   function graficas(r) {
@@ -383,5 +428,5 @@
     };
   }
 
-  return { build, buildBurst, formato: { ms, bps, pct, entero, crudo, redondear } };
+  return { build, buildBurst, buildTransfer, formato: { ms, bps, pct, entero, crudo, redondear } };
 });
