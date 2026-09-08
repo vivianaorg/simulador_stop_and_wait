@@ -8,6 +8,69 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-07 — Cierre de la ráfaga de ruido: trama única, tira agrupada, calculadora y advertencia de reversión
+
+**Qué:** las siete tareas del plan `2026-09-07-rafaga-de-ruido-y-transferencia` que rodean a la
+ventana de reloj de la entrada de abajo («La ráfaga de ruido entra en el reloj del simulador»),
+que **no se reescribe** (`04-convenciones.md` §A.3 regla 4). Esta entrada la complementa y le
+añade lo único que le faltaba: la advertencia de reversión.
+
+- **El tramo contiguo de bits** (`15ca30b`): `F.flipRun(frame, startBit, count)` en `frame.js`,
+  que voltea un tramo y dice cuántos bits llegó a tocar si se sale del final de la trama. Sin
+  generador: nada que sortear. Contra el libro (Tanenbaum, códigos polinomiales): ninguna ráfaga
+  de longitud ≤ 16 sobrevive al CRC-16, y la de 17 bits igual a `G(x) = 0x11021` sí se cuela —dos
+  pruebas nuevas en `tests/frame.test.js`.
+- **La conversión declarada** (`c1e35e4`): `N.burstBitsFromMs` (`bits = R · t`, análisis
+  dimensional, no una cita) y `N.burstDamage` (reparte esos bits sobre tramas de L bits) en
+  `network.js`.
+- **Un solo tamaño de trama** (`7e5bf9b`, `d68d5cd`): hasta entonces `frameBits` (lo que
+  alimentaba `Tt`/`Tp`/`a`) y la trama real de `createFrame` (`payloadBytes` fijo a 8, 80 bits
+  siempre) eran dos hechos distintos con el mismo nombre. Ahora `frameBits` manda: la interfaz
+  deriva la carga con `F.payloadBytesFor(frameBits)` en vez de pasar `payloadBytes` a mano, tanto
+  en `js/ui.js` como en `js/sim.js`. Un valor no representable se ajusta con
+  `F.roundFrameBits(frameBits)` y la interfaz **avisa** del ajuste.
+- **La tira se agrupa por bytes** (`243de6b`, `563b540`): por encima de 128 bits
+  (`BITS_MAX_INDIVIDUALES` en `js/ui.js`) cada casilla pasa a ser un byte en hexadecimal, y el
+  rótulo dice la verdad en los dos modos —incluido cuántos bytes son el CRC en modo agrupado.
+- **Controles, banda y contador** (`74b55b0`, `b1353f1`): el botón *Ráfaga de ruido* y su campo en
+  milisegundos en `index.html`; la banda horizontal en el diagrama y el contador *Bits arruinados
+  por ráfaga* en `js/ui.js`. El segundo commit corrigió que la ventana viajara como suceso
+  `"BURST"` del propio modelo —igual que `TURN` y `TIMEOUT`— en vez de que la interfaz llevara su
+  propia cuenta, y que el control ya no dependiera de tener una trama en vuelo seleccionada: la
+  ráfaga es del canal, no de una trama.
+- **Bloque de ráfaga en la calculadora** (`328aae3`): en `calculadora.html`, con el mismo patrón
+  de desarrollo plegable que los demás bloques (`js/steps.js` produce, `js/calc.js` pinta).
+- **Bloque de transferencia** (`4a8aad3`, `5fe835c`): `N.transferAnalysis` (tramas =
+  `⌈total / L⌉`, tiempo = tramas × ciclo, sin reenvíos) y `N.bitsFromSize` (bits, KB y MB
+  decimales) en `network.js`, con su prueba de tamaños fraccionarios.
+
+**Por qué:** el ruido por probabilidad no sirve para explicar nada delante de un aula —puede
+pasar o no pasar—; hacía falta un daño que ocurra siempre, medible en milisegundos, y el ejercicio
+de "cuántos bits arruina una ráfaga de t ms sobre un canal de R bps, y cuántas tramas" que hoy no
+se podía contestar ni en el simulador ni en la calculadora. El detalle de motivos y alternativas
+descartadas está en el [spec](superpowers/specs/2026-09-07-rafaga-de-ruido-y-transferencia-design.md).
+
+**Cómo revertir — la advertencia que le faltaba a la entrada de abajo.** `git revert` normal
+sirve para las siete tareas de esta entrada: son independientes entre sí y ninguna toca el reloj.
+**La excepción es `ba18b6a`** (la entrada siguiente, «La ráfaga de ruido entra en el reloj del
+simulador»): ese commit mete el cierre de la ventana de la ráfaga dentro de
+`proximoSucesoMs` (`js/sim.js`), que es el cálculo que decide **cuánto avanza el reloj en cada
+paso de la simulación entera**, no solo durante una ráfaga. Revertir ese commit entero con
+`git revert` es seguro. Lo que **no** es seguro es tocar `proximoSucesoMs` a mano para quitar
+solo la parte de la ráfaga sin entender el resto de la función: un error ahí no rompe el ruido,
+dado que el ruido es solo una de las ramas que compiten por el mínimo — deja el simulador **sin
+avanzar en absoluto**, porque ese mínimo es el que gobierna cada paso de `advance()`, ráfaga o no.
+
+**Verificación:** los cinco archivos de `tests/` → fuente única del conteo en
+[05-runbook.md](05-runbook.md). `node tools/lint-docs.js` limpio. `node --check` de los seis
+módulos del v2 limpio. **Dos comprobaciones visuales quedan pendientes** (ningún agente de esta
+sesión tiene navegador): que la ráfaga se ve y se entiende en pantalla (banda, contador, trama
+descartada por CRC) y que dos dígitos hexadecimales se leen bien en la tira agrupada con una
+trama de 1000 bits. Quedan en el checklist de humo de [05-runbook.md](05-runbook.md) marcadas
+como pendientes, para que alguien con navegador las tache.
+
+---
+
 ## 2026-09-07 — La ráfaga de ruido entra en el reloj del simulador
 
 **Qué:** `sim.js` gana `startBurst(sim, durationMs)`: abre una ventana `sim.burst = { endsAtMs,

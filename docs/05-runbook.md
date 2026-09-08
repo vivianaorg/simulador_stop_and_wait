@@ -151,6 +151,13 @@ gotcha más habitual de este proyecto y no da error visible.
 12. *Dañar un bit al azar* deja el CRC en «no cuadra», igual que pulsar un bit a mano.
 13. *Ver el CRC paso a paso* muestra el polinomio, una fila por byte y el veredicto; al desplegar
     una fila salen sus ocho desplazamientos, y abrir otra cierra la anterior.
+14. **`Ráfaga de ruido`** ⚠️ **pendiente de comprobación manual** (ningún agente de esta sesión
+    tiene navegador): al dispararla debería verse una banda horizontal en el diagrama durante los
+    milisegundos indicados, el contador *Bits arruinados por ráfaga* subiendo, y una trama que
+    viajaba dentro de la ventana llegando dañada y descartándose por CRC.
+15. **Trama de 1000 bits, tira agrupada** ⚠️ **pendiente de comprobación manual**: con `frameBits`
+    en 1000 la tira debería agruparse por bytes y cada casilla debería leerse como dos dígitos
+    hexadecimales legibles, no como texto recortado o solapado.
 
 ## Checklist de humo del v2 (calculadora)
 
@@ -168,6 +175,10 @@ gotcha más habitual de este proyecto y no da error visible.
    resaltada; al pasar el ratón sale la lectura `a → U`.
 9. Con el tabulador se llega a la tabla de la curva y se ve el foco; el lector de pantalla
    anuncia los números de cada gráfica, no solo su título.
+10. El bloque **Transferencia** da tramas = `⌈total / L⌉` y tiempo = tramas × ciclo, para un
+    tamaño en bits, en KB y en MB.
+11. El bloque **Ráfaga** da los bits de `R · t` y las tramas que abarca; con duración 0 el bloque
+    se oculta.
 
 ## Checklist de humo del v1 (simulador animado)
 

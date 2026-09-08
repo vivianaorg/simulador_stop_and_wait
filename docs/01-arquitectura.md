@@ -181,6 +181,23 @@ Dos comportamientos, con interruptor:
 | Apagado | El receptor descarta en silencio; el emisor se entera al expirar el temporizador | Protocolo 3 de Tanenbaum |
 | Encendido | El receptor manda NAK y el emisor retransmite sin esperar | Variante ARQ con NAK |
 
+## Un solo tamaño de trama
+
+Hasta el 2026-09-07 había dos tamaños de trama que no se hablaban: `frameBits` (el que escribe
+el usuario, que solo alimentaba los tiempos `Tt`/`Tp`/`a`) y la trama real que construye
+`createFrame` en `frame.js`, con `payloadBytes` fijo a 8 (80 bits siempre, viniera lo que
+viniera en el formulario). Ahora **`frameBits` manda**: la interfaz deriva la carga con
+`payloadBytesFor(frameBits)` y ya no pasa `payloadBytes` a mano (`js/ui.js`, `js/sim.js`).
+
+Como el CRC son 16 bits fijos (`CRC_BITS`), no todo valor de `frameBits` es representable: hace
+falta que la carga quede en bytes enteros. `roundFrameBits(frameBits)` ajusta al múltiplo válido
+más cercano y la interfaz **avisa** del ajuste en vez de rechazar el valor o mentir sobre qué
+calculó.
+
+Consecuencia visible: la tira de bits de la trama en vuelo ahora refleja de verdad el tamaño que
+se pidió (hasta miles de bits, no 80 fijos), lo que hace falta para que una ráfaga medida en
+milisegundos tenga trama real donde morder.
+
 ## El ruido es opcional, y el error se puede meter a mano
 
 Dos formas de dañar una trama, y conviene no confundirlas:
@@ -234,6 +251,47 @@ punto. La primera trama no la paga: el medio ya está en su sentido.
 
 Consecuencia que conviene enseñar: **el RTT no cambia** por ser half duplex; lo que crece es el
 ciclo. Hay una prueba que lo fija.
+
+## La ráfaga de ruido, determinista
+
+Distinta del ruido por probabilidad: no se tira, ocurre siempre igual. Se dispara a mano
+(*Ráfaga de ruido*, con su campo en milisegundos) y no necesita trama seleccionada —es del
+canal, no de una trama concreta. Mientras dura, cada paquete en vuelo pierde un tramo **contiguo**
+de bits según la tasa de su enlace (`N.burstBitsFromMs` para convertir milisegundos a bits,
+`F.flipRun` para voltear el tramo). No usa ningún generador: la conversión `bits = R · t` es
+análisis dimensional, no una fórmula del libro (Tanenbaum mide las ráfagas en bits, no en tiempo).
+
+Lo que sí es del libro, y es lo que hace demostrable el límite del CRC: un código con `r` bits de
+verificación detecta **todas** las ráfagas de longitud ≤ r; una ráfaga de `r + 1` solo pasa
+desapercibida si reproduce exactamente `G(x)`. Con CRC-16/CCITT eso es `r = 16` y
+`G(x) = 0x1021` (17 bits). Hay pruebas contra ambos hechos en `tests/frame.test.js`.
+
+La ventana viaja como un suceso más del reloj de la simulación (`kind: "BURST"`, igual que
+`TURN` y `TIMEOUT`) y se dibuja en el diagrama como una banda horizontal; el contador *Bits
+arruinados por ráfaga* sube mientras dura. El mecanismo por el que la ventana se cierra en el
+instante correcto —y el riesgo de tocarlo mal— está descrito en `docs/07-historial.md` (entrada
+del 2026-09-07, «La ráfaga de ruido entra en el reloj del simulador»): no se repite aquí para no
+duplicar la misma explicación en dos archivos.
+
+## La tira de bits se agrupa por bytes
+
+Por encima de 128 bits (`BITS_MAX_INDIVIDUALES` en `js/ui.js`) la tira deja de pintar un
+cuadradito por bit —ilegible con una trama de miles— y pasa a un cuadradito por byte, en
+hexadecimal. El rótulo dice la verdad en los dos modos: agrupada, avisa de que cada casilla es
+un byte y de que pulsarla voltea el primer bit de ese byte; sin agrupar, seguía siendo un bit
+por casilla. El CRC se marca igual en ambos modos: los últimos `CRC_BITS` bits, o los últimos
+`CRC_BITS / 8` bytes.
+
+## Transferencia y ráfaga en la calculadora
+
+Dos bloques nuevos en `calculadora.html`, con el mismo patrón que los demás: `steps.js` produce
+la estructura, `calc.js` solo pinta.
+
+- **Transferencia** (`N.transferAnalysis`): a partir de un tamaño total (bits, KB o MB
+  decimales, vía `N.bitsFromSize`) y el tamaño de trama del camino, da el número de tramas
+  (`⌈total / L⌉`) y el tiempo total (`N × ciclo`), sin contar reenvíos.
+- **Ráfaga** (`N.burstDamage`): a partir de una duración en milisegundos da los bits arruinados
+  (`N.burstBitsFromMs`) y cuántas tramas abarca.
 
 ## Mirar hacia atrás en el diagrama
 
