@@ -453,6 +453,12 @@ input[type="range"] { width: 100%; }
   display: inline-block;
 }
 
+/* La ráfaga no es una flecha: se pinta como una franja translúcida que cruza
+   el escenario (ALPHA_BANDA_RUIDO en ui.js), así que su muestra tampoco puede
+   ser una línea. Se ve más apagada en el diagrama porque allí cubre mucha
+   superficie; en 18 px con ese alfa haría falta una lupa. */
+.legend i.band { height: 10px; border-top-width: 0; opacity: 0.35; }
+
 /* ---------- Página de la calculadora ---------- */
 
 .topbar { border-bottom: 1px solid var(--rule); }

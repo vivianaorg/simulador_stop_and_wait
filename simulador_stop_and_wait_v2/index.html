@@ -105,7 +105,7 @@
       <h2>Protocolo</h2>
       <div class="rows">
         <div class="row"><label for="total-frames">Tramas a enviar</label><input type="number" id="total-frames" min="1" max="30" value="4"></div>
-        <div class="row"><label for="frame-bits">Tamaño de trama (bits)</label><input type="number" id="frame-bits" min="8" step="8" value="1000"></div>
+        <div class="row"><label for="frame-bits">Tamaño de trama (bits)</label><input type="number" id="frame-bits" min="24" step="8" value="1000"></div>
         <div class="row"><label for="ack-bits">Tamaño del ACK (bits)</label><input type="number" id="ack-bits" min="0" step="8" value="0"></div>
         <div class="row"><label for="timeout-ms">Timeout (ms simulados)</label><input type="number" id="timeout-ms" min="1" step="1" value="60"></div>
         <div class="row"><label for="duplex-mode">Canal</label><select id="duplex-mode"><option value="full" selected>Full duplex</option><option value="half">Half duplex</option></select></div>
@@ -171,6 +171,7 @@
         <span><i style="border-color: var(--fault)"></i> Destruida en el canal</span>
         <span><i style="border-color: var(--wait); border-top-style: dotted"></i> Expiró el temporizador</span>
         <span><i style="border-color: var(--wait)"></i> Inversión del medio (half duplex)</span>
+        <span><i class="band" style="background: var(--fault)"></i> Ráfaga de ruido: el canal entero sucio</span>
       </div>
       <p class="hint">El tiempo baja. Cada línea vertical es un punto del camino. Rueda del ratón sobre el diagrama para mirar hacia atrás, <strong>Ctrl + rueda</strong> para acercar la escala de tiempo, doble clic para volver al presente. Si todo el recorrido cabe en pantalla no hay nada hacia atrás que mirar: acerca primero.</p>
     </section>

@@ -34,6 +34,9 @@
   function init() {
     cacheDom();
     initTheme();
+    // El mínimo del formulario lo declara el modelo, no el HTML: así el campo
+    // y `roundFrameBits` no pueden decir cosas distintas.
+    dom.frameBits.min = String(F.MIN_FRAME_BITS);
     hops = [
       { name: "Casa A → Nodo", rateBps: 100000, distanceKm: 2000, velocityKmS: 200000, errorProbData: 0, errorProbAck: 0, turnaroundMs: 5 },
     ];
