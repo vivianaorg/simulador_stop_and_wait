@@ -1,0 +1,11 @@
+# Sin normalización de finales de línea, cada commit desde un editor distinto
+# reescribe el fichero entero y las revisiones de código dejan de poder leerse.
+# Se normaliza todo a LF en el repositorio; los archivos de texto (código,
+# markdown) se alinean a la convención Unix/Linux del proyecto.
+* text=auto
+
+*.js text eol=lf
+*.py text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.md text eol=lf
