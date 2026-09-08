@@ -7,10 +7,14 @@
 // las pruebas pueden comprobar cada número por separado.
 
 (function (root, factory) {
-  const api = factory(typeof module === "object" && module.exports ? require("./network.js") : root.NetworkModel);
-  if (typeof module === "object" && module.exports) module.exports = api;
+  const enNode = typeof module === "object" && module.exports;
+  const api = factory(
+    enNode ? require("./network.js") : root.NetworkModel,
+    enNode ? require("./unidades.js") : root.Unidades
+  );
+  if (enNode) module.exports = api;
   else root.StepsModel = api;
-})(typeof self !== "undefined" ? self : this, function (N) {
+})(typeof self !== "undefined" ? self : this, function (N, U) {
   "use strict";
 
   // ---------- Formato ----------
@@ -54,6 +58,66 @@
 
   // ---------- Construcción del desarrollo ----------
 
+  // Convierte una división "algo / algo" en la cadena completa de renglones,
+  // con la cancelación de unidades y el factor de escala dichos en voz alta.
+  // Es lo que faltaba: la pantalla saltaba de "1000 / 50000" a "20 ms" sin
+  // explicar el mil.
+  function derivarTiempo(spec) {
+    const { simbolo, numSim, denSim, numV, numU, denV, denU, segundos, cancelacion } = spec;
+    const esc = U.escalarTiempo(segundos * 1000);
+    const cien = U.cientifica(segundos);
+
+    const izq = (der) => ({ t: "fila", partes: [{ t: "sim", v: simbolo }, { t: "op", v: "=" }, der] });
+
+    const renglones = [
+      {
+        expr: izq({ t: "frac", num: { t: "sim", v: numSim }, den: { t: "sim", v: denSim } }),
+        motivo: "La fórmula.",
+      },
+      {
+        expr: izq({
+          t: "frac",
+          num: { t: "num", v: crudo(numV), u: numU },
+          den: { t: "num", v: crudo(denV), u: denU },
+        }),
+        motivo: "Sustituidos los datos, con sus unidades.",
+      },
+      {
+        expr: izq({ t: "num", v: redondear(segundos), u: "s" }),
+        motivo: cancelacion,
+      },
+    ];
+
+    // Si la unidad natural ya es el segundo, no hay factor que explicar.
+    if (esc.factorDesdeMs !== 0.001) {
+      renglones.push({
+        expr: izq({
+          t: "fila",
+          partes: [
+            { t: "num", v: redondear(segundos), u: "s" },
+            { t: "op", v: "×" },
+            { t: "num", v: crudo(1000 * esc.factorDesdeMs), u: `${esc.unidad}/s` },
+          ],
+        }),
+        motivo: `De segundos a ${esc.unidad}: por eso aparece el ${crudo(1000 * esc.factorDesdeMs)}.`,
+      });
+    }
+
+    renglones.push({
+      expr: izq({
+        t: "fila",
+        partes: [
+          { t: "num", v: redondear(esc.valor), u: esc.unidad },
+          { t: "op", v: "=" },
+          { t: "pot10", mantisa: redondear(cien.mantisa), exponente: String(cien.exponente), u: "s" },
+        ],
+      }),
+      motivo: "El resultado, en su unidad natural y en notación científica.",
+    });
+
+    return renglones;
+  }
+
   function paso(spec) {
     return {
       id: spec.id,
@@ -63,6 +127,7 @@
       resultado: spec.resultado,
       detalle: spec.detalle || [],
       nota: spec.nota || "",
+      derivacion: spec.derivacion || [],
     };
   }
 
@@ -116,6 +181,14 @@
             `${l.name}: ${crudo(r.frameBits)} bits ÷ ${crudo(l.rateBps)} bit/s = ${redondear(r.frameBits / l.rateBps)} s = ${ms(l.ttDataMs)}`
         ),
         nota: "Es lo que tarda el emisor en empujar la trama entera al medio. No depende de la distancia.",
+        derivacion: derivarTiempo({
+          simbolo: "Tt",
+          numSim: "L", denSim: "R",
+          numV: r.frameBits, numU: "bits",
+          denV: r.perLink[0].rateBps, denU: "bit/s",
+          segundos: r.frameBits / r.perLink[0].rateBps,
+          cancelacion: "Los bits se cancelan: bits ÷ (bit/s) deja segundos.",
+        }),
       })
     );
 
@@ -133,6 +206,14 @@
             `${l.name}: ${redondear(l.distanceKm)} km ÷ ${crudo(l.velocityKmS)} km/s = ${redondear(l.distanceKm / l.velocityKmS)} s = ${ms(l.tpMs)}`
         ),
         nota: "Es lo que tarda la señal en recorrer el enlace. No depende del tamaño de la trama.",
+        derivacion: derivarTiempo({
+          simbolo: "Tp",
+          numSim: "d", denSim: "V",
+          numV: r.perLink[0].distanceKm, numU: "km",
+          denV: r.perLink[0].velocityKmS, denU: "km/s",
+          segundos: r.perLink[0].distanceKm / r.perLink[0].velocityKmS,
+          cancelacion: "Los kilómetros se cancelan: km ÷ (km/s) deja segundos.",
+        }),
       })
     );
 

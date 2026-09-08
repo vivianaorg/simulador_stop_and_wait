@@ -766,3 +766,25 @@ code { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
   white-space: nowrap;
   border: 0;
 }
+
+/* Derivación paso a paso. Un renglón por línea de razonamiento, con el motivo
+   al lado en tono apagado: se lee la cuenta de un vistazo y el porqué solo si
+   hace falta. --muted no existe en este proyecto: el tono apagado ya definido
+   en :root es --ink-soft (ver arriba, "El titular..."), así que se usa ese. */
+.math-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 3px 0;
+}
+.math-row math {
+  font-size: 1.15em;
+}
+.math-why {
+  color: var(--ink-soft);
+  font-size: 0.85em;
+  flex: 1 1 240px;
+}
+/* Si el navegador no soportara MathML, el <math> se vería como texto seguido.
+   No se pierde información, solo la forma apilada. */

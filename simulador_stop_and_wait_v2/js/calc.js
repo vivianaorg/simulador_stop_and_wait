@@ -14,6 +14,7 @@
   const N = window.NetworkModel;
   const F = window.FrameModel;
   const Steps = window.StepsModel;
+  const MM = window.MathMLModel;
 
   const PRESETS = {
     satelite: {
@@ -425,9 +426,26 @@
     const cuenta = document.createElement("div");
     cuenta.className = "step-math";
 
-    cuenta.appendChild(lineaMath("formula", paso.formula));
-    if (paso.sustitucion) cuenta.appendChild(lineaMath("sub", `= ${paso.sustitucion}`));
-    cuenta.appendChild(lineaMath("res", `= ${paso.resultado}`));
+    if (paso.derivacion && paso.derivacion.length > 0) {
+      // Derivación completa: un renglón por paso del razonamiento, cada uno
+      // con su motivo al lado. Es lo que pidió el usuario el 2026-09-08.
+      for (const renglon of paso.derivacion) {
+        const fila = document.createElement("div");
+        fila.className = "math-row";
+        fila.appendChild(MM.render(renglon.expr, document));
+
+        const motivo = document.createElement("span");
+        motivo.className = "math-why";
+        motivo.textContent = renglon.motivo;
+        fila.appendChild(motivo);
+
+        cuenta.appendChild(fila);
+      }
+    } else {
+      cuenta.appendChild(lineaMath("formula", paso.formula));
+      if (paso.sustitucion) cuenta.appendChild(lineaMath("sub", `= ${paso.sustitucion}`));
+      cuenta.appendChild(lineaMath("res", `= ${paso.resultado}`));
+    }
     li.appendChild(cuenta);
 
     if (paso.nota) {

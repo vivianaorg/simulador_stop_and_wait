@@ -253,3 +253,32 @@ test("Los segmentos del ciclo suman el ciclo completo", () => {
   assert.ok(Math.abs(suma - ciclo.totalMs) < 1e-9);
   assert.equal(ciclo.segmentos[0].ms, 20, "la parte activa es Tt del emisor");
 });
+
+// Lo que pidió el usuario: que se vea de dónde sale el 1000 que convierte
+// 0,02 s en 20 ms. Antes la pantalla saltaba de "1000 / 50000" a "20 ms".
+test("el paso Tt ensena la cancelacion de unidades y el factor 1000", () => {
+  const s = Steps.build(satelite());
+  const d = porId(s, "tt").derivacion;
+  assert.ok(Array.isArray(d) && d.length >= 4, `derivacion corta: ${d && d.length}`);
+
+  const motivos = d.map((r) => r.motivo).join(" | ");
+  assert.match(motivos, /cancel/i, "no dice que las unidades se cancelan");
+  assert.match(motivos, /1000|mil/i, "no dice de donde sale el factor 1000");
+
+  const texto = JSON.stringify(d);
+  assert.match(texto, /"1000"/, "falta L sustituida");
+  assert.match(texto, /"50000"/, "falta R sustituida");
+  assert.match(texto, /"frac"/, "la formula no se emite como fraccion");
+});
+
+test("la derivacion termina en el mismo numero que el resultado plano", () => {
+  const s = Steps.build(satelite());
+  const tt = porId(s, "tt");
+  assert.equal(tt.resultado, "20 ms");
+  assert.match(JSON.stringify(tt.derivacion.at(-1)), /"20"/);
+});
+
+test("el paso Tp tambien trae derivacion", () => {
+  const d = porId(Steps.build(satelite()), "tp").derivacion;
+  assert.ok(d.length >= 4, `derivacion corta: ${d.length}`);
+});
