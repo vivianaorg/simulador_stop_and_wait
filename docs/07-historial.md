@@ -8,6 +8,70 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-08 — La derivación cubre toda la calculadora, sin ceros ni contradicciones inventadas
+
+**Qué.** Ronda de correcciones sobre la entrada anterior. Dos arreglos y una ampliación en
+`js/steps.js`:
+
+1. **`crudoExpr(v, u)`** (nuevo): la fila «Sustituidos los datos» de `derivarTiempo` usaba
+   `crudo()`, que redondea a entero con `Math.round()`. Con un dato válido pero menor que 0,5
+   (p. ej. `rateBps = 1e-300`, que pasa `isPositive()` de `network.js`) eso pintaba un `0` que no
+   está en los datos. `crudoExpr` enseña esos casos en notación científica en vez de mentir con un
+   cero.
+2. **Consistencia con `resultado` en valores no finitos.** Cuando el cociente desborda a
+   `Infinity` (`rateBps = Number.MIN_VALUE`, por ejemplo), `derivarTiempo`/`derivarRatio`/
+   `derivarConFactor` ahora cortan la cadena en un renglón `"—"`, igual que `ms()`/`bps()`/`pct()`
+   ya hacían para `paso.resultado`. Antes la derivación decía `"Tt = Infinity s"` mientras
+   `resultado` decía `"—"`: los dos campos, que coexisten como red de seguridad mutua, se
+   contradecían.
+3. **Derivación para el resto de los pasos.** `a`, `u` y `caudal` ganan derivación completa con
+   dos helpers nuevos: `derivarRatio` (cociente adimensional, sin factor — usado por `a`) y
+   `derivarConFactor` + sus dos envoltorios `derivarPorcentaje` (el ×100 escondido de `U`) y
+   `derivarCaudal` (el ×1000 escondido de `caudal`, con resultado en notación científica). `ida`,
+   `vuelta`, `ciclo`, `bd`, `ventana` y `timeout` ganan una derivación de exactamente 3 renglones
+   (fórmula/sustitución/resultado tipografiados, sin renglones inventados) con el helper
+   `derivarPlano`, apoyado en `msExpr()` —la versión en estructura de `mathml.js` de `ms()`,
+   escribiendo a propósito una segunda vez su lógica de escalón para no arriesgar las pruebas que
+   ya fijan el texto exacto de `ms()`—. `filaRel`/`filaIgual` factorizan el renglón
+   «símbolo `relación` expresión» común a todos los helpers (`timeout` usa `≥`; el resto, `=`).
+
+**Por qué.** Hallazgo de revisión: la calculadora tenía dos pasos de dos libros distintos —`Tt`/
+`Tp` tipografiados y todo lo demás en texto monoespaciado plano—, y dos conversiones sin explicar
+del mismo tipo que el 1000 que motivó la tarea anterior (el ×100 de `U`, el ×1000 de `caudal`).
+El usuario pidió que **toda** la calculadora se explicara más granular, no dos pasos sueltos.
+
+**Alcance deliberadamente dejado fuera.** `perror` y `uefectiva` (los pasos de probabilidad de
+error) no ganaron derivación: no están en la lista que pidió la revisión, y desde la entrada
+anterior del historial la calculadora **ya no pide probabilidades de error** en su interfaz — solo
+son alcanzables llamando al modelo directamente, como hacen las pruebas de `bordes.test.js`. Si en
+el futuro se reactivan en la UI, les falta este mismo tratamiento.
+
+**Evidencia.** `node --test` sobre los siete ficheros de `simulador_stop_and_wait_v2/tests/` →
+**149 pruebas, 0 fallas** (143 previas + 6 nuevas: la fila de sustitución no inventa un cero con
+`rateBps = 1e-300`; la derivación no contradice al resultado con `rateBps = Number.MIN_VALUE`;
+`a` trae 3 renglones sin factor; `U` enseña el ×100; `caudal` enseña el ×1000 y termina en
+notación científica; `ida`/`vuelta`/`ciclo`/`bd`/`ventana`/`timeout` traen exactamente 3
+renglones tipografiados). `node tools/lint-docs.js` confirma 149 contra el repositorio real.
+`node --check` limpio en `steps.js` y `calc.js`. Capturada `calculadora.html` de nuevo con el
+Chromium headless del proyecto, con los 11 pasos desplegados ("Mostrar todos"): la página se lee
+uniforme de arriba abajo —los 11 pasos tipografiados en MathML, ninguno en texto monoespaciado—,
+el paso 7 («Utilización del canal») muestra el renglón `U = 0,0385 × 100` con el motivo «De
+fracción a por ciento: por eso aparece el 100», y el paso 8 («Caudal útil») muestra
+`caudal = 1,923 × 1000 ms/s` con el motivo «De bit/ms a bit/s: por eso aparece el 1000», seguido
+de `1923,1 bit/s = 1,923 × 10³ bit/s`. Captura borrada al terminar, árbol de trabajo limpio.
+Barrido repetido de `grep -rn "step-math|math-row|lineaMath" simulador_stop_and_wait_v2/`: mismos
+dos ficheros que la entrada anterior (`calc.js`, `css/style.css`); `banco-interfaz.html` sigue sin
+referenciar esa estructura.
+
+**Cómo revertir.** `git revert` del/de los commit(s) de esta ronda; o a mano, quitar `crudoExpr`,
+`filaRel`/`filaIgual`, `msExpr`, `derivarRatio`, `derivarConFactor`, `derivarPorcentaje`,
+`derivarCaudal` y `derivarPlano` de `js/steps.js`, devolver `derivarTiempo` a su versión con
+`crudo()` sin guarda de finitud, y quitar los campos `derivacion` de los pasos `a`, `u`, `caudal`,
+`ida`, `vuelta`, `ciclo`, `bd`, `ventana` y `timeout` (quedan en el estado de la entrada anterior:
+solo `tt`/`tp` con derivación).
+
+---
+
 ## 2026-09-08 — El desarrollo enseña la cancelación de unidades y el factor 1000
 
 **Qué.** Los pasos `Tt` y `Tp` de `js/steps.js` ganan un campo `derivacion`: un array de
