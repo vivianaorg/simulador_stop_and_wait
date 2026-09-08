@@ -279,7 +279,14 @@
     const r = analyze(path);
     const frames = Math.ceil(totalBits / path.frameBits);
     const totalMs = frames * r.cycleMs;
-    return { frames, totalMs, goodputBps: totalBits / (totalMs / MS_PER_S) };
+    // El ciclo sale de aquí, no de dividir el total entre las tramas en la
+    // vista: es el mismo número que usa el cálculo, no una reconstrucción.
+    return {
+      frames,
+      cycleMs: r.cycleMs,
+      totalMs,
+      goodputBps: totalBits / (totalMs / MS_PER_S),
+    };
   }
 
   const BITS_PER_BYTE = 8;

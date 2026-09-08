@@ -282,6 +282,20 @@ test("Transferencia: un fichero se parte en tramas y el tiempo es N ciclos", () 
   closeTo(r.goodputBps, 10000 / 5.2, 1e-6, "caudal conseguido");
 });
 
+test("Transferencia: el ciclo lo publica el modelo, no lo reconstruye la vista", () => {
+  const path = N.createPath({
+    frameBits: 1000,
+    ackBits: 0,
+    links: [
+      N.createLink({ name: "Enlace satelital", rateBps: 50000, distanceKm: 50000, velocityKmS: 200000 }),
+    ],
+  });
+
+  const r = N.transferAnalysis(path, 10000);
+  assert.equal(r.cycleMs, N.analyze(path).cycleMs, "es el mismo ciclo del análisis");
+  closeTo(r.totalMs, r.frames * r.cycleMs, 1e-9, "y el total sigue siendo tramas x ciclo");
+});
+
 test("Transferencia: la última trama cuenta entera aunque vaya a medias", () => {
   const path = N.createPath({
     frameBits: 1000,

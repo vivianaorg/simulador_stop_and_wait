@@ -364,8 +364,7 @@
    * @returns {Array} pasos, con el mismo `paso(spec)` que usa `build`
    */
   function buildTransfer(spec) {
-    const r = N.transferAnalysis(spec.path, spec.totalBits);
-    const cycleMs = r.totalMs / r.frames;
+    const r = N.transferAnalysis(spec.path, spec.totalBits);
 
     return [
       paso({
@@ -382,7 +381,7 @@
         id: "transfer-time",
         titulo: "Tiempo total de la transferencia",
         formula: "tiempo = tramas · ciclo",
-        sustitucion: `${entero(r.frames)} · ${ms(cycleMs)}`,
+        sustitucion: `${entero(r.frames)} · ${ms(r.cycleMs)}`,
         resultado: ms(r.totalMs),
         detalle: [
           "Con Stop & Wait el emisor no puede adelantar trabajo: cada trama paga el ciclo completo, una detrás de otra.",
