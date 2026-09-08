@@ -56,7 +56,8 @@ Cada fórmula que aparece en la interfaz tiene su caso con un número publicado:
 | Cadena casa → satélite → casa | RTT = suma de tramos (store-and-forward) |
 | Half duplex | + 2 × tiempo de vuelta por ciclo |
 | Con errores | `U_efectiva = (1−P)/(1+2a)`, intentos = `1/(1−P)` |
-| BDP del satélite | 26 000 bits = **26 tramas** en el canal |
+| BD del libro (satélite) | 12 500 bits = **12,5 tramas** en un sentido (Tanenbaum, p. 201) |
+| Ventana para llenar el canal | 2·BD + 1 = **26 tramas** (la que un protocolo de ventana deslizante necesitaría) |
 | CRC-16/CCITT | detecta el volteo de **cualquiera** de los 80 bits de la trama |
 | Protocolo | la secuencia alterna 0,1,0 · el ciclo dura Tt + 2·Tp · el tiempo medido coincide con el RTT calculado |
 | Errores | trama dañada descartada y no entregada · sin NAK se espera al timeout · con NAK se retransmite antes · ACK dañado deja al emisor esperando · la copia se descarta como duplicada |

@@ -69,7 +69,8 @@ test("El satélite del libro produce los pasos con sus números", () => {
   assert.equal(porId(s, "a").resultado, "12,5");
   assert.equal(porId(s, "ciclo").resultado, "520 ms");
   assert.equal(porId(s, "u").resultado, "3,846 %");
-  assert.equal(porId(s, "bdp").resultado, "26.000 bits");
+  assert.equal(porId(s, "bd").resultado, "12.500 bits");
+  assert.equal(porId(s, "ventana").resultado, "26 tramas");
   assert.equal(porId(s, "timeout").resultado, "520 ms");
 });
 

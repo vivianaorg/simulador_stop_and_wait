@@ -375,3 +375,34 @@ test("con un salto y ACK despreciable, aEfectiva es la `a` de siempre", () => {
   });
   assert.ok(Math.abs(r.aEfectiva - r.aRatio) < 1e-12, `aEfectiva=${r.aEfectiva} aRatio=${r.aRatio}`);
 });
+
+// Libro, p. 201: enlace de 50 kbps con tránsito en un sentido de 250 ms ->
+// BD = 12,5 kbit = 12,5 tramas de 1000 bits, y la ventana es 2BD+1 = 26 tramas.
+// El código llamaba BDP a las 26, que es la ventana, no el producto.
+test("satelite del libro: BD son 12,5 tramas y la ventana 26", () => {
+  const r = N.singleLinkAnalysis({
+    frameBits: 1000, ackBits: 0,
+    rateBps: 50000, distanceKm: 50000, velocityKmS: 200000,
+  });
+  assert.equal(r.tpTotalMs, 250);
+  assert.equal(r.bandwidthDelayBits, 12500);
+  assert.equal(r.bandwidthDelayBits / r.frameBits, 12.5);
+  assert.equal(r.windowFrames, 26);
+});
+
+test("identidad R·RTT = 2·BD + L en un enlace con ACK despreciable", () => {
+  const r = N.singleLinkAnalysis({
+    frameBits: 1000, ackBits: 0,
+    rateBps: 50000, distanceKm: 50000, velocityKmS: 200000,
+  });
+  assert.equal(r.bandwidthDelayProductBits, 2 * r.bandwidthDelayBits + r.frameBits);
+});
+
+test("bandwidthDelayFrames es el cociente de BD entre el tamaño de trama", () => {
+  const r = N.singleLinkAnalysis({
+    frameBits: 1000, ackBits: 0,
+    rateBps: 50000, distanceKm: 50000, velocityKmS: 200000,
+  });
+  closeTo(r.bandwidthDelayFrames, 12.5, 1e-9, "BD en tramas");
+  closeTo(r.bandwidthDelayFrames, r.bandwidthDelayBits / r.frameBits, 1e-12, "consistencia");
+});

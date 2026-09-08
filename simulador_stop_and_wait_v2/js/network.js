@@ -206,8 +206,22 @@
     // Caudal útil real, en bits/s.
     const throughputBps = cycleMs > 0 ? (path.frameBits * cycleSuccessProb) / (cycleMs / MS_PER_S) : 0;
 
-    // Producto ancho de banda por retardo: bits "en el aire" en un RTT.
+    // Producto ancho de banda-retardo. Hay dos cantidades distintas que la
+    // gente llama igual, y confundirlas fue el defecto 2 del spec del
+    // 2026-09-08:
+    //
+    //   BD (el del libro, p. 201) = R · Tp de UN sentido. En el satélite son
+    //   12,5 kbit, o 12,5 tramas de 1000 bits.
+    //
+    //   R · RTT = bits que caben en un viaje de ida y vuelta. En el satélite
+    //   son 26.000. Coincide con la ventana porque R·RTT = 2·BD + L, no
+    //   porque sea el mismo concepto.
+    //
+    // La ventana que el libro pide para llenar el canal es 2BD+1 tramas.
+    const bandwidthDelayBits = perLink[0].rateBps * (tpTotalMs / MS_PER_S);
+    const bandwidthDelayFrames = bandwidthDelayBits / path.frameBits;
     const bandwidthDelayProductBits = perLink[0].rateBps * (rttMs / MS_PER_S);
+    const windowFrames = 2 * bandwidthDelayFrames + 1;
 
     return {
       hops,
@@ -236,7 +250,10 @@
       effectiveUtilization,
       expectedTransmissions,
       throughputBps,
+      bandwidthDelayBits,
+      bandwidthDelayFrames,
       bandwidthDelayProductBits,
+      windowFrames,
 
       // Un timeout por debajo del RTT provoca retransmisiones inútiles: el ACK
       // todavía viene en camino. Es el error que el simulador debe poder

@@ -242,7 +242,8 @@ async function probarCalculadora() {
   const u = d.querySelector(".headline-main .headline-value").textContent.trim();
   comprobar("calc · el satélite da 3,846 %", u === "3,846 %", u);
   intentar("calc · abrir todos los pasos", () => d.getElementById("btn-all-steps").click());
-  comprobar("calc · el paso del BDP dice 26.000 bits", d.body.innerText.includes("26.000 bits"), "no aparece");
+  comprobar("calc · el paso BD muestra 12.500 bits", d.body.innerText.includes("12.500 bits"), "no aparece");
+  comprobar("calc · el paso ventana muestra 26 tramas", d.body.innerText.includes("26 tramas"), "no aparece");
   comprobar("calc · el paso de la utilización comprueba 1/(1+2a)", d.body.innerText.includes("U = Tt(emisor) / ciclo"), "no aparece la fórmula");
   intentar("calc · ocultar otra vez", () => d.getElementById("btn-hide-steps").click());
 

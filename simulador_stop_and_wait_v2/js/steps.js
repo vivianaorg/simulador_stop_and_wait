@@ -293,14 +293,30 @@
 
     pasos.push(
       paso({
-        id: "bdp",
+        id: "bd",
         titulo: "Producto ancho de banda por retardo",
-        formula: "BDP = R · RTT",
-        sustitucion: `${crudo(r.perLink[0].rateBps)} · ${redondear(r.rttMs / 1000)} s`,
-        resultado: `${entero(r.bandwidthDelayProductBits)} bits`,
+        formula: "BD = R · Tp",
+        sustitucion: `${crudo(r.perLink[0].rateBps)} · ${redondear(r.tpTotalMs / 1000)} s`,
+        resultado: `${entero(r.bandwidthDelayBits)} bits`,
         detalle: [
-          `Son ${redondear(r.bandwidthDelayProductBits / r.frameBits)} tramas de ${crudo(r.frameBits)} bits.`,
-          "Es lo que cabría en el canal si el emisor pudiera transmitir sin parar. Stop & Wait deja ese hueco vacío.",
+          `Son ${redondear(r.bandwidthDelayFrames)} tramas de ${crudo(r.frameBits)} bits.`,
+          "Es lo que cabe en el canal en UN sentido: los bits que ya salieron y todavía no han llegado.",
+          "El libro lo llama BD y lo mide con el tiempo de tránsito en un sentido, no con el de ida y vuelta.",
+        ],
+      })
+    );
+
+    pasos.push(
+      paso({
+        id: "ventana",
+        titulo: "Ventana que haría falta para llenar el canal",
+        formula: "ventana = 2 · BD + 1",
+        sustitucion: `2 · ${redondear(r.bandwidthDelayFrames)} + 1`,
+        resultado: `${redondear(r.windowFrames)} tramas`,
+        detalle: [
+          "Es lo que un protocolo de ventana deslizante necesitaría tener en vuelo para no parar nunca.",
+          "Stop & Wait tiene ventana 1: deja ese hueco vacío, y eso es exactamente lo que mide U.",
+          `El «+1» sale de que el receptor no manda el ACK hasta recibir la trama entera. En bits, esto es ${entero(r.bandwidthDelayProductBits)} = 2·BD + L.`,
         ],
       })
     );
