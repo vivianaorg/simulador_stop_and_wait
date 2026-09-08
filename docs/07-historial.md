@@ -8,6 +8,57 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-08 (noche) — Se oculta de la interfaz el ruido del canal por probabilidad
+
+**Qué:** se quitan de `simulador_stop_and_wait_v2/index.html` el campo *Semilla del ruido*
+(`#seed`), la casilla *Ruido del canal* (`#noise-toggle`) con su texto, y —dentro de
+`js/ui.js`— la columna *P error trama* que la tabla de tramos generaba (era la única columna de
+probabilidad que existía; no había una segunda para el ACK). En `js/ui.js` se limpiaron todas las
+referencias a `dom.seed` y `dom.noiseToggle`: el cacheo del DOM, el `forEach` que dispara
+`rebuild()` al cambiar un campo, el `addEventListener("change", ...)` del interruptor, el
+`if (campo.key === "errorProbData" && !dom.noiseToggle.checked)` que deshabilitaba la columna, los
+campos `errorProbData`/`errorProbAck` de los objetos de tramo (`hops`, en el array inicial y en
+`addHop()`) y las dos llamadas a `N.createLink()` en `rebuild()` que los leían. La primera de esas
+dos llamadas —un `hops.forEach` que solo validaba los valores crudos antes de que el interruptor
+los pusiera a 0— quedó sin motivo para existir (`createLink()` ya valida lo mismo al construir el
+camino) y se borró en vez de dejarla como código muerto. `S.createSimulation()` ya no recibe
+`Number(dom.seed.value)`: recibe `SEMILLA_BIT_AL_AZAR`, una constante nueva en `ui.js` con su
+comentario, porque *Dañar un bit al azar* (`F.flipRandomBit`) sigue necesitando el generador con
+semilla de `frame.js` aunque el formulario ya no tenga campo para fijarla.
+
+En `banco-interfaz.html` se quitaron las tres comprobaciones que encendían y apagaban
+`#noise-toggle` («el ruido viene apagado», «con el ruido apagado, la probabilidad no se puede
+tocar», «encendido, la probabilidad se habilita») y la que probaba una probabilidad fuera de rango
+sobre la columna que ya no existe («probabilidad fuera de rango» / «avisa de la probabilidad
+inválida»); la comprobación de *Dañar un bit al azar* se dejó igual. El banco baja de 55 a 51
+comprobaciones — número corregido en `docs/05-runbook.md`, única fuente. `docs/01-arquitectura.md`
+y el checklist de humo de `docs/05-runbook.md` se actualizaron para dejar de describir un
+interruptor que ya no está.
+
+**Por qué:** pedido del usuario. El simulador tiene dos clases de ruido: la ráfaga (se dispara y
+ocurre siempre, sin azar) y el ruido por probabilidad (cada tramo daña tramas con una probabilidad
+sobre un generador con semilla). Delante de un aula, el segundo no sirve para explicar: «no puedo
+fiarme de que pueda o no pasar» (cita textual del usuario). El botón *Dañar un bit al azar* no cae
+en esa objeción — se llama «al azar» pero no es probabilístico: se pulsa y el bit se voltea
+siempre, solo el bit concreto es aleatorio — así que se conserva intacto, igual que el modelo que
+usa ambos.
+
+**Qué NO se tocó, y por qué:** el modelo del protocolo (`applyChannelNoise` en `sim.js`,
+`errorProbData`/`errorProbAck` en `network.js`, `seededRandom` en `frame.js`) y todas sus pruebas
+siguen exactamente igual — el pedido era ocultar la funcionalidad de la interfaz, no borrarla. La
+calculadora (`calculadora.html`, `js/calc.js`) no se tocó: su columna de probabilidad de error es
+suya, no depende de `#noise-toggle` ni de `#seed`, y no estaba en el pedido.
+
+**Cómo revertir:** en `index.html`, devolver la fila `<div class="row">` de `#seed` y el
+`<label class="check">` de `#noise-toggle` (ver el commit que los quita para el texto exacto). En
+`js/ui.js`, devolver `dom.seed`/`dom.noiseToggle` al cacheo del DOM, al `forEach` de `rebuild`, el
+`addEventListener` del interruptor, la columna `errorProbData` en `CAMPOS_TRAMO` con su bloque de
+`disabled`, los campos `errorProbData`/`errorProbAck` en los objetos de `hops`, la llamada de
+validación previa a `createPath()` y `seed: Number(dom.seed.value)` en `createSimulation()` (y
+retirar entonces `SEMILLA_BIT_AL_AZAR`, que deja de tener uso). En `banco-interfaz.html`, devolver
+las cuatro comprobaciones citadas arriba. Revisar `docs/01-arquitectura.md` y
+`docs/05-runbook.md` (checklist de humo y conteo del banco, que volvería a 55).
+
 ## 2026-09-08 (tarde) — La calculadora deja de redondear el tamaño de trama: el redondeo es de la trama real, no de la fórmula
 
 **Qué:** se revierte el arreglo «MEDIA 3» de la entrada de abajo, que se hizo esta misma mañana y

@@ -92,13 +92,6 @@ async function probarSimulador() {
   });
   comprobar("sim · nunca se queda sin tramos", d.querySelectorAll(".hop").length >= 1, d.querySelectorAll(".hop").length);
 
-  // --- ruido del canal: apagado por defecto y desactivable ---
-  comprobar("sim · el ruido viene apagado", !d.getElementById("noise-toggle").checked, "venía encendido");
-  comprobar("sim · con el ruido apagado, la probabilidad no se puede tocar", d.querySelectorAll(".hop input")[3].disabled, "se podía editar");
-  intentar("sim · encender el ruido", () => d.getElementById("noise-toggle").click());
-  comprobar("sim · encendido, la probabilidad se habilita", !d.querySelectorAll(".hop input")[3].disabled, "seguía bloqueada");
-  intentar("sim · apagar el ruido otra vez", () => d.getElementById("noise-toggle").click());
-
   // --- valores inválidos en el camino ---
   const campos = d.querySelectorAll(".hop input");
   intentar("sim · tasa 0", () => fijar(campos[1], 0));
@@ -108,10 +101,6 @@ async function probarSimulador() {
   intentar("sim · velocidad 0", () => fijar(campos[2], 0));
   comprobar("sim · avisa de la velocidad inválida", /velocidad|inválid/i.test(d.getElementById("timeout-hint").textContent), d.getElementById("timeout-hint").textContent.slice(0, 60));
   intentar("sim · velocidad válida otra vez", () => fijar(campos[2], 200000));
-
-  intentar("sim · probabilidad fuera de rango", () => fijar(campos[3], 5));
-  comprobar("sim · avisa de la probabilidad inválida", /probabilidad|inválid/i.test(d.getElementById("timeout-hint").textContent), d.getElementById("timeout-hint").textContent.slice(0, 60));
-  intentar("sim · probabilidad válida otra vez", () => fijar(campos[3], 0));
 
   // --- valores raros del protocolo ---
   intentar("sim · tramas vacío", () => fijar(d.getElementById("total-frames"), ""));

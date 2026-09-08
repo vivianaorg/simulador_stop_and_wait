@@ -13,6 +13,14 @@
   // Un ciclo completo del protocolo dura esto en pantalla a velocidad 1×.
   const SEGUNDOS_POR_CICLO = 6;
 
+  // El campo de semilla desapareció del formulario: el ruido por probabilidad
+  // ya no se enciende desde la interfaz (ver docs/07-historial.md). Pero
+  // "Dañar un bit al azar" sigue usando el generador con semilla de F, así
+  // que necesita una para existir. Es una constante fija y no un `1` suelto
+  // porque el número en sí no importa — solo que el generador tenga con qué
+  // arrancar.
+  const SEMILLA_BIT_AL_AZAR = 1;
+
   const dom = {};
   let sim = null;
   let hops = [];
@@ -38,7 +46,7 @@
     // y `roundFrameBits` no pueden decir cosas distintas.
     dom.frameBits.min = String(F.MIN_FRAME_BITS);
     hops = [
-      { name: "Casa A → Nodo", rateBps: 100000, distanceKm: 2000, velocityKmS: 200000, errorProbData: 0, errorProbAck: 0, turnaroundMs: 5 },
+      { name: "Casa A → Nodo", rateBps: 100000, distanceKm: 2000, velocityKmS: 200000, turnaroundMs: 5 },
     ];
     renderHops();
     bindEvents();
@@ -82,9 +90,7 @@
       frameBits: id("frame-bits"),
       ackBits: id("ack-bits"),
       timeoutMs: id("timeout-ms"),
-      seed: id("seed"),
       nakToggle: id("nak-toggle"),
-      noiseToggle: id("noise-toggle"),
       duplexMode: id("duplex-mode"),
       btnNoiseBit: id("btn-noise-bit"),
       btnCrcSteps: id("btn-crc-steps"),
@@ -123,7 +129,7 @@
       dom.speedLabel.textContent = `${Number(dom.speed.value).toFixed(1).replace(".", ",")}×`;
     });
 
-    [dom.totalFrames, dom.frameBits, dom.ackBits, dom.seed].forEach((el) =>
+    [dom.totalFrames, dom.frameBits, dom.ackBits].forEach((el) =>
       el.addEventListener("change", rebuild)
     );
     dom.timeoutMs.addEventListener("change", () => {
@@ -131,10 +137,6 @@
       rebuild();
     });
     dom.nakToggle.addEventListener("change", rebuild);
-    dom.noiseToggle.addEventListener("change", () => {
-      renderHops();
-      rebuild();
-    });
     dom.duplexMode.addEventListener("change", rebuild);
 
     dom.btnNoiseBit.addEventListener("click", () =>
@@ -221,8 +223,6 @@
       rateBps: ultimo.rateBps,
       distanceKm: ultimo.distanceKm,
       velocityKmS: ultimo.velocityKmS,
-      errorProbData: 0,
-      errorProbAck: 0,
       turnaroundMs: ultimo.turnaroundMs,
     });
     renderHops();
@@ -240,7 +240,6 @@
     { key: "distanceKm", label: "Distancia (km)", step: "1", min: "0" },
     { key: "rateBps", label: "Tasa (bits/s)", step: "1000", min: "1" },
     { key: "velocityKmS", label: "Velocidad (km/s)", step: "1000", min: "1" },
-    { key: "errorProbData", label: "P error trama", step: "0.05", min: "0", max: "1" },
     { key: "turnaroundMs", label: "Vuelta del medio (ms)", step: "1", min: "0" },
   ];
 
@@ -282,11 +281,6 @@
           rebuild();
         });
 
-        if (campo.key === "errorProbData" && !dom.noiseToggle.checked) {
-          input.disabled = true;
-          label.title = "Enciende el ruido del canal para usar esta probabilidad";
-        }
-
         label.appendChild(input);
         grid.appendChild(label);
       }
@@ -322,21 +316,10 @@
     }
 
     try {
-      // Los valores del formulario se validan siempre, aunque el ruido esté
-      // apagado: si no, una probabilidad imposible se aceptaba en silencio y
-      // solo reventaba al encender el ruido.
-      hops.forEach((h, i) =>
-        N.createLink({
-          name: `${nombreNodo(i)} → ${nombreNodo(i + 1)}`,
-          rateBps: h.rateBps,
-          distanceKm: h.distanceKm,
-          velocityKmS: h.velocityKmS,
-          errorProbData: h.errorProbData,
-          errorProbAck: h.errorProbAck,
-          turnaroundMs: h.turnaroundMs,
-        })
-      );
-
+      // La interfaz ya no ofrece forma de dañar tramas por probabilidad (ver
+      // docs/07-historial.md): errorProbData/errorProbAck no se pasan, y
+      // createLink() los da por 0. El modelo (network.js) conserva el
+      // parámetro intacto para quien lo use fuera de esta interfaz.
       path = N.createPath({
         frameBits: Number(dom.frameBits.value),
         ackBits: Number(dom.ackBits.value),
@@ -347,8 +330,6 @@
             rateBps: h.rateBps,
             distanceKm: h.distanceKm,
             velocityKmS: h.velocityKmS,
-            errorProbData: dom.noiseToggle.checked ? h.errorProbData : 0,
-            errorProbAck: dom.noiseToggle.checked ? h.errorProbAck : 0,
             turnaroundMs: h.turnaroundMs,
           })
         ),
@@ -369,7 +350,7 @@
       totalFrames: Number(dom.totalFrames.value),
       timeoutMs: Number(dom.timeoutMs.value),
       nakOnError: dom.nakToggle.checked,
-      seed: Number(dom.seed.value),
+      seed: SEMILLA_BIT_AL_AZAR,
       payloadBytes: F.payloadBytesFor(Number(dom.frameBits.value)),
     });
 

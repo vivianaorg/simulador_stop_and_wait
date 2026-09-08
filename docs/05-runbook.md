@@ -55,7 +55,7 @@ python -m py_compile simulador_stop_and_wait_python/*.py
 ```
 
 Baseline 2026-09-08, Node v24.11.1 y Python 3.13.14: **116 pruebas verdes, 0 fallas**; el banco de
-interfaz con 55 comprobaciones sin problemas; el lint de documentación limpio; el resto, sin
+interfaz con 51 comprobaciones sin problemas; el lint de documentación limpio; el resto, sin
 avisos.
 
 > **Este archivo es la fuente única del conteo de pruebas.** Ningún otro documento lo repite: lo
@@ -95,7 +95,7 @@ python -m http.server 8000 --directory simulador_stop_and_wait_v2
 # abrir http://localhost:8000/banco-interfaz.html
 ```
 
-El resumen sale arriba del todo. Al 2026-09-08: **55 comprobaciones, 0 problemas**, corrido con
+El resumen sale arriba del todo. Al 2026-09-08: **51 comprobaciones, 0 problemas**, corrido con
 el Chromium sin cabeza de la receta de abajo, y repetible: espera a que cada iframe termine de
 montarse en vez de dormir un rato fijo.
 
@@ -105,6 +105,12 @@ montarse en vez de dormir un rato fijo.
 > esa sesión ningún agente tenía navegador. Ese mismo día se añadió una comprobación de que la
 > calculadora **no** redondea el tamaño de trama: con 500 calcula los 500 y solo deja la nota de
 > lo que haría el simulador.
+>
+> El mismo día, más tarde, el conteo bajó de 55 a 51: se ocultó de `index.html` el ruido del
+> canal por probabilidad (interruptor, semilla y las columnas de probabilidad por tramo), y con
+> él se fueron las tres comprobaciones que encendían y apagaban esa casilla más la que probaba
+> una probabilidad fuera de rango en una columna que ya no existe. El modelo y sus pruebas
+> siguen intactos; ver `docs/07-historial.md`.
 
 **No sustituye a probarlo a mano.** Ve si el comportamiento es el esperado, no si algo se ve mal:
 el selector de canal cortado o una etiqueta encima de otra solo se ven mirando.
@@ -149,26 +155,31 @@ gotcha más habitual de este proyecto y no da error visible.
 6. *Forzar seq* hace que el receptor la trate como duplicada y repita el ACK.
 7. El timeout se ajusta solo al cambiar el camino; si se escribe uno a mano, se respeta y el
    aviso dice cuánto margen queda sobre el RTT.
-8. La misma semilla con la misma configuración da la misma simulación.
-9. Con el canal en **half duplex** y tiempo de vuelta > 0, aparecen barras verticales ámbar
+8. Con el canal en **half duplex** y tiempo de vuelta > 0, aparecen barras verticales ámbar
    antes de cada ACK y de cada trama siguiente, y el ciclo se alarga sin que cambie el RTT.
-10. La rueda del ratón sobre el diagrama muestra el aviso «histórico» y deja ver lo anterior;
-    el doble clic vuelve al presente.
-11. Con el **ruido apagado** (por defecto), la probabilidad de cada tramo aparece deshabilitada y
-    no ocurre ningún error solo; al encenderlo, se habilita y empiezan a aparecer.
-12. *Dañar un bit al azar* deja el CRC en «no cuadra», igual que pulsar un bit a mano.
-13. *Ver el CRC paso a paso* muestra el polinomio, una fila por byte y el veredicto; al desplegar
+9. La rueda del ratón sobre el diagrama muestra el aviso «histórico» y deja ver lo anterior;
+   el doble clic vuelve al presente.
+10. *Dañar un bit al azar* deja el CRC en «no cuadra», igual que pulsar un bit a mano. No hay
+    campo de semilla en el formulario (se quitó el 2026-09-08): el botón usa una semilla fija
+    declarada en `ui.js` y el resultado es igual de repetible que antes.
+11. *Ver el CRC paso a paso* muestra el polinomio, una fila por byte y el veredicto; al desplegar
     una fila salen sus ocho desplazamientos, y abrir otra cierra la anterior.
-14. **`Ráfaga de ruido`** ⚠️ **pendiente de comprobación manual** (ningún agente de esta sesión
+12. **`Ráfaga de ruido`** ⚠️ **pendiente de comprobación manual** (ningún agente de esta sesión
     tiene navegador): al dispararla debería verse una banda horizontal en el diagrama durante los
     milisegundos indicados, el contador *Bits arruinados por ráfaga* subiendo, y una trama que
     viajaba dentro de la ventana llegando dañada y descartándose por CRC. El contador tiene que
     marcar lo mismo que la calculadora para esa duración y esa tasa, **y no cambiar al mover el
     control de velocidad**: eso es lo que se arregló el 2026-09-08. La banda tiene ya su entrada
     en la leyenda.
-15. **Trama de 1000 bits, tira agrupada** ⚠️ **pendiente de comprobación manual**: con `frameBits`
+13. **Trama de 1000 bits, tira agrupada** ⚠️ **pendiente de comprobación manual**: con `frameBits`
     en 1000 la tira debería agruparse por bytes y cada casilla debería leerse como dos dígitos
     hexadecimales legibles, no como texto recortado o solapado.
+
+El ruido del canal por probabilidad (el que se tira, no el que se dispara a mano) ya no tiene
+control en el formulario: se quitó de `index.html` el 2026-09-08 porque en un aula no se puede
+explicar «puede que pase». El modelo lo conserva intacto —ver `docs/01-arquitectura.md` § *El
+ruido por probabilidad existe en el modelo, pero la interfaz no lo enciende*— así que no hay nada
+que comprobar de él desde esta checklist.
 
 ## Checklist de humo del v2 (calculadora)
 

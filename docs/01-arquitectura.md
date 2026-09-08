@@ -219,21 +219,27 @@ Consecuencia visible: la tira de bits de la trama en vuelo ahora refleja de verd
 se pidió (hasta miles de bits, no 80 fijos), lo que hace falta para que una ráfaga medida en
 milisegundos tenga trama real donde morder.
 
-## El ruido es opcional, y el error se puede meter a mano
+## El ruido por probabilidad existe en el modelo, pero la interfaz no lo enciende
 
-Dos formas de dañar una trama, y conviene no confundirlas:
+Dos formas de dañar una trama en el modelo, y conviene no confundirlas:
 
 | | Cómo | Para qué |
 |---|---|---|
 | **A mano** | Pulsar cualquier bit del inspector, o el botón *Dañar un bit al azar* | Enseñar el caso exacto que quieres, cuando quieres |
-| **Ruido del canal** | Interruptor *Ruido del canal* + la probabilidad de cada tramo | Ver el comportamiento a lo largo de muchos ciclos |
+| **Ruido del canal** | `errorProbData`/`errorProbAck` de cada tramo, en `network.js` | Ver el comportamiento a lo largo de muchos ciclos |
 
-El ruido **viene apagado** y, mientras lo esté, las probabilidades de los tramos se ignoran y sus
-campos aparecen deshabilitados: el único error posible es el que metes tú. Encendido, usa el
-generador con semilla, así que el mismo escenario se repite igual.
+El interruptor *Ruido del canal*, el campo de semilla y las columnas de probabilidad por tramo se
+quitaron de `index.html` (2026-09-08): en un aula, «puede que pase» no sirve para explicar. El
+modelo no se tocó —`applyChannelNoise` en `sim.js`, `errorProbData`/`errorProbAck` en
+`network.js` y `seededRandom` en `frame.js` siguen intactos, con sus pruebas— pero `ui.js` ya no
+tiene forma de ponerlos por encima de 0: `rebuild()` construye cada tramo sin pasar esos
+parámetros, así que `createLink()` los da por 0 igual que antes hacía el interruptor apagado.
+Quien quiera esa probabilidad tiene que llamar al modelo directamente, no desde el formulario.
+Cómo revertirlo, en `docs/07-historial.md` (entrada del 2026-09-08).
 
-Los valores del formulario se validan **siempre**, aunque el ruido esté apagado: si no, una
-probabilidad imposible se aceptaba en silencio y solo reventaba al encender el interruptor.
+El botón *Dañar un bit al azar* no depende de esto: **no es probabilístico** —el bit se voltea
+siempre, solo el índice es aleatorio— y sigue usando el generador con semilla de `frame.js`. Sin
+campo de formulario que la fije, `ui.js` le pasa una semilla constante (`SEMILLA_BIT_AL_AZAR`).
 
 ## El CRC, paso a paso
 
