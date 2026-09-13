@@ -100,10 +100,10 @@ test("Errores en la trama y en el ACK se componen en el mismo ciclo", () => {
 
 test("Cada parámetro inválido se rechaza con su mensaje, no en silencio", () => {
   const casos = [
-    [{ rateBps: 0 }, /tasa/i],
-    [{ rateBps: -5 }, /tasa/i],
-    [{ rateBps: NaN }, /tasa/i],
-    [{ rateBps: Infinity }, /tasa/i],
+    [{ rateBps: 0 }, /transmisi.n/i],
+    [{ rateBps: -5 }, /transmisi.n/i],
+    [{ rateBps: NaN }, /transmisi.n/i],
+    [{ rateBps: Infinity }, /transmisi.n/i],
     [{ distanceKm: -1 }, /distancia/i],
     [{ distanceKm: NaN }, /distancia/i],
     [{ velocityKmS: 0 }, /velocidad/i],

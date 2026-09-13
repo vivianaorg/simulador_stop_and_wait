@@ -39,9 +39,9 @@
   // en sim.js y ui.js, y ahí no se ha tocado nada.
   const CAMPOS = [
     { key: "name", label: "Nombre", type: "text" },
-    { key: "rateBps", label: "Tasa R (bits/s)", type: "number", min: 1, step: 1 },
+    { key: "rateBps", label: "Velocidad de transmisión R (bits/s)", type: "number", min: 1, step: 1 },
     { key: "distanceKm", label: "Distancia d (km)", type: "number", min: 0, step: 0.001 },
-    { key: "velocityKmS", label: "Velocidad V (km/s)", type: "number", min: 1, step: 1 },
+    { key: "velocityKmS", label: "Velocidad de propagación V (km/s)", type: "number", min: 1, step: 1 },
     { key: "turnaroundMs", label: "Tiempo de vuelta (ms)", type: "number", min: 0, step: 1 },
   ];
 

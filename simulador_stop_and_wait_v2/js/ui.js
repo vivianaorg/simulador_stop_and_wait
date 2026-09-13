@@ -238,8 +238,8 @@
 
   const CAMPOS_TRAMO = [
     { key: "distanceKm", label: "Distancia (km)", step: "1", min: "0" },
-    { key: "rateBps", label: "Tasa (bits/s)", step: "1000", min: "1" },
-    { key: "velocityKmS", label: "Velocidad (km/s)", step: "1000", min: "1" },
+    { key: "rateBps", label: "Velocidad de transmisión (bits/s)", step: "1000", min: "1" },
+    { key: "velocityKmS", label: "Velocidad de propagación (km/s)", step: "1000", min: "1" },
     { key: "turnaroundMs", label: "Vuelta del medio (ms)", step: "1", min: "0" },
   ];
 

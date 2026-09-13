@@ -69,7 +69,7 @@
 
   function validateLink(link) {
     const problems = [];
-    if (!isPositive(link.rateBps)) problems.push("la tasa R debe ser > 0 bits/s");
+    if (!isPositive(link.rateBps)) problems.push("la velocidad de transmisión R debe ser > 0 bits/s");
     if (!Number.isFinite(link.distanceKm) || link.distanceKm < 0) problems.push("la distancia d no puede ser negativa");
     if (!isPositive(link.velocityKmS)) problems.push("la velocidad de propagación V debe ser > 0 km/s");
     if (!isProbability(link.errorProbData)) problems.push("la probabilidad de error de datos debe estar entre 0 y 1");
@@ -278,7 +278,7 @@
    * confunda con una cita.
    */
   function burstBitsFromMs(spec) {
-    if (!isPositive(spec.rateBps)) throw new RangeError("la tasa R debe ser > 0 bits/s");
+    if (!isPositive(spec.rateBps)) throw new RangeError("la velocidad de transmisión R debe ser > 0 bits/s");
     if (!Number.isFinite(spec.burstMs) || spec.burstMs < 0) {
       throw new RangeError("la duración de la ráfaga no puede ser negativa");
     }

@@ -8,6 +8,32 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-13 — Los tramos se etiquetan como «velocidad de transmisión» y «velocidad de propagación»
+
+**Qué.** Renombrado de etiquetas visibles, sin tocar claves ni cálculos:
+
+- `js/calc.js` (calculadora): `Tasa R (bits/s)` → `Velocidad de transmisión R (bits/s)`;
+  `Velocidad V (km/s)` → `Velocidad de propagación V (km/s)`.
+- `js/ui.js` (editor de camino del simulador): `Tasa (bits/s)` → `Velocidad de transmisión
+  (bits/s)`; `Velocidad (km/s)` → `Velocidad de propagación (km/s)`.
+- `js/network.js`: los dos mensajes de validación pasan de «la tasa R debe ser > 0 bits/s» a
+  «la velocidad de transmisión R debe ser > 0 bits/s».
+- `tests/bordes.test.js`: el patrón esperado en esos errores pasa de `/tasa/i` a
+  `/transmisi.n/i`.
+
+Se conservan las letras R y V porque el desarrollo (`steps.js`) las usa en las fórmulas, y el
+título «Producto ancho de banda por retardo» de `steps.js`, que es el término del libro (p. 201).
+El control `Velocidad` de `index.html` es el de la animación, no del enlace: no se toca.
+
+**Por qué.** «Velocidad (km/s)» a secas se confundía con la velocidad del enlace, y «tasa» no
+decía de qué. Tanenbaum (cap. 3) usa literalmente «velocidad de transmisión» (ej. 22: «velocidad
+de transmisión de 10 Mbps») y «velocidad de propagación» (ej. 35, 15), así que son términos del
+libro y no un invento. Las claves `rateBps`/`velocityKmS` siguen igual.
+
+**Revertir.** `git revert` del commit. Verificado: 149/149 pruebas verdes.
+
+---
+
 ## 2026-09-08 — La derivación cubre toda la calculadora, sin ceros ni contradicciones inventadas
 
 **Qué.** Ronda de correcciones sobre la entrada anterior. Dos arreglos y una ampliación en
