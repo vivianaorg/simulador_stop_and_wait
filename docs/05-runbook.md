@@ -247,6 +247,37 @@ Se corre entero, en el navegador, sobre la versión servida. Cada línea se marc
 Lo que falle se anota en [06-pendientes.md](06-pendientes.md) con lo que se vio, no se "arregla
 de paso" en medio del checklist.
 
+## Regenerar el manual de usuario (DOCX + PDF)
+
+El manual (`Manual_de_usuario_Simulador_Stop_and_Wait.docx` en la raíz; el `.pdf` al lado, que
+`.gitignore` no versiona) se genera con los scripts de `tools/manual/`. Todo corre desde este
+PC, sin dependencias nuevas en el proyecto: Playwright y Chromium salen de la caché de `npx`,
+Pillow y python-docx ya están instalados y el PDF lo hace LibreOffice.
+
+```bash
+# 1. Servir el v2
+python -m http.server 8765 --directory simulador_stop_and_wait_v2
+
+# 2. Capturas (S = carpeta de trabajo; PW = node_modules de la caché de npx con playwright)
+PW=/c/Users/gogam/AppData/Local/npm-cache/_npx/705bc6b22212b352/node_modules
+NODE_PATH=$PW node tools/manual/capture_sim.js  $S/shots   # escenarios del simulador (s*.png)
+NODE_PATH=$PW node tools/manual/capture_ann.js  $S/figs    # figuras a anotar (+ JSON de cajas)
+
+# 3. Anotar (círculos numerados) y montar el DOCX
+python tools/manual/annotate.py $S/figs $S/ann
+python tools/manual/build_manual.py $S/ann $S/shots Manual_de_usuario_Simulador_Stop_and_Wait.docx
+
+# 4. PDF
+"/c/Program Files/LibreOffice/program/soffice.exe" --headless --convert-to pdf Manual_de_usuario_Simulador_Stop_and_Wait.docx
+```
+
+Gotchas: el Chromium es el de `~/AppData/Local/ms-playwright/chromium-1234` (ruta fija en los
+scripts; si Playwright se actualiza, cambiar `EXE`). Los botones de bits del inspector se
+redibujan en cada fotograma, así que se pulsan con `evaluate(...click())`, no con el `click`
+de Playwright (se queda esperando a un elemento que ya no existe). El texto del manual está en
+`build_manual.py`: los números que cita (RTT, U, contadores) son los de las capturas, no se
+calculan; si cambian los valores por defecto del simulador hay que revisarlos.
+
 ## Gotchas operativas
 
 | Síntoma | Causa | Qué hacer |

@@ -8,6 +8,34 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-13 — Manual de usuario (DOCX + PDF) con capturas anotadas
+
+**Qué.** `Manual_de_usuario_Simulador_Stop_and_Wait.docx` (y su `.pdf`, sin versionar por el
+`.gitignore`) en la raíz. Dos partes, como pidió el usuario: **Interfaz** (cada bloque del
+simulador y de la calculadora con captura, círculos numerados y tabla «qué hace y qué afecta») y
+**Funcionamiento** (quince ejercicios guiados con fórmulas y la página del libro de la que
+salen). Sin introducción teórica ni conclusiones; portada blanca. 44 figuras, 42 páginas.
+Lenguaje de redes, no de programación: no se nombran ficheros, funciones ni identificadores.
+
+Los scripts que lo generan viven en `tools/manual/` y el procedimiento en
+[05-runbook.md](05-runbook.md) § *Regenerar el manual de usuario*. Las capturas se toman con
+Playwright sobre el v2 servido, las cajas de cada elemento se exportan a JSON y Pillow dibuja
+las marcas; python-docx monta el documento y LibreOffice lo convierte a PDF.
+
+**Desvío encontrado al capturar (no corregido, decidir):** el bloque **Transferencia de un
+fichero completo** de la calculadora **no se puede activar desde la interfaz**: sólo aparece
+cuando el tamaño es > 0, pero el campo del tamaño está dentro del propio bloque oculto. Para la
+figura se rellenó el campo desde fuera y el manual lo dice tal cual. La corrección es pequeña
+(dejar visibles los campos y ocultar sólo la lista de pasos) pero cambia la interfaz y una
+figura del manual, así que se deja a decisión del usuario.
+
+**Por qué.** Entrega académica: hacía falta un manual de uso distinto de la guía de estudio del
+2026-09-08 (aquella explica el tema; ésta explica los botones y luego los ejercicios).
+
+**Revertir.** Borrar el `.docx`, `tools/manual/` y esta entrada; quitar la sección del runbook.
+
+---
+
 ## 2026-09-13 — Los tramos se etiquetan como «velocidad de transmisión» y «velocidad de propagación»
 
 **Qué.** Renombrado de etiquetas visibles, sin tocar claves ni cálculos:
