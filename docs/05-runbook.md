@@ -217,7 +217,8 @@ que comprobar de él desde esta checklist.
 10. El bloque **Transferencia** da tramas = `⌈total / L⌉` y tiempo = tramas × ciclo, para un
     tamaño en bits, en KB y en MB.
 11. El bloque **Ráfaga** da los bits de `R · t` y las tramas que abarca; con duración 0 el bloque
-    se oculta. El de **Transferencia** se oculta igual con tamaño 0.
+    se oculta. El de **Transferencia** está siempre visible (sus campos viven dentro) y con
+    tamaño 0 sólo queda vacía su lista de pasos.
 12. Un tamaño de trama no construible (500 o 1005) **se calcula tal cual** —el campo no se
     reescribe— y aparece bajo los datos la nota de qué usaría el simulador (504, 1008). Con uno
     construible (1000) la nota desaparece; con uno inválido (0) sale el error de siempre y la

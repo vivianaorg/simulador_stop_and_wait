@@ -514,15 +514,16 @@ items([
 ])
 
 h3("Transferencia de un fichero completo")
+fig("B09-transferencia-vacio.png", "Bloque Transferencia recién abierta la calculadora: solo los dos campos.")
+items([
+    (1, "Tamaño total", "Cuántos bits, KB o MB hay que enviar en total. Con 0 el bloque no calcula nada."),
+    (2, "Unidad", "bits, KB (1000 bytes) o MB (1000 KB)."),
+])
 fig("B09-transferencia.png", "Bloque Transferencia con 100 KB sobre el satélite.")
 items([
-    (1, "Tamaño total", "Cuántos bits, KB o MB hay que enviar en total."),
-    (2, "Unidad", "bits, KB (1000 bytes) o MB (1000 KB)."),
+    (1, "Tamaño total", "Al escribir un valor mayor que 0 aparecen los pasos."),
+    (2, "Unidad", "Cambiarla recalcula al instante."),
     (3, "Tres pasos", "Tramas necesarias ⌈bits / L⌉, tiempo total = tramas × ciclo, y el caudal conseguido = bits / tiempo (que coincide con el caudal útil del resultado)."),
-])
-box("cuidado", "Este bloque no se puede activar desde la interfaz en la versión actual", [
-    "El bloque Transferencia solo aparece cuando el tamaño es mayor que 0, pero el campo para escribir el tamaño está dentro del propio bloque. "
-    "Resultado: el usuario no tiene forma de verlo. Para la figura se ha rellenado el campo desde fuera. Está anotado como corrección pendiente.",
 ])
 
 h3("Avisos y errores")
@@ -824,6 +825,7 @@ h2("2.15 Ráfaga y transferencia en la calculadora")
 box("paso", "Ejercicio", [
     "1. Con el satélite cargado, escribir Ráfaga de ruido = 2. Aparece el bloque Ráfaga de ruido.",
     "2. Cambiar a 5 ms y comparar con los 500 bits que contó el simulador en 2.11 (allí R era 100 kbit/s, aquí 50 kbit/s).",
+    "3. En el bloque Transferencia, escribir 100 con la unidad en KB.",
 ])
 fig("B08-rafaga.png", "2 ms de ráfaga a 50 kbit/s: 100 bits, que caben en una sola trama.")
 formula("bits = R × t = 50 000 × 0,002 = 100 bits      tramas = ⌈100 / 1000⌉ = 1")
@@ -832,8 +834,7 @@ para("El bloque Transferencia responde a la pregunta práctica: cuánto tarda un
 fig("B09-transferencia.png", "100 KB por el satélite: 800 tramas, 416 s, 1,923 kbit/s conseguidos.")
 formula("tramas = ⌈bits / L⌉ = 800      tiempo = tramas × ciclo = 800 × 0,52 s = 416 s      goodput = 800 000 / 416 = 1923 bit/s")
 para("El caudal conseguido coincide con el caudal útil del Resultado: es la misma magnitud vista desde el fichero completo en lugar "
-     "de desde una sola trama. Ver en la Parte 1 la nota sobre este bloque: en la versión actual el campo de tamaño no está "
-     "accesible desde la interfaz.")
+     "de desde una sola trama.")
 
 doc.save(OUT)
 print("guardado", OUT, "figuras:", FIG_N[0])

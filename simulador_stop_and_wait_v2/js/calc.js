@@ -394,19 +394,17 @@
   function pintarTransferencia() {
     const tamano = Number(dom.transferSize.value);
     dom.transferStepsList.innerHTML = "";
-    // Mismo guardián que `pintarRafaga`: sin tamaño no hay nada que enseñar, y
-    // un bloque con una sección vacía solo estorba.
-    if (!ultimoPath || !(tamano > 0)) {
-      dom.transferPod.hidden = true;
-      return;
-    }
-    dom.transferPod.hidden = false;
+    // El bloque se muestra en cuanto hay un camino válido: sus campos de
+    // tamaño y unidad viven dentro, así que ocultarlo entero (como hacía
+    // hasta el 2026-09-13) dejaba al usuario sin forma de activarlo. Sin
+    // tamaño, la lista de pasos queda vacía y no se pinta nada más.
+    dom.transferPod.hidden = !ultimoPath;
+    if (!ultimoPath || !(tamano > 0)) return;
 
     let totalBits;
     try {
       totalBits = N.bitsFromSize(tamano, dom.transferUnit.value);
     } catch (err) {
-      dom.transferPod.hidden = true;
       return; // unidad inválida: no debería pasar con el <select>, pero no se pinta nada roto
     }
 

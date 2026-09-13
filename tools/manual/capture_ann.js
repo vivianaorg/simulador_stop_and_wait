@@ -144,8 +144,8 @@ const DPR = 2;
   await fig('B08-rafaga', '#burst-pod', [[1, '#burst-steps-list li:nth-child(1)'], [2, '#burst-steps-list li:nth-child(2)']]);
   await setNum('#burst-ms', 0);
 
-  await p.evaluate(() => { const e = document.getElementById('transfer-size'); e.value = '100'; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); });
-  await p.waitForTimeout(200);
+  await fig('B09-transferencia-vacio', '#transfer-pod', [[1, '#transfer-size', 'tr'], [2, '#transfer-unit', 'tr']]);
+  await setNum('#transfer-size', 100); await p.waitForTimeout(200);
   await fig('B09-transferencia', '#transfer-pod', [[1, '#transfer-size', 'tr'], [2, '#transfer-unit', 'tr'], [3, '#transfer-steps-list']]);
 
   await p.click('[data-preset="satelite"]'); await p.waitForTimeout(150);

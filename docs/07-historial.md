@@ -8,6 +8,24 @@ Cuando este archivo pase de ~600 líneas, las entradas viejas se mueven a
 
 ---
 
+## 2026-09-13 — El bloque Transferencia de la calculadora vuelve a ser alcanzable
+
+**Qué.** `js/calc.js`, `pintarTransferencia()`: el bloque **Transferencia de un fichero
+completo** ya no se oculta entero cuando el tamaño es 0. Se muestra en cuanto hay un camino
+válido y, sin tamaño, sólo queda vacía su lista de pasos. El manual se regeneró con el bloque
+tal como se ve ahora (dos figuras: vacío y con 100 KB) y sin la nota del desvío; el checklist de
+humo de la calculadora (`05-runbook.md`, punto 11) dice el comportamiento nuevo.
+
+**Por qué.** Los campos de tamaño y unidad viven dentro del bloque, así que ocultarlo con
+tamaño 0 lo dejaba inalcanzable desde la interfaz: el usuario nunca podía escribir el tamaño
+que lo hacía aparecer. Se vio al capturar las figuras del manual. Comprobado con Chromium sin
+cabeza: el bloque es visible al abrir, escribir 100 KB pinta los tres pasos (800 tramas, 416 s,
+1,923 kbit/s), cambiar a MB recalcula, y volver a 0 vacía la lista sin esconder los campos.
+
+**Revertir.** `git revert` del commit (vuelve el `hidden` con tamaño 0 y el manual anterior).
+
+---
+
 ## 2026-09-13 — Manual de usuario (DOCX + PDF) con capturas anotadas
 
 **Qué.** `Manual_de_usuario_Simulador_Stop_and_Wait.docx` (y su `.pdf`, sin versionar por el
@@ -22,12 +40,11 @@ Los scripts que lo generan viven en `tools/manual/` y el procedimiento en
 Playwright sobre el v2 servido, las cajas de cada elemento se exportan a JSON y Pillow dibuja
 las marcas; python-docx monta el documento y LibreOffice lo convierte a PDF.
 
-**Desvío encontrado al capturar (no corregido, decidir):** el bloque **Transferencia de un
+**Desvío encontrado al capturar (corregido en la entrada siguiente, mismo día):** el bloque **Transferencia de un
 fichero completo** de la calculadora **no se puede activar desde la interfaz**: sólo aparece
 cuando el tamaño es > 0, pero el campo del tamaño está dentro del propio bloque oculto. Para la
-figura se rellenó el campo desde fuera y el manual lo dice tal cual. La corrección es pequeña
-(dejar visibles los campos y ocultar sólo la lista de pasos) pero cambia la interfaz y una
-figura del manual, así que se deja a decisión del usuario.
+figura se rellenó el campo desde fuera y el manual lo dice tal cual. La corrección (dejar visibles
+los campos y ocultar sólo la lista de pasos) se hizo a continuación, a petición del usuario.
 
 **Por qué.** Entrega académica: hacía falta un manual de uso distinto de la guía de estudio del
 2026-09-08 (aquella explica el tema; ésta explica los botones y luego los ejercicios).
